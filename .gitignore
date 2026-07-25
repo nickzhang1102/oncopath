@@ -1,0 +1,63 @@
+
+# E2E
+# E2E 测试临时文件
+# IDE
+# Python
+# 测试产物
+# 测试临时脚本
+*.pyc
+*.pyo
+.superpowers/
+/.playwright-mcp
+/.trae
+/.zcf
+/back/.coverage
+/back/.env
+/back/.venv
+/back/add_balance.py
+/back/e2e_setup.py
+/back/htmlcov/
+/back/server.log
+/back/test_db_check.py
+/back/check_ref_range.py
+/back/test-results/
+/back/venv
+/back/storage/
+/back/uploads/
+/e2e_check.py
+/e2e_full_test.py
+/e2e_recon*.py
+/e2e_test_*.py
+/e2e-screenshots/
+/front/playwright-report/
+/front/test-results/
+/front/tests/e2e-results/
+/front/ssl/
+/test-results/
+/tests/e2e
+/backups/
+/codestable/
+__pycache__/
+
+# 敏感配置与患者数据（保留本地，绝不上传 git）
+/.env
+/back/.env.example
+/.claude/
+/.clinerules/
+/.superpowers/
+/docs/*
+!/docs/deployment/
+/docs/deployment/*
+!/docs/deployment/docker-deploy.md
+!/docs/deployment/agentteams-integration.md
+!/docs/testing/
+/docs/testing/*
+!/docs/testing/agentteams-consultation.md
+/back/migrations/sql/
+/back/migrations/private_versions/
+/.pytest_cache/
+/back/.pytest_cache/
+
+# AI 协作文档与工具配置（保留本地，不上传 git）
+CLAUDE.md
+/back/.zcf/

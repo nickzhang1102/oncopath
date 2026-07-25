@@ -1,0 +1,54 @@
+# 环境和密钥
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+
+# 测试
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 构建产物
+dist/
+build/
+*.egg-info/
+
+# 首次公开前的本地迁移历史
+migrations/private_versions/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文档
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# 临时文件
+*.log
+*.tmp
+.DS_Store

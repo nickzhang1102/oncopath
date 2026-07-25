@@ -1,0 +1,803 @@
+/* 导入字体 */
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+/* CSS 变量 */
+:root {
+  /* 基础色 */
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+  --color-orange: #F97316;
+  --color-purple: #8B5CF6;
+  --color-emerald: #10B981;
+  --color-pink: #DB2777;
+  --color-lime: #65A30D;
+  --color-indigo: #4F46E5;
+
+  /* 背景 Alpha */
+  --bg-surface-alpha: rgba(255, 255, 255, 0.95);
+  --overlay-dark: rgba(0, 0, 0, 0.7);
+  --overlay-darker: rgba(0, 0, 0, 0.9);
+
+  /* 主色 */
+  --primary-color: #0891B2;
+  --primary-light: #22D3EE;
+  --primary-dark: #0E7490;
+
+  /* 功能色 */
+  --success-color: #059669;
+  --warning-color: #D97706;
+  --danger-color: #DC2626;
+  --info-color: #3B82F6;
+
+  /* 文本 */
+  --text-primary: #164E63;
+  --text-secondary: #64748B;
+  --text-tertiary: #94A3B8;
+
+  /* 字体大小 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* 背景 */
+  --bg-primary: #ECFEFF;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F0FDFA;
+
+  /* 边框 */
+  --border-color: #CFFAFE;
+  --border-light: #E0F2FE;
+  --border-dark: #E2E8F0;
+
+  /* 主色 Alpha 变体 */
+  --primary-alpha-2: rgba(8, 145, 178, 0.02);
+  --primary-alpha-3: rgba(8, 145, 178, 0.03);
+  --primary-alpha-4: rgba(8, 145, 178, 0.04);
+  --primary-alpha-5: rgba(8, 145, 178, 0.05);
+  --primary-alpha-6: rgba(8, 145, 178, 0.06);
+  --primary-alpha-8: rgba(8, 145, 178, 0.08);
+  --primary-alpha-10: rgba(8, 145, 178, 0.10);
+  --primary-alpha-12: rgba(8, 145, 178, 0.12);
+  --primary-alpha-15: rgba(8, 145, 178, 0.15);
+  --primary-alpha-20: rgba(8, 145, 178, 0.20);
+  --primary-alpha-30: rgba(8, 145, 178, 0.30);
+  --primary-alpha-40: rgba(8, 145, 178, 0.40);
+  --primary-alpha-50: rgba(8, 145, 178, 0.50);
+  --primary-alpha-60: rgba(8, 145, 178, 0.60);
+  --primary-alpha-80: rgba(8, 145, 178, 0.80);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px var(--primary-alpha-5);
+  --shadow-md: 0 4px 6px var(--primary-alpha-10);
+  --shadow-lg: 0 10px 15px var(--primary-alpha-10);
+
+  /* 字体 */
+  --font-heading: 'Figtree', 'Noto Sans SC', sans-serif;
+  --font-body: 'Noto Sans SC', 'Figtree', sans-serif;
+
+  /* 间距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* 响应式断点 */
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  /* 侧边栏 */
+  --sidebar-width-expanded: 220px;
+  --sidebar-width-collapsed: 64px;
+
+  /* 新增变量 */
+  --bg-secondary: #F0FDFA;
+  --tabbar-height: 50px;
+  --safe-bottom: calc(var(--tabbar-height) + 30px + env(safe-area-inset-bottom));
+  /* 固定底栏补偿高度，有固定底栏的页面在自身作用域内覆盖此值 */
+  --bottom-bar-height: 0px;
+
+  /* 状态色 */
+  --status-normal-bg: rgba(5, 150, 105, 0.1);
+  --status-normal-text: var(--success-color);
+  --status-warning-bg: rgba(217, 119, 6, 0.1);
+  --status-warning-text: var(--warning-color);
+  --status-danger-bg: rgba(220, 38, 38, 0.1);
+  --status-danger-text: var(--danger-color);
+  --status-info-bg: rgba(59, 130, 246, 0.1);
+  --status-info-text: var(--info-color);
+
+  /* 功能色 Alpha 变体 */
+  --success-alpha-10: rgba(5, 150, 105, 0.1);
+  --success-alpha-40: rgba(5, 150, 105, 0.4);
+  --warning-alpha-10: rgba(217, 119, 6, 0.1);
+  --danger-alpha-10: rgba(220, 38, 38, 0.1);
+
+  /* Glass / Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-blur: 20px;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+
+  /* Card Hover */
+  --card-hover-lift: -4px;
+  --card-hover-shadow: 0 12px 28px rgba(8, 145, 178, 0.12);
+  --card-transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+  /* Category Color Bar */
+  --category-bar-width: 4px;
+
+  /* Markdown 主题色 */
+  --markdown-code-bg: rgba(27, 31, 35, 0.05);
+  --markdown-pre-bg: #f6f8fa;
+  --markdown-link-color: #0366d6;
+  --markdown-border-color: #dfe2e5;
+  --markdown-hr-bg: #e1e4e8;
+  --markdown-img-bg: #fff;
+  --markdown-blockquote-color: var(--text-primary);
+
+  /* 文件图标颜色 */
+  --file-icon-pdf: #ff4757;
+  --file-icon-doc: var(--primary-color);
+  --file-icon-txt: #747d8c;
+  --file-icon-image: #00d2d3;
+  --file-icon-video: #ff6b6b;
+  --file-icon-audio: #ffa502;
+  --file-icon-default: #747d8c;
+
+  /* 预览组件遮罩层 */
+  --preview-overlay-bg: #000;
+  --preview-toolbar-bg: rgba(0, 0, 0, 0.8);
+  --preview-close-bg: rgba(0, 0, 0, 0.8);
+  --preview-close-bg-hover: rgba(0, 0, 0, 0.9);
+  --preview-text: #fff;
+  --preview-loading-bg: rgba(0, 0, 0, 0.8);
+
+  /* 步骤/状态节点 */
+  --step-completed: var(--success-color);
+  --step-pending: #CBD5E1;
+
+  /* 阴影统一色 */
+  --shadow-color: rgba(0, 0, 0, 0.06);
+  --shadow-color-sm: rgba(0, 0, 0, 0.08);
+  --shadow-color-md: rgba(0, 0, 0, 0.1);
+  --shadow-color-lg: rgba(0, 0, 0, 0.15);
+  --shadow-color-xl: rgba(0, 0, 0, 0.25);
+
+  /* 第四级文本（比 tertiary 更弱） */
+  --text-quaternary: #969799;
+
+  /* Gradient Text */
+  --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+
+  /* Entry Animation */
+  --entry-duration: 0.3s;
+  --entry-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 消息类型语义颜色 */
+  --msg-progress-bg: #f0f9ff;
+  --msg-progress-border: #3b82f6;
+  --msg-question-bg: #fff9e6;
+  --msg-question-border: #f59e0b;
+  --msg-answer-bg: #f0fdf4;
+  --msg-answer-border: #10b981;
+  --msg-team-bg: #f0f9ff;
+  --msg-team-border: #3b82f6;
+  --msg-result-bg: #f0fdf4;
+  --msg-result-border: #10b981;
+  --msg-search-bg: #faf5ff;
+  --msg-search-border: #8b5cf6;
+  --msg-report-bg: #fffbeb;
+  --msg-report-border: #f59e0b;
+  --msg-error-bg: #fef2f2;
+  --msg-error-border: #ef4444;
+  --msg-default-bg: #ffffff;
+  --msg-default-border: #e2e8f0;
+}
+
+/* 暗色主题 */
+[data-theme="dark"] {
+  /* 主色 - 亮化 */
+  --primary-color: #22D3EE;
+  --primary-light: #67E8F9;
+  --primary-dark: #0891B2;
+
+  /* 功能色 - 亮化适配暗色背景 */
+  --success-color: #6EE7B7;
+  --warning-color: #FCD34D;
+  --danger-color: #FCA5A5;
+  --info-color: #93C5FD;
+
+  /* 背景 - 深色系 */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-surface: rgba(30, 41, 59, 0.95);
+  --bg-elevated: #1E293B;
+  --bg-surface-alpha: rgba(30, 41, 59, 0.95);
+
+  /* 文字 - 浅色系 */
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #64748B;
+
+  /* 边框 */
+  --border-color: #334155;
+  --border-light: #1E293B;
+  --border-dark: #475569;
+
+  /* 主色 Alpha 变体 - 暗色下用亮化主色 */
+  --primary-alpha-2: rgba(34, 211, 238, 0.02);
+  --primary-alpha-3: rgba(34, 211, 238, 0.03);
+  --primary-alpha-4: rgba(34, 211, 238, 0.04);
+  --primary-alpha-5: rgba(34, 211, 238, 0.05);
+  --primary-alpha-6: rgba(34, 211, 238, 0.06);
+  --primary-alpha-8: rgba(34, 211, 238, 0.08);
+  --primary-alpha-10: rgba(34, 211, 238, 0.10);
+  --primary-alpha-12: rgba(34, 211, 238, 0.12);
+  --primary-alpha-15: rgba(34, 211, 238, 0.15);
+  --primary-alpha-20: rgba(34, 211, 238, 0.20);
+  --primary-alpha-30: rgba(34, 211, 238, 0.30);
+  --primary-alpha-40: rgba(34, 211, 238, 0.40);
+  --primary-alpha-50: rgba(34, 211, 238, 0.50);
+  --primary-alpha-60: rgba(34, 211, 238, 0.60);
+  --primary-alpha-80: rgba(34, 211, 238, 0.80);
+
+  /* 阴影 - 更深 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+
+  /* 覆盖层 */
+  --overlay-dark: rgba(0, 0, 0, 0.85);
+  --overlay-darker: rgba(0, 0, 0, 0.15);
+
+  /* 状态色背景 - 暗色下微调 */
+  --status-normal-bg: rgba(110, 231, 183, 0.15);
+  --status-warning-bg: rgba(252, 211, 77, 0.15);
+  --status-danger-bg: rgba(252, 165, 165, 0.15);
+  --status-info-bg: rgba(147, 197, 253, 0.15);
+
+  /* 功能色 Alpha 变体 - 暗色 */
+  --success-alpha-10: rgba(110, 231, 183, 0.1);
+  --success-alpha-40: rgba(110, 231, 183, 0.4);
+  --warning-alpha-10: rgba(252, 211, 77, 0.1);
+  --danger-alpha-10: rgba(252, 165, 165, 0.1);
+
+  /* 装饰色 - 暗色下亮化 */
+  --color-pink: #F472B6;
+  --color-lime: #A3E635;
+  --color-indigo: #818CF8;
+
+  /* Glass / Glassmorphism */
+  --glass-bg: rgba(30, 41, 59, 0.8);
+  --glass-border: 1px solid rgba(51, 65, 85, 0.5);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  /* Card Hover */
+  --card-hover-shadow: 0 12px 28px rgba(34, 211, 238, 0.15);
+
+  /* 渐变 */
+  --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+
+  /* 消息类型语义颜色 - 暗色适配 */
+  --msg-progress-bg: rgba(59, 130, 246, 0.15);
+  --msg-progress-border: #60a5fa;
+  --msg-question-bg: rgba(245, 158, 11, 0.15);
+  --msg-question-border: #fbbf24;
+  --msg-answer-bg: rgba(16, 185, 129, 0.15);
+  --msg-answer-border: #34d399;
+  --msg-team-bg: rgba(59, 130, 246, 0.15);
+  --msg-team-border: #60a5fa;
+  --msg-result-bg: rgba(16, 185, 129, 0.15);
+  --msg-result-border: #34d399;
+  --msg-search-bg: rgba(139, 92, 246, 0.15);
+  --msg-search-border: #a78bfa;
+  --msg-report-bg: rgba(245, 158, 11, 0.15);
+  --msg-report-border: #fbbf24;
+  --msg-error-bg: rgba(239, 68, 68, 0.15);
+  --msg-error-border: #f87171;
+  --msg-default-bg: rgba(30, 41, 59, 0.8);
+  --msg-default-border: #475569;
+}
+
+/* 暗色主题 Vant 组件覆盖 */
+[data-theme="dark"] .van-cell {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-cell-group {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-cell__title {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-cell__label {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .van-cell__value {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .van-field {
+  background: var(--bg-elevated);
+}
+[data-theme="dark"] .van-field__label {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-field__control {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-field__control::placeholder {
+  color: var(--text-tertiary);
+}
+[data-theme="dark"] .van-nav-bar {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-nav-bar__title {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-popup {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-action-sheet {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-action-sheet__item {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-search {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-search__field {
+  background: var(--bg-elevated);
+}
+[data-theme="dark"] .van-tabbar {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-tabbar-item {
+  color: var(--text-tertiary);
+}
+[data-theme="dark"] .van-tabbar-item--active {
+  color: var(--primary-color);
+}
+[data-theme="dark"] .van-dialog {
+  background: var(--bg-surface) !important;
+}
+[data-theme="dark"] .van-dialog__header {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-dialog__message {
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .van-picker {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-picker__title {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-picker__confirm {
+  color: var(--primary-color);
+}
+[data-theme="dark"] .van-picker-column__item {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .van-picker-column__item--selected {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-tag--default {
+  background: var(--primary-alpha-10);
+  color: var(--primary-color);
+}
+[data-theme="dark"] .van-empty__description {
+  color: var(--text-tertiary);
+}
+[data-theme="dark"] .van-loading__text {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .van-dropdown-menu__bar {
+  background: var(--bg-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] .van-dropdown-menu__title {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-dropdown-menu__title--active {
+  color: var(--primary-color);
+}
+[data-theme="dark"] .van-dropdown-item__content {
+  background: var(--bg-surface);
+}
+[data-theme="dark"] .van-dropdown-item__option {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .van-dropdown-item__option--active {
+  color: var(--primary-color);
+}
+[data-theme="dark"] .van-image-preview {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+/* 重置样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* 医疗专用组件样式 */
+
+/* 医疗卡片 */
+.medical-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.medical-card--elevated {
+  box-shadow: var(--shadow-md);
+}
+
+/* 指标卡片 */
+.metric-card {
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border-left: 4px solid var(--primary-color);
+}
+
+.metric-card--success {
+  border-left-color: var(--success-color);
+}
+
+.metric-card--warning {
+  border-left-color: var(--warning-color);
+}
+
+.metric-card--danger {
+  border-left-color: var(--danger-color);
+}
+
+/* 时间线 */
+.timeline-item {
+  position: relative;
+  padding-left: var(--space-6);
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.timeline-item::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 24px;
+  width: 2px;
+  height: calc(100% - 16px);
+  background: var(--border-color);
+}
+
+.timeline-item:last-child::after {
+  display: none;
+}
+
+/* 状态标签 */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.status-tag--normal {
+  background: var(--status-normal-bg);
+  color: var(--success-color);
+}
+
+.status-tag--abnormal {
+  background: var(--status-danger-bg);
+  color: var(--danger-color);
+}
+
+.status-tag--pending {
+  background: var(--status-warning-bg);
+  color: var(--warning-color);
+}
+
+.status-tag--info {
+  background: var(--status-info-bg);
+  color: var(--status-info-text);
+}
+
+.status-tag--high {
+  background: var(--status-danger-bg);
+  color: var(--danger-color);
+}
+
+.status-tag--low {
+  background: var(--status-warning-bg);
+  color: var(--warning-color);
+}
+
+/* 按钮样式增强 */
+.btn-medical {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  border: none;
+  color: var(--color-white);
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-medical:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-medical:active {
+  transform: translateY(0);
+}
+
+/* 表单样式 */
+.form-medical .van-field {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.form-medical .van-field__label {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* 导航栏 */
+.navbar-medical {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.navbar-medical .van-nav-bar__title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* 底部导航 */
+.tabbar-medical {
+  background: var(--bg-surface-alpha);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border-color);
+  z-index: 1000 !important;
+}
+
+.tabbar-medical .van-tabbar-item--active {
+  color: var(--primary-color);
+}
+
+/* 列表样式 */
+.list-medical .van-cell {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.list-medical .van-cell__title {
+  color: var(--text-primary);
+}
+
+.list-medical .van-cell__label {
+  color: var(--text-secondary);
+}
+
+/* 图表容器 */
+.chart-container {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--text-tertiary);
+}
+
+.empty-state__icon {
+  width: 120px;
+  height: 120px;
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+/* 加载状态 */
+.loading-medical {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  color: var(--primary-color);
+}
+
+/* 骨架屏 */
+.skeleton-medical {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border-light) 50%, var(--bg-elevated) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 可访问性: 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 触摸目标最小尺寸 */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* 焦点状态 */
+*:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+/* Vant Toast 样式修复 */
+.van-toast {
+  background: var(--overlay-dark) !important;
+  color: var(--color-white) !important;
+}
+
+.van-toast__text {
+  color: var(--color-white) !important;
+}
+
+.van-toast--success {
+  background: rgba(5, 150, 105, 0.9) !important;
+}
+
+.van-toast--fail {
+  background: rgba(220, 38, 38, 0.9) !important;
+}
+
+/* Vant Dialog 样式修复 */
+.van-dialog {
+  background: var(--bg-surface) !important;
+}
+
+.van-dialog__message {
+  color: var(--text-primary) !important;
+}
+
+/* Vant Notify 样式修复 */
+.van-notify {
+  background: var(--primary-color) !important;
+}
+
+.van-notify__content {
+  color: var(--color-white) !important;
+}
+
+/* 动画 Keyframes */
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
+
+/* 仪表盘卡片通用样式 */
+.dashboard-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.dashboard-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--primary-alpha-10);
+}
+
+.dashboard-card .header-icon {
+  font-size: 18px;
+  color: var(--primary-color);
+}
+
+.dashboard-card .header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+  flex: 1;
+}
+
+/* 桌面端弹窗样式类 */
+@media (min-width: 768px) {
+  .desktop-popup-sm {
+    width: 360px !important;
+    max-width: 90vw;
+    border-radius: var(--radius-lg) !important;
+    overflow: hidden;
+  }
+  .desktop-popup-md {
+    width: 480px;
+    max-height: 80vh;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .desktop-popup-lg {
+    width: 560px;
+    max-height: 85vh;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  /* center popup 需要显式高度，内部 flex 布局才能正确分配空间 */
+  .desktop-popup-lg .form-popup {
+    height: 85vh;
+  }
+  .desktop-popup-lg .detail-popup {
+    max-height: 85vh;
+  }
+}

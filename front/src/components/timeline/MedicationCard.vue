@@ -1,0 +1,206 @@
+<template>
+  <div class="timeline-card" @click="$emit('click', item)">
+    <div class="card-indicator" :style="{ backgroundColor: SOURCE_COLOR }"></div>
+
+    <div class="card-body">
+      <div class="card-header">
+        <div class="header-left">
+          <div class="type-icon">
+            <van-icon name="gem-o" size="20" />
+          </div>
+          <div class="header-info">
+            <div class="card-title">{{ item.title }}</div>
+            <div class="card-meta">
+              <span class="meta-item">
+                <van-icon name="calendar-o" size="12" />
+                {{ formatDate(item.event_date) }}
+              </span>
+              <span v-if="item.subtitle" class="meta-item">
+                <van-icon name="gem-o" size="12" />
+                {{ item.subtitle }}
+              </span>
+              <span v-if="item.extra?.route" class="meta-item">
+                <van-icon name="guide-o" size="12" />
+                {{ item.extra.route }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <van-tag
+          :type="statusTagType(item.extra?.status)"
+          size="small"
+        >
+          {{ statusLabel(item.extra?.status) }}
+        </van-tag>
+      </div>
+
+      <div v-if="item.description" class="card-content">
+        <div class="content-label">备注</div>
+        <van-text-ellipsis
+          :content="item.description"
+          :rows="2"
+          expand-text="展开"
+          collapse-text="收起"
+          @click.stop
+        />
+      </div>
+
+      <div class="card-footer" @click.stop="$emit('click', item)">
+        <van-icon name="eye-o" class="footer-icon" />
+        <span class="footer-text">查看详情</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { TIMELINE_SOURCE_COLORS } from '@/styles/constants'
+
+const SOURCE_COLOR = TIMELINE_SOURCE_COLORS.medication
+
+defineProps({
+  item: {
+    type: Object,
+    required: true
+  }
+})
+
+defineEmits(['click'])
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}
+
+function statusLabel(s) {
+  return { active: '用药中', discontinued: '已停药', completed: '已完成' }[s] || s || ''
+}
+
+function statusTagType(s) {
+  return { active: 'primary', discontinued: 'warning', completed: 'success' }[s] || 'default'
+}
+</script>
+
+<style scoped>
+.timeline-card {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px var(--primary-alpha-8);
+  transition: all 0.3s ease;
+  display: flex;
+}
+
+.timeline-card:active {
+  transform: scale(0.98);
+}
+
+.card-indicator {
+  width: 4px;
+  flex-shrink: 0;
+  background-color: var(--color-emerald);
+}
+
+.card-body {
+  flex: 1;
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.type-icon {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--status-normal-bg);
+  border-radius: 10px;
+  color: var(--color-emerald);
+}
+
+.header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.card-content {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--primary-alpha-10);
+}
+
+.content-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-color);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-content :deep(.van-text-ellipsis) {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--primary-alpha-10);
+}
+
+.footer-icon {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.footer-text {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+</style>

@@ -1,0 +1,38 @@
+<html><head><style>{{ styles }}</style></head><body>
+<h1>检查报告</h1>
+<div class="meta">
+    {{ hospital }} | {{ medical_date }}
+    {% if patient_info %} | {{ patient_info }}{% endif %}
+</div>
+
+{% if title %}
+<h2>{{ title }}</h2>
+{% endif %}
+
+{% if exam_type %}
+<p><strong>检查类型：</strong>{{ exam_type }}</p>
+{% endif %}
+
+{% if exam_info %}
+<h2>检查所见</h2>
+<div>{{ exam_info }}</div>
+{% endif %}
+
+{% if exam_diag %}
+<h2>诊断意见</h2>
+<div>{{ exam_diag }}</div>
+{% endif %}
+
+{% if comment %}
+<h2>备注</h2>
+<div>{{ comment }}</div>
+{% endif %}
+
+{% if interpretation_html %}
+<h2>AI 智能解读</h2>
+<div class="interpretation">{{ interpretation_html|safe }}</div>
+{% endif %}
+
+<div class="disclaimer">本报告由 OncoPath 系统导出，仅供参考，不作为医疗诊断依据。如有疑问请咨询主治医生。</div>
+<div class="footer">导出时间：{{ now }}</div>
+</body></html>

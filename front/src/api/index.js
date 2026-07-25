@@ -1,0 +1,11 @@
+// 导出所有 API 模块
+export { userApi } from './user'
+export { patientApi } from './patient'
+export { medicalApi } from './medical'
+export { timelineApi } from './timeline'
+export * as imageReportApi from './imageReport'
+export * as knowledgeApi from './knowledge'
+export * as promptApi from './prompt'
+export * as consultationApi from './consultation'
+export { shareApi } from './share'
+export { default as request } from './request'

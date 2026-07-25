@@ -1,0 +1,134 @@
+services:
+  # PostgreSQL with pgvector
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      POSTGRES_DB: ${DB_NAME:-medical_report}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medical-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    # 内部端口不对外暴露
+    # ports:
+    #   - "6379:6379"
+    networks:
+      - medical-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # Backend
+  backend:
+    build: ./back
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
+      - DB_NAME=${DB_NAME:-medical_report}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - ALLOW_UNENCRYPTED_PHI=${ALLOW_UNENCRYPTED_PHI:-false}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_API_BASE=${LLM_API_BASE:-http://host.docker.internal:3456}
+      - LLM_MODEL_NAME=${LLM_MODEL_NAME:-glm-5}
+      - OCR_LLM_API_KEY=${OCR_LLM_API_KEY:-}
+      - OCR_LLM_API_BASE=${OCR_LLM_API_BASE:-https://api.openai.com/v1}
+      - OCR_LLM_MODEL_NAME=${OCR_LLM_MODEL_NAME:-gpt-4o}
+      - INTERPRETATION_LLM_API_KEY=${INTERPRETATION_LLM_API_KEY:-}
+      - INTERPRETATION_LLM_API_BASE=${INTERPRETATION_LLM_API_BASE:-}
+      - INTERPRETATION_LLM_MODEL_NAME=${INTERPRETATION_LLM_MODEL_NAME:-}
+      - EXA_API_KEY=${EXA_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - AGENTTEAMS_INTERNAL_ORIGIN=${AGENTTEAMS_INTERNAL_ORIGIN:-http://frontend}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-}
+      - DEBUG=false
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost","http://localhost:3000"]}
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - STORAGE_PATH=${STORAGE_PATH:-/app/storage}
+      # PaddleX 模型下载源（国内镜像加速）
+      - HF_ENDPOINT=https://hf-mirror.com
+      - PADDLE_PDX_HUGGING_FACE_ENDPOINT=https://hf-mirror.com
+      - PADDLE_PDX_MODEL_SOURCE=bos
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - app_storage:/app/storage
+      - huggingface_cache:/home/appuser/.cache/huggingface
+      - paddlex_models:/app/.paddlex
+      - paddleocr_models:/app/.paddleocr
+    networks:
+      - medical-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+
+  # Frontend
+  frontend:
+    build: ./front
+    ports:
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-3000}:80"
+      # - "443:443"  # 取消注释以启用HTTPS（需提供SSL证书且端口未被占用）
+    depends_on:
+      - backend
+    volumes:
+      - ./front/ssl:/etc/nginx/ssl:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - medical-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+volumes:
+  postgres_data:
+  redis_data:
+  huggingface_cache:
+  paddlex_models:
+  paddleocr_models:
+  app_storage:
+
+networks:
+  medical-network:
+    driver: bridge

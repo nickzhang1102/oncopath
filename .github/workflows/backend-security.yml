@@ -1,0 +1,85 @@
+name: Backend security and tests
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "back/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-security.yml"
+  pull_request:
+    paths:
+      - "back/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-security.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medical_report
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: medical_report
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+      REDIS_DB: "15"
+      REDIS_PASSWORD: ""
+      SECRET_KEY: ci-only-secret-key-with-at-least-32-characters
+      ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      ALLOW_UNENCRYPTED_PHI: "false"
+      PYTHONUTF8: "1"
+    defaults:
+      run:
+        working-directory: back
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: back/requirements.txt
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade "pip>=26.1.2" "setuptools>=83.0.0"
+          pip install --timeout 600 paddlepaddle==3.2.0 --index-url https://www.paddlepaddle.org.cn/packages/stable/cpu/
+          pip install --timeout 600 torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+          grep -v -E "^(paddlepaddle|torch)==" requirements.txt > /tmp/requirements-ci.txt
+          pip install --timeout 600 -r /tmp/requirements-ci.txt
+          pip install pip-audit
+      - run: pip check
+      - run: pip-audit --local --skip-editable
+      - run: python -m compileall -q app scripts
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest tests -v -k "not integration"

@@ -1,0 +1,20 @@
+<html><head><style>{{ styles }}</style></head><body>
+<h1>治疗时间线</h1>
+<div class="meta">{{ patient_name }} | 导出时间：{{ now }}</div>
+
+<h2>时间线事件</h2>
+<table>
+    <tr><th>日期</th><th>来源</th><th>事件</th><th>分类</th></tr>
+    {% for e in events %}
+    <tr>
+        <td>{{ e.event_date }}</td>
+        <td>{{ e.source }}</td>
+        <td>{{ e.title }}</td>
+        <td>{{ e.category }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<div class="disclaimer">本报告由 OncoPath 系统导出，仅供参考。</div>
+<div class="footer">导出时间：{{ now }}</div>
+</body></html>

@@ -1,0 +1,61 @@
+<html><head><style>{{ styles }}</style></head><body>
+<h1>病理报告</h1>
+<div class="meta">
+    {{ hospital }} | {{ report_date }}
+    {% if patient_info %} | {{ patient_info }}{% endif %}
+</div>
+
+{% if report_title %}
+<h2>{{ report_title }}</h2>
+{% endif %}
+
+{% if diagnosis %}
+<h2>病理诊断</h2>
+<div>{{ diagnosis }}</div>
+{% endif %}
+
+{% if cancer_type or stage or histology_type %}
+<h2>诊断详情</h2>
+<p>
+    {% if cancer_type %}<strong>癌种：</strong>{{ cancer_type }}　{% endif %}
+    {% if stage %}<strong>分期：</strong>{{ stage }}　{% endif %}
+    {% if histology_type %}<strong>组织学类型：</strong>{{ histology_type }}{% endif %}
+</p>
+{% endif %}
+
+{% if ihc_markers %}
+<h2>免疫组化</h2>
+<table>
+    <tr><th>标记物</th><th>结果</th><th>强度</th><th>阳性比例</th></tr>
+    {% for m in ihc_markers %}
+    <tr>
+        <td>{{ m.marker_name }}</td>
+        <td>{{ m.result or '-' }}</td>
+        <td>{{ m.intensity or '-' }}</td>
+        <td>{{ m.percentage or '-' }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% elif immunohistochemistry %}
+<h2>免疫组化</h2>
+<div>{{ immunohistochemistry }}</div>
+{% endif %}
+
+{% if gene_testing %}
+<h2>基因检测</h2>
+<div>{{ gene_testing }}</div>
+{% endif %}
+
+{% if comment %}
+<h2>备注</h2>
+<div>{{ comment }}</div>
+{% endif %}
+
+{% if interpretation_html %}
+<h2>AI 智能解读</h2>
+<div class="interpretation">{{ interpretation_html|safe }}</div>
+{% endif %}
+
+<div class="disclaimer">本报告由 OncoPath 系统导出，仅供参考，不作为医疗诊断依据。如有疑问请咨询主治医生。</div>
+<div class="footer">导出时间：{{ now }}</div>
+</body></html>

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+ssl/
+playwright-report/
+test-results/
+tests/
+*.log
+.git/
+.gitignore
+.DS_Store

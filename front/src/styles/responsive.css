@@ -1,0 +1,254 @@
+/* ===== z-index 层级规范 ===== */
+:root {
+  --z-base: 1;
+  --z-float: 100;
+  --z-nav: 1000;
+  --z-popup: 2000;
+  --z-overlay: 3000;
+  --z-toast: 5000;
+}
+
+/* 桌面端响应式全局样式 */
+
+/* ===== 内容区居中限宽 ===== */
+@media (min-width: 1280px) {
+  .has-sidebar .content-area {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+}
+
+/* 桌面端安全区域取消（无 Tabbar） */
+@media (min-width: 768px) {
+  :root {
+    --safe-bottom: 0;
+    /* dropdown-item z-index 高于侧边栏(1000)，确保下拉面板不被遮挡 */
+    --van-dropdown-item-z-index: var(--z-popup);
+  }
+
+  /* 桌面端 dropdown 遮罩轻量化：半透明背景替代纯黑遮罩 */
+  .van-dropdown-item .van-overlay {
+    background: rgba(0, 0, 0, 0.08) !important;
+  }
+}
+
+/* ===== Vant 组件桌面端覆盖 ===== */
+@media (min-width: 768px) {
+  /* 弹窗居中 + 限宽 — 排除 dropdown-menu 内部弹窗 */
+  .van-dialog {
+    max-width: 480px !important;
+  }
+
+  /* 底部弹窗桌面端居中展示（picker/action-sheet/自定义弹窗） */
+  /* dropdown-menu 内部的 popup 有 .van-dropdown-item__content 包裹，需排除 */
+  .van-popup--bottom.van-popup--round:not(.van-dropdown-item__content) {
+    top: 50%;
+    left: 50%;
+    bottom: auto;
+    max-width: 480px;
+    width: auto;
+    transform: translate(-50%, -50%);
+    border-radius: var(--radius-lg) !important;
+  }
+
+  /* dropdown-item 下拉面板：z-index 高于侧边栏(1000)，限宽 + 卡片化 */
+  .van-dropdown-item {
+    z-index: var(--z-popup) !important;
+  }
+
+  /* 桌面端 dropdown 面板：居中限宽，z-index 高于侧边栏 */
+  .van-dropdown-item--down {
+    max-width: 480px;
+    margin: 0 auto;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    box-shadow: 0 8px 24px var(--primary-alpha-12);
+  }
+
+  .van-dropdown-item__content {
+    max-width: 480px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+    box-shadow: 0 8px 24px var(--primary-alpha-12);
+  }
+
+  /* 输入框桌面端限宽（仅在 cell-group 内部，避免影响表单全宽布局） */
+  .van-cell-group--inset .van-field {
+    max-width: 400px;
+  }
+
+  /* 搜索框限宽 */
+  .van-search {
+    max-width: 480px;
+  }
+
+  /* Action Sheet 居中 */
+  .van-action-sheet {
+    max-width: 480px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  }
+
+  /* 导航栏在桌面端隐藏（侧边栏替代），但弹窗内保留 */
+  .has-sidebar .van-nav-bar {
+    display: none;
+  }
+  /* popup teleport 到 body，不在 .has-sidebar 内，需单独恢复 */
+  .van-popup .van-nav-bar {
+    display: flex !important;
+  }
+
+  /* 导航栏占位元素也需隐藏，避免桌面端顶部空白，但弹窗内保留 */
+  .has-sidebar .van-nav-bar__placeholder {
+    display: none;
+  }
+  .van-popup .van-nav-bar__placeholder {
+    display: block !important;
+  }
+
+  /* 底部安全区域取消（桌面端无 Tabbar） */
+  .has-sidebar .content-area {
+    padding-bottom: var(--space-4) !important;
+  }
+
+  /* van-cell 桌面端卡片化 */
+  .van-cell-group--inset {
+    margin: 0 var(--space-4);
+  }
+
+  /* van-dropdown-menu 桌面端样式优化 */
+  /* 不使用 overflow:hidden，避免裁剪下拉面板内容 */
+  .van-dropdown-menu {
+    max-width: 480px;
+    border-radius: var(--radius-lg);
+  }
+
+  /* 仅菜单栏本身需要圆角裁剪 */
+  .van-dropdown-menu__bar {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /* van-dropdown-menu 标题栏桌面端增强 */
+  .van-dropdown-menu__bar {
+    background: var(--bg-surface);
+    box-shadow: 0 2px 8px var(--primary-alpha-6);
+  }
+
+  .van-dropdown-menu__title {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .van-dropdown-menu__title--active {
+    color: var(--primary-color);
+  }
+
+  /* van-tab 桌面端对齐 */
+  .van-tabs__nav {
+    justify-content: flex-start;
+  }
+
+  /* van-pull-refresh 桌面端最小高度 */
+  .van-pull-refresh {
+    min-height: 200px;
+  }
+
+  /* van-list 桌面端间距 */
+  .van-list__finished-text,
+  .van-list__loading {
+    padding: var(--space-4) 0;
+  }
+
+  /* van-picker 桌面端居中弹窗内样式增强 */
+  .van-picker {
+    border-radius: var(--radius-lg);
+  }
+
+  .van-picker__toolbar {
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  /* van-date-picker 桌面端增强 */
+  .van-date-picker {
+    border-radius: var(--radius-lg);
+    min-width: 320px;
+  }
+
+  .van-date-picker__toolbar {
+    padding: 12px 16px;
+  }
+
+  .van-date-picker__columns {
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  /* 居中弹窗桌面端样式（position="center" 的情况） */
+  .van-popup--center {
+    max-width: 480px;
+    border-radius: var(--radius-lg) !important;
+  }
+
+  /* 桌面端 popup 内滚动区域优化 */
+  .van-popup--bottom.van-popup--round:not(.van-dropdown-item__content) .form-popup,
+  .van-popup--bottom.van-popup--round:not(.van-dropdown-item__content) .detail-popup {
+    max-width: 100%;
+  }
+  
+  /* 提示词配置预览弹窗：覆盖底部弹窗居中规则，限制宽高 */
+  .van-popup--bottom.van-popup--round.preview-popup--desktop {
+    top: auto !important;
+    left: 50% !important;
+    bottom: auto !important;
+    max-width: 560px !important;
+    width: 560px !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ===== 通用空状态按钮 ===== */
+.empty-state-action {
+  min-width: 160px;
+  padding: 12px 24px;
+}
+
+/* ===== 通用桌面端 Grid 工具类 ===== */
+.page-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .page-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 双栏布局工具类 */
+.page-split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .page-split {
+    flex-direction: row;
+  }
+
+  .page-split__side {
+    width: 280px;
+    flex-shrink: 0;
+  }
+
+  .page-split__main {
+    flex: 1;
+    min-width: 0;
+  }
+}

@@ -1,0 +1,28 @@
+<html><head><style>{{ styles }}</style></head><body>
+<h1>检验报告</h1>
+<div class="meta">
+    {{ hospital }} | {{ medical_date }}
+    {% if patient_info %} | {{ patient_info }}{% endif %}
+</div>
+
+<h2>检验指标</h2>
+<table>
+    <tr><th>指标名称</th><th>结果</th><th>参考范围</th><th>状态</th></tr>
+    {% for d in details %}
+    <tr>
+        <td>{{ d.index_name }}</td>
+        <td class="{{ d.status_class }}">{{ d.index_value }} {{ d.index_unit }}</td>
+        <td>{{ d.reference_value }}</td>
+        <td class="{{ d.status_class }}">{{ d.status_label }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if interpretation_html %}
+<h2>AI 智能解读</h2>
+<div class="interpretation">{{ interpretation_html|safe }}</div>
+{% endif %}
+
+<div class="disclaimer">本报告由 OncoPath 系统导出，仅供参考，不作为医疗诊断依据。如有疑问请咨询主治医生。</div>
+<div class="footer">导出时间：{{ now }}</div>
+</body></html>
