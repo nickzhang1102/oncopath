@@ -53,6 +53,8 @@ __pycache__/
 !/docs/testing/
 /docs/testing/*
 !/docs/testing/agentteams-consultation.md
+!/docs/screenshots/
+!/docs/screenshots/*.png
 /back/migrations/sql/
 /back/migrations/private_versions/
 /.pytest_cache/

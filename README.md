@@ -2,10 +2,13 @@
 
 > 基于 FastAPI + Vue 3 的智能健康信息整理与医疗报告管理工具：检验指标 OCR 自动识别匹配、治疗时间线聚合、AI 检验解读，并通过 AgentTeams 集成承接虚拟会诊入口。
 
-![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)
-![Status](https://img.shields.io/badge/status-早期公开版-yellow.svg)
-![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)
-![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![Status](https://img.shields.io/badge/status-早期公开版-yellow.svg)](#状态说明)
+[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#技术栈)
+[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#技术栈)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-181717.svg?logo=github)](https://nickzhang1102.github.io/oncopath/)
+
+🌐 **项目网站**：[nickzhang1102.github.io/oncopath](https://nickzhang1102.github.io/oncopath/)
 
 > **状态说明**：本项目已公开，当前处于早期版本阶段。欢迎试用与反馈；生产环境部署前必须完成本文档【安全说明】中的全部必改项，并自行评估当地医疗数据合规要求。
 
@@ -14,6 +17,37 @@
 ## 项目愿景
 
 OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗报告整理、OCR 指标提取、治疗时间线聚合与 AI 辅助解读能力。系统将散落在各处的检验、检查、病理、用药、随访数据汇聚成一条可追溯的治疗时间线，并通过 AgentTeams 集成入口承接虚拟会诊分析，帮助用户更好地整理资料、理解信息并与医生沟通。
+
+---
+
+## 界面预览
+
+> 桌面端满宽展示以保留界面细节，移动端响应式适配。
+
+### 桌面端
+
+**🏠 仪表盘首页** — 患者概览 · 数据统计 · 异常指标追踪 · 待办提醒 · 重要指标趋势
+
+<p align="center"><img src="docs/screenshots/desktop-home.png" alt="仪表盘首页" /></p>
+
+**🔬 指标标准库** — 116+ 标准指标 · 分类导航 · 中英文对照 · 参考范围 · 指标对比
+
+<p align="center"><img src="docs/screenshots/desktop-indicators.png" alt="指标标准库" /></p>
+
+**⚙️ 管理后台** — 用户与会诊统计 · 近 30 天趋势图 · 指标库管理 · 系统配置
+
+<p align="center"><img src="docs/screenshots/desktop-admin.png" alt="管理后台" /></p>
+
+### 移动端（响应式）
+
+<p align="center">
+  <img src="docs/screenshots/mobile-login.png" width="200" alt="移动端登录" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-home.png" width="200" alt="移动端首页" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-indicators.png" width="200" alt="移动端指标查询" />
+</p>
+<p align="center"><sub>登录 · 首页仪表盘 · 指标查询 —— 桌面 / 平板 / 手机全端适配</sub></p>
 
 ---
 
@@ -98,7 +132,7 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 +-----------------------------------------------------------------+
                               | HTTP/REST + SSE
 +-----------------------------------------------------------------+
-|                  API 网关层 (FastAPI, 20 路由模块)               |
+|                  API 网关层 (FastAPI, 30 路由模块)               |
 |  认证 / 用户 / 患者 / 医疗 / 会诊 / 时间线 / 用药 / 服药记录     |
 |  随访 / 仪表盘 / 导出 / 分享 / 搜索 / 文件                       |
 |  图片报告 / 知识库 / 提示词 / 上传 / 指标历史 / 管理后台         |

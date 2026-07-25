@@ -154,6 +154,15 @@ $trackedArtifactPatterns = @(
     "^back/storage/"
 )
 
+$publicArtifactPaths = @(
+    "docs/screenshots/desktop-admin.png",
+    "docs/screenshots/desktop-home.png",
+    "docs/screenshots/desktop-indicators.png",
+    "docs/screenshots/mobile-home.png",
+    "docs/screenshots/mobile-indicators.png",
+    "docs/screenshots/mobile-login.png"
+)
+
 foreach ($file in $publicFiles) {
     $fullPath = Join-Path $Root $file
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
@@ -161,6 +170,9 @@ foreach ($file in $publicFiles) {
     }
 
     foreach ($pattern in $trackedArtifactPatterns) {
+        if ($publicArtifactPaths.Contains($file)) {
+            continue
+        }
         if ($file -match $pattern) {
             Add-Finding $findings "review" "public-artifact" $file "matches $pattern"
         }
