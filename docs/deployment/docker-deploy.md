@@ -116,7 +116,7 @@ ENCRYPTION_KEY=<粘贴生成的密钥>
 
 # ============ 按需配置 ============
 
-# LLM API（会诊功能依赖）
+# LLM API（本地 AI 解读与知识库摘要使用）
 LLM_API_KEY=your-llm-api-key
 LLM_API_BASE=http://host.docker.internal:3456   # 宿主机 LLM 服务
 LLM_MODEL_NAME=glm-5
@@ -131,12 +131,6 @@ CORS_ORIGINS=["http://your-domain.com","http://your-domain.com:3000"]
 
 # 前端端口（宿主机映射）
 FRONTEND_PORT=3000
-
-# ============ 可选 ============
-
-# Web 搜索（会诊时搜索最新文献）
-EXA_API_KEY=
-TAVILY_API_KEY=
 
 # 指标解读专用 LLM（留空则回退到 LLM_*）
 INTERPRETATION_LLM_API_KEY=
@@ -521,18 +515,17 @@ docker compose -p oncopath exec backend env | grep OCR_LLM
 docker compose -p oncopath exec backend python -c "from paddleocr import PaddleOCR; print('OK')"
 ```
 
-### 会诊功能不工作
+### AgentTeams 会诊入口不工作
 
 ```bash
-# 检查 LLM 配置
-docker compose -p oncopath exec backend env | grep LLM_API
+# 检查 OncoPath 后端日志中的 AgentTeams 集成错误
+docker compose -p oncopath logs backend --tail=100 | grep -i agentteams
 
-# 确认 host.docker.internal 可达（LLM 在宿主机时）
-docker compose -p oncopath exec backend curl -s http://host.docker.internal:3456/health
-
-# 检查余额
-# 登录后在个人中心 → 计费管理 查看
+# 检查前端 Nginx 的 /agentteams/ 反向代理
+docker compose -p oncopath exec frontend nginx -T | grep -A8 'location /agentteams/'
 ```
+
+确认 OncoPath 管理后台已保存并启用 AgentTeams 配置，且两侧 `integration_secret` 一致。完整排查步骤见 [AgentTeams 集成部署说明](./agentteams-integration.md)。会诊执行和额度由外部 AgentTeams 服务负责，不使用 OncoPath 的本地 LLM、计费或 Celery 队列。
 
 ### 磁盘空间不足
 
@@ -573,7 +566,7 @@ docker compose -p oncopath up -d --build
                            │ 内部代理 /api → :8000
                     ┌──────▼──────┐
                     │   Backend    │  python:3.11-slim
-                    │  (FastAPI)   │  REST API + SSE
+                    │  (FastAPI)   │  REST + 通知/上传 SSE
                     └──┬────┬──┬──┘
                        │    │  │
               ┌────────┘    │  └────────┐
@@ -597,15 +590,13 @@ docker compose -p oncopath up -d --build
 | `ENCRYPTION_KEY` | ✅ | — | Fernet 加密密钥 |
 | `DB_USER` | ❌ | postgres | 数据库用户 |
 | `DB_NAME` | ❌ | medical_report | 数据库名 |
-| `LLM_API_KEY` | ❌ | — | 会诊 LLM 密钥 |
-| `LLM_API_BASE` | ❌ | host.docker.internal:3456 | 会诊 LLM 地址 |
-| `LLM_MODEL_NAME` | ❌ | glm-5 | 会诊 LLM 模型 |
+| `LLM_API_KEY` | ❌ | — | 本地 AI 解读与知识库摘要 LLM 密钥 |
+| `LLM_API_BASE` | ❌ | host.docker.internal:3456 | 本地 AI 解读与知识库摘要 LLM 地址 |
+| `LLM_MODEL_NAME` | ❌ | glm-5 | 本地 AI 解读与知识库摘要 LLM 模型 |
 | `OCR_LLM_API_KEY` | ❌ | — | OCR LLM 密钥 |
 | `OCR_LLM_API_BASE` | ❌ | api.openai.com/v1 | OCR LLM 地址 |
 | `OCR_LLM_MODEL_NAME` | ❌ | gpt-4o | OCR LLM 模型 |
 | `INTERPRETATION_LLM_*` | ❌ | 回退到 LLM_* | 解读专用 LLM |
-| `EXA_API_KEY` | ❌ | — | Exa 搜索密钥 |
-| `TAVILY_API_KEY` | ❌ | — | Tavily 搜索密钥 |
 | `CORS_ORIGINS` | ❌ | localhost | 前端访问地址 |
 | `FRONTEND_PORT` | ❌ | 3000 | 前端映射端口 |
 | `STORAGE_TYPE` | ❌ | local | 存储类型 |

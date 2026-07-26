@@ -70,7 +70,7 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 ### 平台支撑
 - **仪表盘**：聚合首页数据（当前用药、异常指标、各类报告计数、待审 OCR、进行中会诊、待处理随访、近期事件），并行查询 + 超时保护。
 - **知识库**：分类树管理、文档上传/下载/预览/搜索、访问日志记录；支持 txt/pdf/office/图片等多种文件类型。
-- **数据导出**：基于 xhtml2pdf + Jinja2 模板导出检验报告 PDF、时间线 PDF、完整病历 PDF，内置中文字体支持。
+- **数据导出**：基于 Jinja2 模板和 Playwright/Chromium 导出检验报告 PDF、时间线 PDF、完整病历 PDF，内置中文字体支持。
 - **文件存储服务**：StorageService 抽象层，支持本地文件系统（含路径遍历防护）并预留 MinIO 扩展。
 - **报告分享**：ShareToken 限时限次访问，支持会诊对话分享与检验/检查/病理报告分享。
 - **全局搜索**：跨模块搜索（检验指标/检查报告/病理/用药/时间线），ILIKE 模糊匹配 + 按日期排序。
@@ -89,14 +89,13 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 | 框架 | FastAPI 0.109+ |
 | ORM | SQLAlchemy 2.0（Async） |
 | 数据库 | PostgreSQL 17 + pgvector 扩展 |
-| 缓存 / 锁 / SSE | Redis 7 |
+| 缓存 / 锁 / 会话 | Redis 7 |
 | AI | OpenAI 兼容 LLM API（解读 / OCR 解析）；虚拟会诊执行由 AgentTeams 集成承接 |
 | OCR | PaddleOCR 3.x + LLM（OpenAI 兼容接口） |
-| 异步任务 | Celery + Redis（会诊超时监控、提醒任务） |
+| 异步任务 | Celery + Redis（随访提醒定时任务） |
 | 安全 | Fernet 对称加密（PHI 字段静态加密）、bcrypt、JWT |
 | 限流 | SlowAPI |
-| PDF 导出 | xhtml2pdf（reportlab）+ Jinja2 模板 |
-| Web 搜索 | Exa > Tavily > DuckDuckGo 三级级联 |
+| PDF 导出 | Playwright/Chromium + Jinja2 模板 |
 | LLM JSON 解析 | 自研 `utils/llm_parser.py`（3 策略 + 中文标点归一化） |
 
 ### 前端
@@ -130,7 +129,7 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 |  登录 / 主页(仪表盘) / 时间线 / 会诊(AgentTeams) / AI解读 / 知识库 |
 |  图片报告(OCR) / 指标查询 / 用药打卡 / 随访 / 全局搜索 ...        |
 +-----------------------------------------------------------------+
-                              | HTTP/REST + SSE
+                              | HTTP/REST + 通知/上传 SSE
 +-----------------------------------------------------------------+
 |                  API 网关层 (FastAPI, 30 路由模块)               |
 |  认证 / 用户 / 患者 / 医疗 / 会诊 / 时间线 / 用药 / 服药记录     |
@@ -149,9 +148,9 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
                               |
 +-----------------------------------------------------------------+
 |                        数据层                                    |
-|  PostgreSQL 17 (主存储) | Redis 7 (缓存/锁/SSE/会话)            |
+|  PostgreSQL 17 (主存储) | Redis 7 (缓存/锁/会话)                |
 |  OpenAI 兼容 LLM API (解读+OCR) | AgentTeams (外部会诊执行)   |
-|  Exa/Tavily/DuckDuckGo (Web 搜索) | back/agents/ (专家配置)      |
+|  本地文件存储 | Playwright/Chromium (PDF 渲染)                  |
 +-----------------------------------------------------------------+
 ```
 
@@ -177,9 +176,9 @@ cp .env.example .env
 | `DB_PASSWORD` | PostgreSQL 密码 | 自定义强密码 |
 | `REDIS_PASSWORD` | Redis 密码 | 自定义强密码 |
 | `ENCRYPTION_KEY` | PHI 字段 Fernet 加密密钥（生产必填） | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-| `LLM_API_KEY` | AI 解读 / OCR 解析用的 OpenAI 兼容 LLM API Key | 你的 LLM 服务商后台 |
+| `LLM_API_KEY` | 本地 AI 解读与知识库摘要使用的 OpenAI 兼容 LLM API Key | 你的 LLM 服务商后台 |
 
-> 其余 LLM 配置（`LLM_API_BASE` / `LLM_MODEL_NAME` / `OCR_LLM_API_KEY` / `OCR_LLM_API_BASE` / `OCR_LLM_MODEL_NAME`）按你使用的 OpenAI 兼容服务填写。Web 搜索（`EXA_API_KEY` / `TAVILY_API_KEY`）为可选项，未配置时会降级到免费的 DuckDuckGo。
+> 其余 LLM 配置（`LLM_API_BASE` / `LLM_MODEL_NAME` / `OCR_LLM_API_KEY` / `OCR_LLM_API_BASE` / `OCR_LLM_MODEL_NAME`）按你使用的 OpenAI 兼容服务填写。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。
 
 ### 2. 启动服务
 
@@ -247,11 +246,12 @@ python scripts/init_fresh_db.py
 uvicorn app.main:app --reload --port 8000
 ```
 
-> 如需异步任务（会诊超时监控、提醒任务），另起一个终端运行 Celery worker：
+> 如需随访提醒定时任务，另起终端运行 Celery worker 和 beat：
 > ```bash
 > cd back
 > conda activate oncopath
-> celery -A app.core.celery_app worker --loglevel=info -Q consultation
+> celery -A app.core.celery_app worker --loglevel=info
+> celery -A app.core.celery_app beat --loglevel=info
 > ```
 
 ### 前端
@@ -278,11 +278,11 @@ oncopath/
 │   │   ├── models/                # SQLAlchemy 数据模型（patient/medical/conversation/...）
 │   │   ├── schemas/               # Pydantic v2 响应/请求模型
 │   │   ├── services/              # 业务逻辑（AgentTeams 集成/OCR/LLM/...）
-│   │   │   ├── consultation/      # orchestrator / assessment / expert_selector / discussion / web_search
+│   │   │   ├── consultation/      # AgentTeams 启动所需的患者上下文与摘要服务
 │   │   │   └── ocr/               # 7 个 OCR 子服务
 │   │   ├── utils/                 # agent_loader / llm_parser / time_utils / thumbnail
-│   │   └── tasks/                 # Celery 异步任务（knowledge_tasks / reminder_tasks）
-│   ├── agents/                    # 专家配置文件（45 个 *-expert.md，供会诊 agent_loader 加载）
+│   │   └── tasks/                 # 知识库摘要与 Celery 随访提醒任务模块
+│   ├── agents/                    # 旧本地会诊遗留的专家配置资产（不参与当前执行链）
 │   ├── scripts/                   # init_fresh_db.py 等运维脚本
 │   ├── alembic.ini                # Alembic 配置（公开基线及后续迁移位于 migrations/versions/）
 │   ├── tests/                     # pytest 单元与集成测试
@@ -292,7 +292,7 @@ oncopath/
 │   ├── src/
 │   │   ├── views/                 # 页面（30+ 视图组件）
 │   │   ├── components/            # 组件（consultation/knowledge/image-report/timeline/...）
-│   │   ├── stores/                # Pinia 状态（user/patient/leader/conversations/...）
+│   │   ├── stores/                # Pinia 状态（user/patient/conversations/...）
 │   │   ├── api/                   # axios 封装的 API 模块（20 个）
 │   │   ├── composables/           # useSSEStream / useResponsive / useTheme / useOCRReview
 │   │   ├── utils/                 # sanitize / echarts / export / errorHandler / ...
@@ -394,14 +394,13 @@ docker compose --env-file .env up -d
 - **PHI 访问审计**：患者编辑接口访问明文 PHI 时记录审计日志；列表/详情接口返回脱敏数据。
 
 ### 认证与授权
-- **JWT + SSO 单点登录**：SessionService 基于 Redis 实现会话管理，新登录踢下线旧会话，旧 Token 进入黑名单；被踢下线时自动释放会诊锁。
+- **JWT + SSO 单点登录**：SessionService 基于 Redis 实现会话管理，新登录踢下线旧会话，旧 Token 进入黑名单。
 - **登录失败锁定**：5 次 / 15 分钟，基于 Redis Lua 原子操作。
 - **管理后台**：所有 `/api/v1/admin` 端点需 admin 角色鉴权。
 
 ### 接口与运行时安全
 - **默认认证**：所有接口默认需要认证（除登录/注册/分享链接等）。
 - **限流**：SlowAPI，登录 5/min、会诊 5/min、上传 10/min、默认 100/min。
-- **会诊全局锁**：分布式锁（Redis SET NX EX + Lua 释放）防并发冲突，心跳续期。
 - **SQL 注入防护**：SQLAlchemy ORM 参数化查询。
 - **XSS 防护**：前端 v-html 渲染前使用 DOMPurify 消毒。
 - **路径遍历防护**：StorageService 解析路径时校验，禁止越界访问。

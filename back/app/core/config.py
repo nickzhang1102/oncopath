@@ -120,7 +120,8 @@ class Settings(BaseSettings):
     def interpretation_timeout(self) -> int:
         return self.INTERPRETATION_LLM_TIMEOUT or self.LLM_TIMEOUT
 
-    # Web 搜索配置
+    # 旧版本地会诊的 Web 搜索环境变量，仅用于兼容已有 .env 配置；
+    # 当前由 AgentTeams 承接的会诊运行时不会使用这些变量。
     EXA_API_KEY: str = ""
     TAVILY_API_KEY: str = ""
 
