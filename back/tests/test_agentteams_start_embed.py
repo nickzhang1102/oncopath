@@ -84,9 +84,23 @@ def test_relative_agentteams_api_base_uses_internal_origin(monkeypatch):
         "app.services.agentteams_start_service.settings.AGENTTEAMS_INTERNAL_ORIGIN",
         "http://frontend",
     )
-    service = AgentTeamsStartService(db=None, request_origin="http://localhost:3000")
+    service = AgentTeamsStartService(db=None)
 
     assert service._build_agentteams_api_base("/agentteams") == "http://frontend/agentteams"
+
+
+def test_relative_agentteams_api_base_rejects_missing_internal_origin(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.agentteams_start_service.settings.AGENTTEAMS_INTERNAL_ORIGIN",
+        "",
+    )
+    service = AgentTeamsStartService(db=None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        service._build_agentteams_api_base("/agentteams")
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail["error"] == "agentteams_not_configured"
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -284,6 +298,10 @@ async def test_legacy_local_consultation_endpoints_are_disabled(
 async def test_agentteams_external_session_can_be_read_and_deleted(
     client, db_session, current_user_override, patient, monkeypatch
 ):
+    monkeypatch.setattr(
+        "app.services.agentteams_start_service.settings.AGENTTEAMS_INTERNAL_ORIGIN",
+        "http://frontend",
+    )
     await save_enabled_config(db_session, base_url="/agentteams")
     patch_prompt(monkeypatch)
     patch_launch_success(monkeypatch, [])
@@ -295,6 +313,26 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
         json={"patient_id": patient.patient_id},
     )
     conversation_id = started.json()["conversation_id"]
+
+    restarted = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "conversation_id": conversation_id},
+    )
+    assert restarted.status_code == 200
+    assert restarted.json()["embed_url"] == "/agentteams/embed/conversation/renewed-token"
+    assert renew_calls == [
+        {
+            "base_url": "/agentteams",
+            "integration_secret": "secret-1234",
+            "payload": {
+                "source_conversation_id": conversation_id,
+                "agentteams_conversation_id": 1001,
+                "agentteams_session_id": 2001,
+            },
+        }
+    ]
+
+    renew_calls.clear()
 
     read_response = await client.get(
         f"/api/v1/consultation/agentteams/sessions/{conversation_id}",

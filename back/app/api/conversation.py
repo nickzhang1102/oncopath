@@ -56,13 +56,11 @@ async def get_agentteams_availability(
 @router.post("/agentteams/start", response_model=AgentTeamsStartResponse)
 async def start_agentteams_consultation(
     data: AgentTeamsStartRequest,
-    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user),
 ):
     """启动 AgentTeams 外部会诊并返回嵌入地址。"""
-    request_origin = f"{request.url.scheme}://{request.url.netloc}"
-    service = AgentTeamsStartService(db, request_origin=request_origin)
+    service = AgentTeamsStartService(db)
     return await service.start(data, current_user.account_id)
 
 

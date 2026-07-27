@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin import AgentTeamsIntegrationConfig
+from app.core.config import settings
 from app.schemas.agentteams import (
     AgentTeamsAvailabilityResponse,
     AgentTeamsConfigResponse,
@@ -83,7 +84,11 @@ class AgentTeamsConfigService:
     async def get_availability(self) -> AgentTeamsAvailabilityResponse:
         config = await self._get_config_row()
         admin_response = self._to_admin_response(config)
-        enabled = admin_response.configured and admin_response.enabled
+        enabled = (
+            admin_response.configured
+            and admin_response.enabled
+            and self._has_trusted_api_origin(admin_response.base_url)
+        )
         return AgentTeamsAvailabilityResponse(
             configured=admin_response.configured,
             enabled=enabled,
@@ -104,7 +109,11 @@ class AgentTeamsConfigService:
             )
 
         secret = self._decrypt_secret(config.integration_secret)
-        configured = bool(config.base_url and secret)
+        configured = bool(
+            config.base_url
+            and secret
+            and self._has_trusted_api_origin(config.base_url)
+        )
         return AgentTeamsRuntimeConfig(
             configured=configured,
             enabled=configured and bool(config.enabled),
@@ -181,6 +190,14 @@ class AgentTeamsConfigService:
             or base_url.startswith("https://")
             or base_url == "/agentteams"
             or base_url.startswith("/agentteams/")
+        )
+
+    @staticmethod
+    def _has_trusted_api_origin(base_url: str) -> bool:
+        return (
+            base_url.startswith("http://")
+            or base_url.startswith("https://")
+            or bool(settings.AGENTTEAMS_INTERNAL_ORIGIN.strip())
         )
 
     @staticmethod

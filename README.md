@@ -280,9 +280,8 @@ oncopath/
 │   │   ├── services/              # 业务逻辑（AgentTeams 集成/OCR/LLM/...）
 │   │   │   ├── consultation/      # AgentTeams 启动所需的患者上下文与摘要服务
 │   │   │   └── ocr/               # 7 个 OCR 子服务
-│   │   ├── utils/                 # agent_loader / llm_parser / time_utils / thumbnail
+│   │   ├── utils/                 # llm_parser / time_utils / thumbnail
 │   │   └── tasks/                 # 知识库摘要与 Celery 随访提醒任务模块
-│   ├── agents/                    # 旧本地会诊遗留的专家配置资产（不参与当前执行链）
 │   ├── scripts/                   # init_fresh_db.py 等运维脚本
 │   ├── alembic.ini                # Alembic 配置（公开基线及后续迁移位于 migrations/versions/）
 │   ├── tests/                     # pytest 单元与集成测试

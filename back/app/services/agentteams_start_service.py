@@ -29,9 +29,8 @@ class AgentTeamsStartService:
     PROVIDER = "agentteams"
     REQUEST_TIMEOUT_SECONDS = 20.0
 
-    def __init__(self, db: AsyncSession, request_origin: str = ""):
+    def __init__(self, db: AsyncSession):
         self.db = db
-        self.request_origin = request_origin.rstrip("/")
 
     async def start(
         self,
@@ -49,7 +48,8 @@ class AgentTeamsStartService:
         conversation = await self._resolve_conversation(data, account_id)
         existing_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=False)
         if existing_mapping:
-            return AgentTeamsStartResponse(**existing_mapping.model_dump())
+            renewed_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=True)
+            return AgentTeamsStartResponse(**renewed_mapping.model_dump())
 
         prompt = await MedicalPromptBuilder().build_consultation_prompt(
             patient_id=data.patient_id,
@@ -258,7 +258,7 @@ class AgentTeamsStartService:
         if base.startswith("http://") or base.startswith("https://"):
             return base
         if base.startswith("/"):
-            origin = (settings.AGENTTEAMS_INTERNAL_ORIGIN or self.request_origin).rstrip("/")
+            origin = settings.AGENTTEAMS_INTERNAL_ORIGIN.rstrip("/")
             if origin:
                 return f"{origin}{base}"
         raise HTTPException(
