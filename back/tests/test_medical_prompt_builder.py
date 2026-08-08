@@ -170,39 +170,33 @@ class TestTruncationLimits:
         assert ("B" * 500 + "...") in prompt
 
 
-class TestPromptLengthWarning:
-    """测试提示词长度警告"""
+class TestPromptLengthPreservation:
+    """测试长提示词有界且保留关键上下文"""
 
     @pytest.mark.asyncio
-    async def test_warning_logged_for_long_prompt(self, builder, caplog):
-        """超过 30000 字符时记录警告日志"""
-        import logging
-        with caplog.at_level(logging.WARNING, logger="app.services.consultation.medical_prompt_builder"):
-            # 构造超长内容
-            long_content = "X" * 31000
-            prompt = await builder._format_prompt_config_driven(
-                patient=MagicMock(),
-                config_items=[{
+    async def test_long_prompt_keeps_trailing_diagnostic_requirement(self, builder):
+        """长病历不能从尾部切掉诊断要求。"""
+        long_content = "X" * 61000
+        diagnostic_requirement = "请给出完整诊断要求和后续治疗建议"
+        prompt = await builder._format_prompt_config_driven(
+            patient=MagicMock(),
+            config_items=[
+                {
                     "name": "自定义内容", "type": "custom", "enabled": True,
                     "customText": long_content,
-                }],
-            )
-            assert len(prompt) <= 30050
-            assert "exceeds 30000 chars" in caplog.text
+                },
+                {
+                    "name": "诊断要求", "type": "custom", "enabled": True,
+                    "customText": diagnostic_requirement,
+                },
+            ],
+        )
 
-    @pytest.mark.asyncio
-    async def test_no_warning_for_normal_prompt(self, builder, caplog):
-        """正常长度不记录警告"""
-        import logging
-        with caplog.at_level(logging.WARNING, logger="app.services.consultation.medical_prompt_builder"):
-            await builder._format_prompt_config_driven(
-                patient=MagicMock(),
-                config_items=[{
-                    "name": "自定义内容", "type": "custom", "enabled": True,
-                    "customText": "正常长度",
-                }],
-            )
-            assert "exceeds 30000 chars" not in caplog.text
+        assert len(prompt) == builder.PROMPT_LENGTH_LIMIT
+        assert long_content not in prompt
+        assert prompt.startswith("自定义内容：\n")
+        assert "中间内容已截断" in prompt
+        assert prompt.endswith(f"诊断要求：\n{diagnostic_requirement}\n")
 
 
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder, DEFAULT_USER_CONTENT_CONFIG

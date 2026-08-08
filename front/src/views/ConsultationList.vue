@@ -42,6 +42,11 @@
       @search="onSearch"
     />
 
+    <div v-if="!isDesktop && currentPatient" class="mobile-patient-context">
+      <span><van-icon name="user-o" />{{ currentPatientName }}</span>
+      <button type="button" @click="showHistoryPatientPicker = true">切换患者</button>
+    </div>
+
     <!-- 桌面端搜索+筛选栏 -->
     <div v-if="isDesktop" class="desktop-toolbar">
       <van-search
@@ -51,6 +56,16 @@
         @search="onSearch"
         class="desktop-search"
       />
+      <button
+        v-if="currentPatient"
+        type="button"
+        class="patient-filter-button"
+        @click="showHistoryPatientPicker = true"
+      >
+        <van-icon name="user-o" />
+        <span>{{ currentPatientName }}</span>
+        <van-icon name="arrow-down" />
+      </button>
       <div class="filter-tabs">
         <button
           v-for="tab in statusTabs"
@@ -71,7 +86,10 @@
       >
         <template v-if="conversations.length > 0">
           <van-swipe-cell v-for="conv in filteredConversations" :key="conv.id">
-            <div :class="['consultation-card', getStatusClass(getConversationStatus(conv))]" @click="handleOpenConversation(conv)">
+            <div
+              :class="['consultation-card', getStatusClass(getConversationStatus(conv))]"
+              @click="handleOpenConversation(conv)"
+            >
               <div class="card-header">
                 <span class="card-title">{{ conv.title || '虚拟会诊' }}</span>
                 <span :class="['status-tag', getStatusClass(getConversationStatus(conv))]">
@@ -82,6 +100,7 @@
                 <span class="card-preview">{{ conv.preview }}</span>
               </div>
               <div class="card-footer">
+                <span class="card-patient"><van-icon name="user-o" />{{ currentPatientName }}</span>
                 <span class="card-time">{{ formatTime(conv.updated_at || conv.created_at) }}</span>
               </div>
             </div>
@@ -121,12 +140,10 @@
           </div>
           <div class="desktop-card-footer">
             <span class="card-time">{{ formatTime(conv.updated_at || conv.created_at) }}</span>
-            <van-button
-              size="mini"
-              type="danger"
-              plain
-              @click.stop="handleDelete(conv)"
-            >删除</van-button>
+            <div class="card-actions">
+              <span class="detail-link">查看明细 <van-icon name="arrow" /></span>
+              <van-button size="mini" type="danger" plain @click.stop="handleDelete(conv)">删除</van-button>
+            </div>
           </div>
         </div>
       </div>
@@ -163,7 +180,23 @@
       @click="handleStartConsultation"
     >开始会诊</van-button>
 
-    <!-- 选择患者弹窗 -->
+    <van-action-sheet v-model:show="showHistoryPatientPicker" title="选择历史患者">
+      <div class="patient-picker history-patient-picker">
+        <button
+          v-for="patient in patientStore.patientList"
+          :key="patient.patient_id"
+          type="button"
+          :class="['patient-item', { active: currentPatientId === patient.patient_id }]"
+          @click="selectHistoryPatient(patient)"
+        >
+          <van-icon name="user-o" />
+          <span>{{ patient.patient_name || `患者${patient.patient_id}` }}</span>
+          <van-icon v-if="currentPatientId === patient.patient_id" name="success" color="var(--primary-color)" />
+        </button>
+      </div>
+    </van-action-sheet>
+
+    <!-- 开始会诊时选择患者 -->
     <van-action-sheet
       v-model:show="showPatientPicker"
       title="选择患者"
@@ -209,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showDialog } from 'vant'
 import { useConversationsStore } from '@/stores/conversations'
@@ -231,6 +264,7 @@ const searchQuery = ref('')
 const refreshing = ref(false)
 const loadingMore = ref(false)
 const showPatientPicker = ref(false)
+const showHistoryPatientPicker = ref(false)
 const showAgentTeamsUpsell = ref(false)
 const showAgentTeamsError = ref(false)
 const agentTeamsUpsell = ref({})
@@ -252,6 +286,9 @@ const statusTabs = [
 // 计算属性
 const conversations = computed(() => conversationsStore.conversations)
 const finished = computed(() => conversationsStore.finished)
+const currentPatient = computed(() => patientStore.currentPatient)
+const currentPatientId = computed(() => currentPatient.value?.patient_id || null)
+const currentPatientName = computed(() => currentPatient.value?.patient_name || '当前患者')
 
 const filteredConversations = computed(() => {
   let list = conversations.value
@@ -329,19 +366,52 @@ function formatTime(time) {
 }
 
 async function onRefresh() {
-  currentPage.value = 0
-  await conversationsStore.fetchConversations(pageSize, 0, false)
+  await loadFirstPage()
   refreshing.value = false
 }
 
-async function onLoad() {
-  const result = await conversationsStore.fetchConversations(pageSize, currentPage.value * pageSize, true)
-  if (result.success) {
-    currentPage.value++
-  } else {
-    // 加载失败时不增加页码
+async function loadFirstPage() {
+  const patientId = currentPatientId.value
+  currentPage.value = 0
+  conversationsStore.clearConversations()
+  if (!patientId) return
+
+  loadingMore.value = true
+  try {
+    const result = await conversationsStore.fetchConversations(
+      pageSize,
+      0,
+      false,
+      patientId,
+    )
+    if (result.success && currentPatientId.value === patientId) {
+      currentPage.value = 1
+    }
+  } finally {
+    if (currentPatientId.value === patientId) {
+      loadingMore.value = false
+    }
   }
-  loadingMore.value = false
+}
+
+async function onLoad() {
+  const patientId = currentPatientId.value
+  if (!patientId) {
+    loadingMore.value = false
+    return
+  }
+  const result = await conversationsStore.fetchConversations(
+    pageSize,
+    currentPage.value * pageSize,
+    true,
+    patientId,
+  )
+  if (result.success && currentPatientId.value === patientId) {
+    currentPage.value++
+  }
+  if (currentPatientId.value === patientId) {
+    loadingMore.value = false
+  }
 }
 
 function onSearch() {
@@ -349,14 +419,27 @@ function onSearch() {
 }
 
 function handleOpenConversation(conv) {
-  router.push(`/home/consultation/${conv.id}`)
+  router.push({
+    path: `/home/consultation/${conv.id}`,
+    query: { patient_id: conv.patient_id || currentPatientId.value },
+  })
+}
+
+async function selectHistoryPatient(patient) {
+  showHistoryPatientPicker.value = false
+  if (patient.patient_id === currentPatientId.value) return
+  try {
+    await patientStore.switchPatient(patient.patient_id)
+  } catch {
+    showToast('切换患者失败，请稍后重试')
+  }
 }
 
 async function handleDelete(conv) {
   try {
     await showDialog({
       title: '确认删除',
-      message: '删除后无法恢复，确定要删除这条会诊记录吗？',
+      message: '仅删除 OncoPath 本地会诊记录，AgentTeams 中的远端分析仍会保留。确定删除吗？',
       showCancelButton: true,
       confirmButtonText: '确定删除',
       cancelButtonText: '取消',
@@ -433,9 +516,12 @@ async function confirmStartConsultation() {
 
   try {
     const result = await consultationApi.startAgentTeamsConsultation(selectedPatientId.value)
-    await conversationsStore.fetchConversations(pageSize, 0, false)
+    await conversationsStore.fetchConversations(pageSize, 0, false, selectedPatientId.value)
     currentPage.value = 1
-    router.push(`/home/consultation/${result.conversation_id}`)
+    router.push({
+      path: `/home/consultation/${result.conversation_id}`,
+      query: { patient_id: selectedPatientId.value },
+    })
   } catch (error) {
     if (isAgentTeamsError(error)) {
       agentTeamsError.value = getAgentTeamsErrorUx(error, { ctaUrl: agentTeamsCtaUrl.value })
@@ -449,8 +535,22 @@ async function confirmStartConsultation() {
 }
 
 onMounted(async () => {
-  // 加载初始会诊列表数据（桌面端没有 van-list 自动触发 onLoad）
-  await onLoad()
+  if (!patientStore.loaded) {
+    await patientStore.fetchPatientList()
+  }
+  await loadFirstPage()
+})
+
+watch(currentPatientId, async (patientId, previousPatientId) => {
+  if (patientId === previousPatientId) return
+  if (!patientId) {
+    // 当前患者被清空（如删除最后一个患者），清空会诊列表
+    conversationsStore.clearConversations()
+    currentPage.value = 0
+    return
+  }
+  if (!previousPatientId) return  // 从无到有，由 onMounted 负责首次加载
+  await loadFirstPage()
 })
 </script>
 
@@ -483,6 +583,33 @@ onMounted(async () => {
 
 .consultation-list.is-desktop {
   padding-bottom: 0;
+}
+
+.mobile-patient-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.mobile-patient-context span,
+.patient-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mobile-patient-context button {
+  border: 0;
+  background: transparent;
+  color: var(--primary-color);
+  font-size: var(--text-sm);
+  cursor: pointer;
 }
 
 /* ===== 移动端卡片 ===== */
@@ -583,6 +710,20 @@ onMounted(async () => {
 
 .card-footer {
   margin-top: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.card-patient,
+.detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
 }
 
 .card-time {
@@ -616,6 +757,11 @@ onMounted(async () => {
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.2s;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
 }
 
 .patient-item:active,
@@ -676,6 +822,26 @@ onMounted(async () => {
 
 .desktop-search {
   flex: 0 1 320px;
+}
+
+.patient-filter-button {
+  min-width: 140px;
+  max-width: 220px;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.patient-filter-button span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .desktop-search :deep(.van-search__content) {
@@ -789,6 +955,16 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.detail-link {
+  color: var(--primary-color);
+}
+
+.card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .load-more-area {

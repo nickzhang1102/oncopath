@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.conversation import Conversation, ConsultationExternalSession
+from app.models.patient import Patient
 from app.schemas.agentteams import (
     AgentTeamsExternalSessionResponse,
     AgentTeamsStartRequest,
@@ -109,17 +110,25 @@ class AgentTeamsStartService:
         self,
         conversation_id: int,
         account_id: int,
+        patient_id: int | None = None,
         raise_not_found: bool = True,
     ) -> AgentTeamsExternalSessionResponse | None:
-        result = await self.db.execute(
-            select(ConsultationExternalSession)
-            .join(Conversation, Conversation.id == ConsultationExternalSession.conversation_id)
-            .where(
-                ConsultationExternalSession.conversation_id == conversation_id,
-                ConsultationExternalSession.provider == self.PROVIDER,
-                Conversation.user_id == account_id,
-            )
+        filters = [
+            ConsultationExternalSession.conversation_id == conversation_id,
+            ConsultationExternalSession.provider == self.PROVIDER,
+            Conversation.user_id == account_id,
+        ]
+        stmt = select(ConsultationExternalSession).join(
+            Conversation, Conversation.id == ConsultationExternalSession.conversation_id
         )
+        if patient_id is not None:
+            # 按患者隔离：校验会诊归属该患者，且患者归属当前账号
+            filters.extend([
+                Conversation.patient_id == patient_id,
+                Patient.account_id == account_id,
+            ])
+            stmt = stmt.join(Patient, Patient.patient_id == Conversation.patient_id)
+        result = await self.db.execute(stmt.where(*filters))
         mapping = result.scalar_one_or_none()
         if not mapping:
             if raise_not_found:

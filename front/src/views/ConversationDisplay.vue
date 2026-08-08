@@ -82,6 +82,7 @@ function handleAgentTeamsErrorCta(url) {
 
 async function loadExternalSession() {
   const token = String(getRouteToken())
+  const patientId = String(route.query.patient_id || '')
   externalSession.value = null
   loadErrorTitle.value = ''
   loadErrorMessage.value = ''
@@ -97,8 +98,16 @@ async function loadExternalSession() {
     return
   }
 
+  if (!/^\d+$/.test(patientId)) {
+    setPlainError('此会诊记录缺少患者上下文，请从会诊历史重新进入')
+    return
+  }
+
   try {
-    externalSession.value = await consultationApi.getAgentTeamsExternalSession(token)
+    externalSession.value = await consultationApi.getAgentTeamsExternalSession(
+      token,
+      patientId,
+    )
   } catch (error) {
     if (error?.response?.status === 404) {
       setPlainError('此会诊记录不可用或已下线')

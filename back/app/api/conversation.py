@@ -11,7 +11,7 @@ Current endpoints:
 - GET  /consultation/session/share/{token} — 分享链接访问
 - GET  /consultation/share/{token} — 分享链接访问（短路径）
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -29,6 +29,7 @@ from app.schemas.agentteams import AgentTeamsStartRequest, AgentTeamsStartRespon
 from app.services.agentteams_config_service import AgentTeamsConfigService
 from app.services.agentteams_start_service import AgentTeamsStartService
 from app.services.conversation_service import ConversationService
+from app.services.patient_service import PatientService
 
 router = APIRouter()
 
@@ -67,12 +68,18 @@ async def start_agentteams_consultation(
 @router.get("/agentteams/sessions/{conversation_id}", response_model=AgentTeamsExternalSessionResponse)
 async def get_agentteams_external_session(
     conversation_id: int,
+    patient_id: int = Query(ge=1),
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user),
 ):
     """读取本地会诊对应的 AgentTeams 外部会话映射。"""
+    await PatientService.get_with_ownership(db, patient_id, current_user.account_id)
     service = AgentTeamsStartService(db)
-    return await service.get_external_session(conversation_id, current_user.account_id)
+    return await service.get_external_session(
+        conversation_id,
+        current_user.account_id,
+        patient_id=patient_id,
+    )
 
 
 # ===== 会诊对话 CRUD =====
@@ -89,15 +96,21 @@ async def create_conversation(
 
 @router.get("/conversations", response_model=ConversationListResponse)
 async def get_conversations(
-    limit: int = 20,
-    offset: int = 0,
+    patient_id: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user),
 ):
     """获取会诊列表（我的会诊）"""
+    if patient_id is not None:
+        await PatientService.get_with_ownership(db, patient_id, current_user.account_id)
     service = ConversationService(db)
     conversations, total = await service.get_conversations(
-        user_id=current_user.account_id, limit=limit, offset=offset
+        user_id=current_user.account_id,
+        patient_id=patient_id,
+        limit=limit,
+        offset=offset,
     )
     return ConversationListResponse(
         conversations=conversations, total=total, limit=limit, offset=offset

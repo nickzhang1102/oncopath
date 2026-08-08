@@ -1,7 +1,7 @@
 """public schema baseline
 
 Revision ID: public_schema_baseline
-Revises: 
+Revises:
 Create Date: 2026-07-24 08:40:03.179995
 
 """

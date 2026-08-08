@@ -124,7 +124,7 @@ test('starts AgentTeams flow when AgentTeams is enabled', async ({ page }) => {
       }),
     })
   })
-  await page.route('**/api/v1/consultation/agentteams/sessions/900', route => {
+  await page.route('**/api/v1/consultation/agentteams/sessions/900**', route => {
     route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
@@ -150,7 +150,7 @@ test('starts AgentTeams flow when AgentTeams is enabled', async ({ page }) => {
 
   await page.getByRole('button', { name: '开始会诊' }).first().click()
 
-  await expect(page).toHaveURL(/\/home\/consultation\/900/)
+  await expect(page).toHaveURL(/\/home\/consultation\/900\?patient_id=1$/)
   await expect(page.locator('iframe.embed-iframe')).toBeVisible()
   await expect(page.getByText('需要配置 AgentTeams 项目')).toHaveCount(0)
   expect(counters.availability).toBe(1)

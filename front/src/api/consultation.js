@@ -3,8 +3,10 @@ import request from './request'
 
 export const consultationApi = {
   // 会话管理
-  getConversations(limit, offset) {
-    return request.get('/consultation/conversations', { params: { limit, offset } })
+  getConversations(limit, offset, patientId = null) {
+    return request.get('/consultation/conversations', {
+      params: { limit, offset, patient_id: patientId || undefined },
+    })
   },
 
   createConversation(patientId) {
@@ -56,7 +58,10 @@ export const consultationApi = {
     }, { silentError: true })
   },
 
-  getAgentTeamsExternalSession(conversationId) {
-    return request.get(`/consultation/agentteams/sessions/${conversationId}`, { silentError: true })
+  getAgentTeamsExternalSession(conversationId, patientId) {
+    return request.get(`/consultation/agentteams/sessions/${conversationId}`, {
+      params: { patient_id: patientId },
+      silentError: true,
+    })
   },
 }

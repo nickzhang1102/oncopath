@@ -52,6 +52,14 @@ DB_NAME = os.getenv("DB_NAME", "medical_report")
 TEST_DB_NAME = f"{DB_NAME}_test"
 TEST_DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{TEST_DB_NAME}"
 
+from app.core.config import settings
+
+# 单元测试统一使用独立的测试 Redis db（与 redis_client fixture 的 db15 一致）。
+# 全局 redis_client 为懒连接，首次调用时读取 settings.REDIS_DB；若沿用生产默认 db0，
+# 则 lock/session 等服务经全局客户端写入的 key 与 fixture 所在的 db15 相互隔离，
+# 会导致依赖跨客户端一致性的锁测试失败。
+settings.REDIS_DB = 15
+
 # 创建测试引擎 - 使用NullPool避免连接池问题
 from sqlalchemy.pool import NullPool
 test_engine = create_async_engine(

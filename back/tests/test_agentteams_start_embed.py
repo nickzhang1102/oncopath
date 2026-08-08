@@ -336,6 +336,7 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
 
     read_response = await client.get(
         f"/api/v1/consultation/agentteams/sessions/{conversation_id}",
+        params={"patient_id": patient.patient_id},
     )
     assert read_response.status_code == 200
     assert read_response.json()["embed_url"] == "/agentteams/embed/conversation/renewed-token"
@@ -431,9 +432,24 @@ async def test_conversation_history_only_returns_agentteams_mapped_records(
         status="analyzing",
         category="medical",
     )
-    db_session.add_all([legacy, mapped])
+    other_patient = Patient(
+        account_id=test_user.account_id,
+        patient_name="另一个患者",
+        gender="unknown",
+    )
+    db_session.add_all([legacy, mapped, other_patient])
     await db_session.flush()
-    db_session.add(
+    other_mapped = Conversation(
+        user_id=test_user.account_id,
+        patient_id=other_patient.patient_id,
+        title="其他患者的 AgentTeams 会诊",
+        share_token="other-mapped-token",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(other_mapped)
+    await db_session.flush()
+    db_session.add_all([
         ConsultationExternalSession(
             conversation_id=mapped.id,
             provider=service.PROVIDER,
@@ -442,11 +458,22 @@ async def test_conversation_history_only_returns_agentteams_mapped_records(
             external_share_token="share-token",
             embed_url="https://agentteams.example.com/embed/conversation/old-token",
             status="running",
-        )
-    )
+        ),
+        ConsultationExternalSession(
+            conversation_id=other_mapped.id,
+            provider=service.PROVIDER,
+            external_conversation_id="1002",
+            external_session_id="2002",
+            embed_url="https://agentteams.example.com/embed/conversation/other-token",
+            status="completed",
+        ),
+    ])
     await db_session.commit()
 
-    response = await client.get("/api/v1/consultation/conversations")
+    response = await client.get(
+        "/api/v1/consultation/conversations",
+        params={"patient_id": patient.patient_id},
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -455,6 +482,58 @@ async def test_conversation_history_only_returns_agentteams_mapped_records(
     assert data["conversations"][0]["provider"] == "agentteams"
     assert data["conversations"][0]["external_session_status"] == "running"
     assert data["conversations"][0]["share_token"] == "mapped-token"
+
+
+@pytest.mark.asyncio
+async def test_agentteams_history_requires_patient_context(
+    client, current_user_override
+):
+    response = await client.get(
+        "/api/v1/consultation/agentteams/sessions/999999"
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_agentteams_history_rejects_patient_mismatch_before_renew(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    other_patient = Patient(
+        account_id=test_user.account_id,
+        patient_name="另一个患者",
+        gender="unknown",
+    )
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="AgentTeams 会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add_all([other_patient, conversation])
+    await db_session.flush()
+    db_session.add(
+        ConsultationExternalSession(
+            conversation_id=conversation.id,
+            provider=AgentTeamsStartService.PROVIDER,
+            external_conversation_id="1001",
+            external_session_id="2001",
+            embed_url="https://agentteams.example.com/embed/conversation/token",
+            status="completed",
+        )
+    )
+    await db_session.commit()
+
+    renew_calls = []
+    patch_embed_renew_success(monkeypatch, renew_calls)
+    response = await client.get(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}",
+        params={"patient_id": other_patient.patient_id},
+    )
+
+    assert response.status_code == 404
+    assert renew_calls == []
 
 
 @pytest.mark.asyncio

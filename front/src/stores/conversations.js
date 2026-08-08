@@ -8,6 +8,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   const currentConversation = ref(null)
   const recentConversations = ref([])
   const total = ref(0)
+  let latestFetchRequestId = 0
 
   const finished = computed(() => conversations.value.length >= total.value)
 
@@ -19,9 +20,13 @@ export const useConversationsStore = defineStore('conversations', () => {
     })
   }
 
-  async function fetchConversations(limit = 20, offset = 0, append = false) {
+  async function fetchConversations(limit = 20, offset = 0, append = false, patientId = null) {
+    const requestId = ++latestFetchRequestId
     try {
-      const response = await consultationApi.getConversations(limit, offset)
+      const response = await consultationApi.getConversations(limit, offset, patientId)
+      if (requestId !== latestFetchRequestId) {
+        return { success: false, stale: true }
+      }
       total.value = response.total || 0
       if (append) {
         appendConversations(response.conversations || [])
@@ -30,6 +35,9 @@ export const useConversationsStore = defineStore('conversations', () => {
       }
       return { success: true }
     } catch (error) {
+      if (requestId !== latestFetchRequestId) {
+        return { success: false, stale: true }
+      }
       return {
         success: false,
         error: error.response?.data?.detail || '获取会诊列表失败'
@@ -37,9 +45,9 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
-  async function fetchRecentConversations(limit = 10) {
+  async function fetchRecentConversations(limit = 10, patientId = null) {
     try {
-      const response = await consultationApi.getConversations(limit, 0)
+      const response = await consultationApi.getConversations(limit, 0, patientId)
       recentConversations.value = response.conversations || []
       return { success: true }
     } catch (error) {
@@ -133,6 +141,12 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  function clearConversations() {
+    latestFetchRequestId++
+    conversations.value = []
+    total.value = 0
+  }
+
   function clearCurrentConversation() {
     currentConversation.value = null
   }
@@ -151,6 +165,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     fetchConversationById,
     generateShareToken,
     verifySharePassword,
+    clearConversations,
     clearCurrentConversation
   }
 })

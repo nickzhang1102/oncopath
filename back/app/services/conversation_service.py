@@ -47,13 +47,20 @@ class ConversationService:
         return conversation
 
     async def get_conversations(
-        self, user_id: int, limit: int = 20, offset: int = 0
+        self,
+        user_id: int,
+        patient_id: Optional[int] = None,
+        limit: int = 20,
+        offset: int = 0,
     ) -> Tuple[List[Conversation], int]:
-        """获取用户的新会诊列表（仅 AgentTeams 外部映射记录，按更新时间倒序）"""
-        base_filter = and_(
+        """获取用户或指定患者的 AgentTeams 会诊历史。"""
+        filters = [
             Conversation.user_id == user_id,
             ConsultationExternalSession.provider == "agentteams",
-        )
+        ]
+        if patient_id is not None:
+            filters.append(Conversation.patient_id == patient_id)
+        base_filter = and_(*filters)
         # 总数
         count_result = await self.db.execute(
             select(func.count(Conversation.id))

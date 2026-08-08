@@ -54,6 +54,11 @@ class MedicalPromptBuilder:
     # 截断阈值常量
     RECORD_CONTENT_LIMIT = 1000
     EXAM_FINDINGS_LIMIT = 500
+    PROMPT_LENGTH_LIMIT = 60000
+    PROMPT_TAIL_RESERVE = 8000
+    PROMPT_TRUNCATION_NOTICE = (
+        "\n\n[注意：原始病历过长，中间内容已截断，已保留开头资料和末尾诊断要求]\n\n"
+    )
 
     # 分类中文映射
     CATEGORY_MAP = {
@@ -67,6 +72,26 @@ class MedicalPromptBuilder:
 
     def __init__(self):
         self.timeframe_days = 60  # 近期报告时间范围（天）
+
+    @classmethod
+    def _limit_prompt_length(cls, prompt: str) -> str:
+        """限制 AgentTeams 输入长度，同时保留提示词首部和诊断尾部。"""
+        if len(prompt) <= cls.PROMPT_LENGTH_LIMIT:
+            return prompt
+
+        available = cls.PROMPT_LENGTH_LIMIT - len(cls.PROMPT_TRUNCATION_NOTICE)
+        tail_length = min(cls.PROMPT_TAIL_RESERVE, available // 2)
+        head_length = available - tail_length
+        logger.warning(
+            "会诊提示词超过 %s 个字符（当前 %s），正在截断中间内容",
+            cls.PROMPT_LENGTH_LIMIT,
+            len(prompt),
+        )
+        return (
+            prompt[:head_length]
+            + cls.PROMPT_TRUNCATION_NOTICE
+            + prompt[-tail_length:]
+        )
 
     @staticmethod
     def _to_chinese_num(n: int) -> str:
@@ -614,12 +639,7 @@ class MedicalPromptBuilder:
         if not has_diagnostic_requirement:
             sections.append("请基于以上患者资料，提供专业的会诊意见。")
 
-        prompt = "\n".join(sections)
-        if len(prompt) > 30000:
-            logger.warning(f"Consultation prompt exceeds 30000 chars ({len(prompt)}), truncating")
-            prompt = prompt[:30000] + "\n\n[注意：原始病历过长，已截断至30000字符]"
-
-        return prompt
+        return self._limit_prompt_length("\n".join(sections))
 
     def _extract_medical_records(self, records: list) -> list:
         """提取病情记录
