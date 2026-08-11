@@ -114,7 +114,13 @@ async def get_prompt_config(
         
         # 查询已保存的配置
         config_result = await db.execute(
-            select(PromptConfig).where(PromptConfig.patient_id == patient_id)
+            select(PromptConfig)
+            .where(PromptConfig.patient_id == patient_id)
+            .order_by(
+                PromptConfig.updated_at.desc().nullslast(),
+                PromptConfig.config_id.desc(),
+            )
+            .limit(1)
         )
         config = config_result.scalar_one_or_none()
         
@@ -167,7 +173,13 @@ async def save_prompt_config(
         
         # 查找现有配置
         existing_result = await db.execute(
-            select(PromptConfig).where(PromptConfig.patient_id == config.patient_id)
+            select(PromptConfig)
+            .where(PromptConfig.patient_id == config.patient_id)
+            .order_by(
+                PromptConfig.updated_at.desc().nullslast(),
+                PromptConfig.config_id.desc(),
+            )
+            .limit(1)
         )
         existing_config = existing_result.scalar_one_or_none()
         
@@ -179,6 +191,9 @@ async def save_prompt_config(
         
         if existing_config:
             # 更新现有配置
+            # 配置的业务归属是患者；同步修复历史遗留的旧账号外键，
+            # 使预览与 AgentTeams 启动读取保持一致。
+            existing_config.account_id = current_user.account_id
             existing_config.system_prompt = config.system_prompt
             existing_config.time_range_days = config.time_range_days
             existing_config.user_content_config = user_content_json

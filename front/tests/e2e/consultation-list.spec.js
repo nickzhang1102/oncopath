@@ -1,7 +1,7 @@
 /**
  * 会诊列表 E2E 测试
  *
- * 覆盖：页面加载、空状态、搜索框、充值弹窗
+ * 覆盖：页面加载、精简工具栏、空状态、充值弹窗
  */
 import { test, expect } from '@playwright/test';
 
@@ -46,14 +46,13 @@ test.describe('会诊列表 E2E', () => {
     await expect(page).toHaveURL(/\/home\/consultation/);
   });
 
-  test('搜索框可见', async ({ page }) => {
+  test('不显示搜索、患者切换和状态筛选工具栏', async ({ page }) => {
     await page.goto(`${BASE_URL}/home/consultation`);
     await page.waitForURL(/\/home\/consultation/, { timeout: 10000 });
 
-    const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder('搜索会诊记录'));
-    await expect(searchInput.first()).toBeVisible({ timeout: 5000 }).catch(() => {
-      // 桌面端搜索框可能在不同位置
-    });
+    await expect(page.getByPlaceholder('搜索会诊记录')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '切换患者' })).toHaveCount(0);
+    await expect(page.locator('.desktop-toolbar, .filter-tabs')).toHaveCount(0);
   });
 
   test('充值按钮打开弹窗', async ({ page }) => {

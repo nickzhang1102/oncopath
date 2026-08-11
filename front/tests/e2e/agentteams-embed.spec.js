@@ -188,33 +188,9 @@ test('AgentTeams history card fits the mobile viewport', async ({ page }, testIn
   const box = await card.boundingBox()
   expect(box.x).toBeGreaterThanOrEqual(0)
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width + 1)
-  await expect(page.getByRole('button', { name: '切换患者' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '切换患者' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('搜索会诊记录')).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('mobile-history.png'), fullPage: true })
-})
-
-test('latest patient selection wins when history responses finish out of order', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 768 })
-  const counters = {}
-  await mockEmbedApis(page, counters, {
-    patients: [
-      { patient_id: 1, patient_name: '患者甲', is_primary: true },
-      { patient_id: 2, patient_name: '患者乙', is_primary: false },
-    ],
-    historyByPatient: {
-      1: { id: 901, title: '患者甲历史', delay: 500 },
-      2: { id: 902, title: '患者乙历史', delay: 10 },
-    },
-  })
-
-  await page.goto(`${baseURL}/home/consultation`, { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('.patient-filter-button')).toContainText('患者甲')
-  await page.locator('.patient-filter-button').click()
-  await page.getByRole('button', { name: /患者乙/ }).click()
-
-  await expect(page.locator('.patient-filter-button')).toContainText('患者乙')
-  await expect(page.getByText('患者乙历史')).toBeVisible()
-  await page.waitForTimeout(600)
-  await expect(page.getByText('患者甲历史')).toHaveCount(0)
 })
 
 test('numeric detail without patient context does not request AgentTeams', async ({ page }) => {

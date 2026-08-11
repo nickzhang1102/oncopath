@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.conversation import Conversation, ConsultationExternalSession
 from app.models.patient import Patient
+from app.models.prompt import PromptConfig
 from app.schemas.agentteams import (
     AgentTeamsExternalSessionResponse,
     AgentTeamsStartRequest,
@@ -53,15 +54,26 @@ class AgentTeamsStartService:
             renewed_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=True)
             return AgentTeamsStartResponse(**renewed_mapping.model_dump())
 
+        prompt_config = await self._load_prompt_config(data.patient_id, account_id)
         prompt = await MedicalPromptBuilder().build_consultation_prompt(
             patient_id=data.patient_id,
             db=self.db,
+            prompt_config=prompt_config,
         )
         if not prompt.strip():
             raise HTTPException(
                 status_code=500,
                 detail={"error": "launch_failed", "message": "无法生成会诊提示词"},
             )
+
+        logger.info(
+            "AgentTeams launch prompt prepared: conversation_id=%s patient_id=%s "
+            "prompt_config_id=%s prompt_chars=%s",
+            conversation.id,
+            data.patient_id,
+            prompt_config.get("config_id") if prompt_config else None,
+            len(prompt),
+        )
 
         conversation.status = "analyzing"
         await self.db.flush()
@@ -107,6 +119,34 @@ class AgentTeamsStartService:
         await self.db.commit()
         await self.db.refresh(mapping)
         return self._to_response(mapping)
+
+    async def _load_prompt_config(self, patient_id: int, account_id: int) -> dict[str, Any] | None:
+        """Load the same saved configuration used by the prompt preview page."""
+        result = await self.db.execute(
+            select(PromptConfig)
+            .where(PromptConfig.patient_id == patient_id)
+            .order_by(
+                PromptConfig.updated_at.desc().nullslast(),
+                PromptConfig.config_id.desc(),
+            )
+            .limit(1)
+        )
+        config = result.scalar_one_or_none()
+        if config is None:
+            return None
+        if config.account_id != account_id:
+            # PromptConfig has historically been read and updated by patient_id.
+            # Keep launch behavior aligned with that patient-owned contract so
+            # legacy rows do not silently fall back to the short default prompt.
+            logger.warning(
+                "Using legacy patient-owned prompt config with stale account_id: "
+                "patient_id=%s config_id=%s config_account_id=%s owner_account_id=%s",
+                patient_id,
+                config.config_id,
+                config.account_id,
+                account_id,
+            )
+        return config.to_dict()
 
     async def get_external_session(
         self,

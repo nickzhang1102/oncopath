@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import pytest_asyncio
 import httpx
@@ -9,6 +11,8 @@ from app.main import app
 from app.models.admin import AgentTeamsIntegrationConfig
 from app.models.conversation import ConsultationExternalSession, Conversation, LeaderSession
 from app.models.patient import Patient
+from app.models.prompt import PromptConfig
+from app.models.user import LoginAccount
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
 from app.services.agentteams_start_service import AgentTeamsStartService
 
@@ -111,12 +115,14 @@ async def clean_agentteams_start_data(db_session, monkeypatch):
     await db_session.execute(delete(ConsultationExternalSession))
     await db_session.execute(delete(LeaderSession))
     await db_session.execute(delete(Conversation))
+    await db_session.execute(delete(PromptConfig))
     await db_session.execute(delete(AgentTeamsIntegrationConfig))
     await db_session.commit()
     yield
     await db_session.execute(delete(ConsultationExternalSession))
     await db_session.execute(delete(LeaderSession))
     await db_session.execute(delete(Conversation))
+    await db_session.execute(delete(PromptConfig))
     await db_session.execute(delete(AgentTeamsIntegrationConfig))
     await db_session.commit()
 
@@ -258,6 +264,92 @@ async def test_agentteams_start_sends_long_prompt_without_truncation(
 
     assert response.status_code == 200
     assert calls[0]["payload"]["message"] == long_prompt
+
+
+@pytest.mark.asyncio
+async def test_agentteams_start_uses_saved_prompt_config_without_truncation(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    long_context = "BEGIN-SAVED-PROMPT\n" + ("真实病历内容" * 2000) + "\nEND-SAVED-PROMPT"
+    diagnostic_requirement = "请逐项给出诊断、分期、治疗建议和注意事项"
+    db_session.add(PromptConfig(
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        system_prompt="肿瘤多学科会诊",
+        time_range_days=365,
+        user_content_config=json.dumps([
+            {
+                "id": 1,
+                "name": "完整病历",
+                "type": "custom",
+                "enabled": True,
+                "customText": long_context,
+            },
+            {
+                "id": 18,
+                "name": "诊断要求",
+                "type": "custom",
+                "enabled": True,
+                "customText": diagnostic_requirement,
+            },
+        ], ensure_ascii=False),
+    ))
+    await db_session.commit()
+    calls = []
+    patch_launch_success(monkeypatch, calls)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 200
+    sent_prompt = calls[0]["payload"]["message"]
+    assert len(sent_prompt) > 1300
+    assert long_context in sent_prompt
+    assert sent_prompt.endswith(f"诊断要求：\n{diagnostic_requirement}\n")
+
+
+@pytest.mark.asyncio
+async def test_agentteams_start_uses_patient_config_with_legacy_stale_account_id(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    legacy_owner = LoginAccount(
+        username=f"legacy-prompt-owner-{patient.patient_id}",
+        password="unused-test-password",
+        account_name="历史配置账号",
+        status="active",
+    )
+    db_session.add(legacy_owner)
+    await db_session.flush()
+    legacy_text = "LEGACY-SAVED-PROMPT-" + ("完整病历" * 600)
+    db_session.add(PromptConfig(
+        account_id=legacy_owner.account_id,
+        patient_id=patient.patient_id,
+        system_prompt="肿瘤多学科会诊",
+        time_range_days=365,
+        user_content_config=json.dumps([{
+            "id": 1,
+            "name": "历史完整病历",
+            "type": "custom",
+            "enabled": True,
+            "customText": legacy_text,
+        }], ensure_ascii=False),
+    ))
+    await db_session.commit()
+    calls = []
+    patch_launch_success(monkeypatch, calls)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 200
+    assert legacy_text in calls[0]["payload"]["message"]
+    assert len(calls[0]["payload"]["message"]) > 1300
 
 
 @pytest.mark.asyncio

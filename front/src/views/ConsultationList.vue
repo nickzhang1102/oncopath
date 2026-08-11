@@ -33,49 +33,6 @@
       </div>
     </header>
 
-    <!-- 移动端搜索栏 -->
-    <van-search
-      v-if="!isDesktop"
-      v-model="searchQuery"
-      placeholder="搜索会诊记录"
-      shape="round"
-      @search="onSearch"
-    />
-
-    <div v-if="!isDesktop && currentPatient" class="mobile-patient-context">
-      <span><van-icon name="user-o" />{{ currentPatientName }}</span>
-      <button type="button" @click="showHistoryPatientPicker = true">切换患者</button>
-    </div>
-
-    <!-- 桌面端搜索+筛选栏 -->
-    <div v-if="isDesktop" class="desktop-toolbar">
-      <van-search
-        v-model="searchQuery"
-        placeholder="搜索会诊记录"
-        shape="round"
-        @search="onSearch"
-        class="desktop-search"
-      />
-      <button
-        v-if="currentPatient"
-        type="button"
-        class="patient-filter-button"
-        @click="showHistoryPatientPicker = true"
-      >
-        <van-icon name="user-o" />
-        <span>{{ currentPatientName }}</span>
-        <van-icon name="arrow-down" />
-      </button>
-      <div class="filter-tabs">
-        <button
-          v-for="tab in statusTabs"
-          :key="tab.value"
-          :class="['filter-tab', { active: activeTab === tab.value }]"
-          @click="activeTab = tab.value"
-        >{{ tab.label }}</button>
-      </div>
-    </div>
-
     <!-- 会诊列表 -->
     <van-pull-refresh v-if="!isDesktop" v-model="refreshing" @refresh="onRefresh">
       <van-list
@@ -85,7 +42,7 @@
         @load="onLoad"
       >
         <template v-if="conversations.length > 0">
-          <van-swipe-cell v-for="conv in filteredConversations" :key="conv.id">
+          <van-swipe-cell v-for="conv in conversations" :key="conv.id">
             <div
               :class="['consultation-card', getStatusClass(getConversationStatus(conv))]"
               @click="handleOpenConversation(conv)"
@@ -122,9 +79,9 @@
 
     <!-- 桌面端列表 -->
     <div v-if="isDesktop" class="desktop-list">
-      <div v-if="filteredConversations.length > 0" class="conversation-grid">
+      <div v-if="conversations.length > 0" class="conversation-grid">
         <div
-          v-for="conv in filteredConversations"
+          v-for="conv in conversations"
           :key="conv.id"
           :class="['desktop-card', getStatusClass(getConversationStatus(conv))]"
           @click="handleOpenConversation(conv)"
@@ -156,7 +113,7 @@
       </van-empty>
 
       <!-- 加载更多 -->
-      <div v-if="filteredConversations.length > 0" class="load-more-area">
+      <div v-if="conversations.length > 0" class="load-more-area">
         <van-button
           v-if="!finished"
           :loading="loadingMore"
@@ -179,22 +136,6 @@
       :loading="agentTeamsAvailabilityLoading"
       @click="handleStartConsultation"
     >开始会诊</van-button>
-
-    <van-action-sheet v-model:show="showHistoryPatientPicker" title="选择历史患者">
-      <div class="patient-picker history-patient-picker">
-        <button
-          v-for="patient in patientStore.patientList"
-          :key="patient.patient_id"
-          type="button"
-          :class="['patient-item', { active: currentPatientId === patient.patient_id }]"
-          @click="selectHistoryPatient(patient)"
-        >
-          <van-icon name="user-o" />
-          <span>{{ patient.patient_name || `患者${patient.patient_id}` }}</span>
-          <van-icon v-if="currentPatientId === patient.patient_id" name="success" color="var(--primary-color)" />
-        </button>
-      </div>
-    </van-action-sheet>
 
     <!-- 开始会诊时选择患者 -->
     <van-action-sheet
@@ -260,11 +201,9 @@ const conversationsStore = useConversationsStore()
 const patientStore = usePatientStore()
 
 // 状态
-const searchQuery = ref('')
 const refreshing = ref(false)
 const loadingMore = ref(false)
 const showPatientPicker = ref(false)
-const showHistoryPatientPicker = ref(false)
 const showAgentTeamsUpsell = ref(false)
 const showAgentTeamsError = ref(false)
 const agentTeamsUpsell = ref({})
@@ -275,13 +214,6 @@ const agentTeamsStartLoading = ref(false)
 const selectedPatientId = ref(null)
 const currentPage = ref(0)
 const pageSize = 20
-const activeTab = ref('all')
-
-const statusTabs = [
-  { label: '全部', value: 'all' },
-  { label: '进行中', value: 'active' },
-  { label: '已完成', value: 'completed' },
-]
 
 // 计算属性
 const conversations = computed(() => conversationsStore.conversations)
@@ -289,28 +221,6 @@ const finished = computed(() => conversationsStore.finished)
 const currentPatient = computed(() => patientStore.currentPatient)
 const currentPatientId = computed(() => currentPatient.value?.patient_id || null)
 const currentPatientName = computed(() => currentPatient.value?.patient_name || '当前患者')
-
-const filteredConversations = computed(() => {
-  let list = conversations.value
-
-  // 状态筛选
-  if (activeTab.value === 'active') {
-    list = list.filter(c => ['new', 'created', 'running', 'idle', 'assessing', 'questioning', 'forming_team', 'web_search', 'monitoring', 'executing', 'summarizing', 'analyzing'].includes(getConversationStatus(c)))
-  } else if (activeTab.value === 'completed') {
-    list = list.filter(c => ['completed', 'stopped', 'failed', 'error'].includes(getConversationStatus(c)))
-  }
-
-  // 搜索筛选
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    list = list.filter(c =>
-      (c.title || '').toLowerCase().includes(q) ||
-      (c.preview || '').toLowerCase().includes(q)
-    )
-  }
-
-  return list
-})
 
 // 方法
 function handleBack() {
@@ -420,25 +330,11 @@ async function onLoad() {
   }
 }
 
-function onSearch() {
-  // 搜索由 computed 属性过滤
-}
-
 function handleOpenConversation(conv) {
   router.push({
     path: `/home/consultation/${conv.id}`,
     query: { patient_id: conv.patient_id || currentPatientId.value },
   })
-}
-
-async function selectHistoryPatient(patient) {
-  showHistoryPatientPicker.value = false
-  if (patient.patient_id === currentPatientId.value) return
-  try {
-    await patientStore.switchPatient(patient.patient_id)
-  } catch {
-    showToast('切换患者失败，请稍后重试')
-  }
 }
 
 async function handleDelete(conv) {
@@ -589,33 +485,6 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 
 .consultation-list.is-desktop {
   padding-bottom: 0;
-}
-
-.mobile-patient-context {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0 var(--space-3) var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-}
-
-.mobile-patient-context span,
-.patient-filter-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.mobile-patient-context button {
-  border: 0;
-  background: transparent;
-  color: var(--primary-color);
-  font-size: var(--text-sm);
-  cursor: pointer;
 }
 
 /* ===== 移动端卡片 ===== */
@@ -814,71 +683,6 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-}
-
-/* ===== 桌面端工具栏 ===== */
-.desktop-toolbar {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-6);
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.desktop-search {
-  flex: 0 1 320px;
-}
-
-.patient-filter-button {
-  min-width: 140px;
-  max-width: 220px;
-  height: 36px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.patient-filter-button span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.desktop-search :deep(.van-search__content) {
-  background: var(--bg-elevated);
-}
-
-.filter-tabs {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.filter-tab {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-tab:hover {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-.filter-tab.active {
-  background: var(--primary-color);
-  color: var(--bg-surface);
-  border-color: var(--primary-color);
 }
 
 /* ===== 桌面端列表 ===== */
