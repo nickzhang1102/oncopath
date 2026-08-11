@@ -28,6 +28,7 @@ class AgentTeamsStartService:
     """编排 OncoPath 到 AgentTeams 的外部会诊启动。"""
 
     PROVIDER = "agentteams"
+    CLIENT_LOCALE = "zh-CN"
     REQUEST_TIMEOUT_SECONDS = 20.0
 
     def __init__(self, db: AsyncSession):
@@ -78,6 +79,7 @@ class AgentTeamsStartService:
                     "source_conversation_id": conversation.id,
                     "title": conversation.title or "虚拟会诊",
                     "message": prompt,
+                    "locale": self.CLIENT_LOCALE,
                     "metadata": {"created_from": "oncopath"},
                 },
             )
@@ -177,6 +179,35 @@ class AgentTeamsStartService:
         await self.db.flush()
         await self.db.commit()
         await self.db.refresh(mapping)
+
+    async def update_external_status(
+        self,
+        conversation_id: int,
+        account_id: int,
+        patient_id: int,
+        status: str,
+    ) -> AgentTeamsExternalSessionResponse:
+        stmt = (
+            select(ConsultationExternalSession)
+            .join(Conversation, Conversation.id == ConsultationExternalSession.conversation_id)
+            .join(Patient, Patient.patient_id == Conversation.patient_id)
+            .where(
+                ConsultationExternalSession.conversation_id == conversation_id,
+                ConsultationExternalSession.provider == self.PROVIDER,
+                Conversation.user_id == account_id,
+                Conversation.patient_id == patient_id,
+                Patient.account_id == account_id,
+            )
+        )
+        result = await self.db.execute(stmt)
+        mapping = result.scalar_one_or_none()
+        if mapping is None:
+            raise HTTPException(status_code=404, detail="外部会诊映射不存在")
+
+        mapping.status = status
+        await self.db.commit()
+        await self.db.refresh(mapping)
+        return self._to_response(mapping)
 
     async def _resolve_conversation(self, data: AgentTeamsStartRequest, account_id: int) -> Conversation:
         service = ConversationService(self.db)

@@ -21,23 +21,46 @@
         <van-loading size="28" color="var(--primary-color)" vertical>加载中...</van-loading>
       </div>
       <div v-if="loadFailed" class="embed-error">
-        <van-empty description="无法打开 AgentTeams 会诊页面" />
+        <van-empty description="无法打开 AgentTeams 会诊页面">
+          <van-button type="primary" size="small" @click="retryFrame">重试</van-button>
+        </van-empty>
       </div>
       <iframe
+        :key="frameKey"
+        ref="embedFrame"
         v-show="!loadFailed"
         class="embed-iframe"
         :src="session.embed_url"
         title="AgentTeams consultation"
         allow="clipboard-read; clipboard-write"
-        @load="loaded = true"
-        @error="loadFailed = true"
+        @load="handleLoad"
+        @error="handleLoadError"
       />
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+
+const EMBED_STATUS_MESSAGE = 'oncopath:embed-status'
+const EMBED_RENEW_MESSAGE = 'oncopath:embed-renew-required'
+const EMBED_LOAD_TIMEOUT_MS = 15000
+const EMBED_STATES = new Set([
+  'created',
+  'idle',
+  'assessing',
+  'monitoring',
+  'questioning',
+  'forming_team',
+  'running',
+  'web_search',
+  'executing',
+  'summarizing',
+  'completed',
+  'failed',
+  'stopped'
+])
 
 const props = defineProps({
   session: {
@@ -46,25 +69,116 @@ const props = defineProps({
   }
 })
 
-defineEmits(['back'])
+const emit = defineEmits(['back', 'status-change', 'renew-required'])
 
 const loaded = ref(false)
 const loadFailed = ref(false)
+const embedFrame = ref(null)
+const currentStatus = ref(props.session?.status || 'created')
+const frameKey = ref(0)
+let loadTimer = null
+
+watch(
+  () => props.session?.status,
+  status => {
+    if (status) currentStatus.value = status
+  }
+)
+
+watch(
+  () => props.session?.embed_url,
+  () => resetFrameLoad(),
+)
+
+function clearLoadTimer() {
+  if (!loadTimer) return
+  clearTimeout(loadTimer)
+  loadTimer = null
+}
+
+function startLoadTimer() {
+  clearLoadTimer()
+  loadTimer = setTimeout(() => {
+    if (!loaded.value) loadFailed.value = true
+  }, EMBED_LOAD_TIMEOUT_MS)
+}
+
+function resetFrameLoad() {
+  loaded.value = false
+  loadFailed.value = false
+  startLoadTimer()
+}
+
+function handleLoad() {
+  loaded.value = true
+  loadFailed.value = false
+  clearLoadTimer()
+}
+
+function handleLoadError() {
+  loadFailed.value = true
+  clearLoadTimer()
+}
+
+function retryFrame() {
+  frameKey.value += 1
+  resetFrameLoad()
+}
+
+function getEmbedOrigin() {
+  try {
+    return new URL(props.session.embed_url, window.location.href).origin
+  } catch {
+    return ''
+  }
+}
+
+function handleEmbedStatus(event) {
+  if (event.source !== embedFrame.value?.contentWindow) return
+  if (event.origin !== getEmbedOrigin()) return
+  if (event.data?.type === EMBED_RENEW_MESSAGE) {
+    emit('renew-required')
+    return
+  }
+  if (event.data?.type !== EMBED_STATUS_MESSAGE) return
+  if (!EMBED_STATES.has(event.data.status)) return
+
+  currentStatus.value = event.data.status
+  emit('status-change', event.data.status)
+}
+
+onMounted(() => {
+  window.addEventListener('message', handleEmbedStatus)
+  startLoadTimer()
+})
+onUnmounted(() => {
+  window.removeEventListener('message', handleEmbedStatus)
+  clearLoadTimer()
+})
 
 const statusText = computed(() => {
   const map = {
     created: '已启动',
+    idle: '已启动',
     running: '分析中',
+    assessing: '评估中',
+    forming_team: '组队中',
+    web_search: '检索中',
+    monitoring: '分析中',
+    executing: '分析中',
+    summarizing: '分析中',
+    questioning: '待补充',
     completed: '已完成',
     failed: '失败',
+    stopped: '已停止',
     unknown: '未知'
   }
-  return map[props.session?.status] || '已启动'
+  return map[currentStatus.value] || '分析中'
 })
 
 const statusClass = computed(() => {
-  if (props.session?.status === 'failed') return 'status-error'
-  if (props.session?.status === 'completed') return 'status-success'
+  if (currentStatus.value === 'failed' || currentStatus.value === 'stopped') return 'status-error'
+  if (currentStatus.value === 'completed') return 'status-success'
   return 'status-active'
 })
 </script>

@@ -24,7 +24,11 @@ from app.schemas.conversation import (
     GenerateShareTokenRequest, GenerateShareTokenResponse,
     VerifySharePasswordRequest,
 )
-from app.schemas.agentteams import AgentTeamsAvailabilityResponse, AgentTeamsExternalSessionResponse
+from app.schemas.agentteams import (
+    AgentTeamsAvailabilityResponse,
+    AgentTeamsExternalSessionResponse,
+    AgentTeamsStatusUpdate,
+)
 from app.schemas.agentteams import AgentTeamsStartRequest, AgentTeamsStartResponse
 from app.services.agentteams_config_service import AgentTeamsConfigService
 from app.services.agentteams_start_service import AgentTeamsStartService
@@ -79,6 +83,24 @@ async def get_agentteams_external_session(
         conversation_id,
         current_user.account_id,
         patient_id=patient_id,
+    )
+
+
+@router.patch("/agentteams/sessions/{conversation_id}/status", response_model=AgentTeamsExternalSessionResponse)
+async def update_agentteams_external_session_status(
+    conversation_id: int,
+    data: AgentTeamsStatusUpdate,
+    patient_id: int = Query(ge=1),
+    db: AsyncSession = Depends(get_db),
+    current_user: LoginAccount = Depends(get_current_user),
+):
+    """Persist a verified status notification from the embedded AgentTeams page."""
+    await PatientService.get_with_ownership(db, patient_id, current_user.account_id)
+    return await AgentTeamsStartService(db).update_external_status(
+        conversation_id,
+        current_user.account_id,
+        patient_id,
+        data.status,
     )
 
 

@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 from datetime import date
 
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
+from app.models.patient import Patient
+from app.services.encryption_service import encryption_service
 
 
 @pytest.fixture
@@ -171,11 +173,11 @@ class TestTruncationLimits:
 
 
 class TestPromptLengthPreservation:
-    """测试长提示词有界且保留关键上下文"""
+    """测试长提示词完整透传"""
 
     @pytest.mark.asyncio
-    async def test_long_prompt_keeps_trailing_diagnostic_requirement(self, builder):
-        """长病历不能从尾部切掉诊断要求。"""
+    async def test_long_prompt_is_not_truncated(self, builder):
+        """跨服务会诊必须把完整提示词交给 AgentTeams。"""
         long_content = "X" * 61000
         diagnostic_requirement = "请给出完整诊断要求和后续治疗建议"
         prompt = await builder._format_prompt_config_driven(
@@ -192,11 +194,31 @@ class TestPromptLengthPreservation:
             ],
         )
 
-        assert len(prompt) == builder.PROMPT_LENGTH_LIMIT
-        assert long_content not in prompt
+        assert long_content in prompt
         assert prompt.startswith("自定义内容：\n")
-        assert "中间内容已截断" in prompt
+        assert "中间内容已截断" not in prompt
         assert prompt.endswith(f"诊断要求：\n{diagnostic_requirement}\n")
+
+
+class TestPatientPhiIsolation:
+    """提示词构建不得把 SQLAlchemy 患者对象从密文改成明文。"""
+
+    def test_basic_info_decrypts_without_mutating_patient(self, builder, caplog):
+        patient = Patient(
+            patient_name=encryption_service.encrypt("张三"),
+            patient_phone=encryption_service.encrypt("13800138000"),
+            id_card=encryption_service.encrypt("110101199001011234"),
+            gender="male",
+        )
+        encrypted_name = patient.patient_name
+
+        first = builder._format_basic_info(patient)
+        second = builder._format_basic_info(patient)
+
+        assert first == second
+        assert "姓名：张*" in first
+        assert patient.patient_name == encrypted_name
+        assert "解密失败" not in caplog.text
 
 
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder, DEFAULT_USER_CONTENT_CONFIG

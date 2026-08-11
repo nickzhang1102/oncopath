@@ -64,4 +64,13 @@ export const consultationApi = {
       silentError: true,
     })
   },
+
+  updateAgentTeamsExternalStatus(conversationId, patientId, status) {
+    return request.patch(`/consultation/agentteams/sessions/${conversationId}/status`, {
+      status,
+    }, {
+      params: { patient_id: patientId },
+      silentError: true,
+    })
+  },
 }

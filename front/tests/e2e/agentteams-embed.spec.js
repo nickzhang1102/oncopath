@@ -93,10 +93,27 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
       }),
     })
   })
+  await page.route('**/api/v1/consultation/agentteams/sessions/900/status**', async route => {
+    const payload = route.request().postDataJSON()
+    counters.statusUpdates = [...(counters.statusUpdates || []), payload.status]
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 900,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        embed_url: '/agentteams/embed/conversation/embed-token',
+        status: payload.status,
+      }),
+    })
+  })
   await page.route('**/agentteams/embed/conversation/embed-token', route => {
     route.fulfill({
       contentType: 'text/html',
-      body: '<html><body style="margin:0"><main style="min-height:100vh">AgentTeams embed</main></body></html>',
+      body: `<html><body style="margin:0"><main style="min-height:100vh">AgentTeams embed</main><script>
+        window.parent.postMessage({ type: 'oncopath:embed-status', status: 'completed', version: 'e2e-completed' }, window.location.origin)
+      </script></body></html>`,
     })
   })
 }
@@ -116,12 +133,15 @@ async function expectIframeFitsViewport(page, minHeight) {
 
 test('AgentTeams iframe fits desktop consultation detail', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 })
-  await mockEmbedApis(page)
+  const counters = {}
+  await mockEmbedApis(page, counters)
 
   await page.goto(`${baseURL}/home/consultation/900?patient_id=1`, { waitUntil: 'domcontentloaded' })
 
   await expect(page.getByText('AgentTeams')).toBeVisible()
   await expectIframeFitsViewport(page, 600)
+  await expect(page.locator('.status-badge')).toContainText('已完成')
+  await expect.poll(() => counters.statusUpdates || []).toContain('completed')
 })
 
 test('AgentTeams iframe fits mobile consultation detail', async ({ page }) => {
@@ -132,6 +152,7 @@ test('AgentTeams iframe fits mobile consultation detail', async ({ page }) => {
 
   await expect(page.getByText('AgentTeams')).toBeVisible()
   await expectIframeFitsViewport(page, 620)
+  await expect(page.locator('.status-badge')).toContainText('已完成')
 })
 
 test('AgentTeams history is scoped to the current patient and opens numeric detail', async ({ page }, testInfo) => {
@@ -262,4 +283,49 @@ test('AgentTeams detail renew error uses productized copy without raw details', 
   await page.getByRole('button', { name: '查看处理方式' }).click()
   await expect(page.getByRole('button', { name: '查看升级说明' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'AgentTeams 版本不兼容' })).toBeVisible()
+})
+
+test('expired embed notification renews and replaces the iframe URL', async ({ page }) => {
+  const counters = {}
+  await mockEmbedApis(page, counters)
+  let sessionReads = 0
+  await page.route('**/api/v1/consultation/agentteams/sessions/900**', route => {
+    sessionReads += 1
+    const renewed = sessionReads > 1
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 900,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        embed_url: renewed
+          ? '/agentteams/embed/conversation/renewed-token'
+          : '/agentteams/embed/conversation/expired-token',
+        status: 'monitoring',
+      }),
+    })
+  })
+  await page.route('**/agentteams/embed/conversation/expired-token', route => {
+    route.fulfill({
+      contentType: 'text/html',
+      body: `<script>
+        window.parent.postMessage({ type: 'oncopath:embed-renew-required' }, window.location.origin)
+      </script>`,
+    })
+  })
+  await page.route('**/agentteams/embed/conversation/renewed-token', route => {
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<main>renewed embed</main>',
+    })
+  })
+
+  await page.goto(`${baseURL}/home/consultation/900?patient_id=1`, { waitUntil: 'domcontentloaded' })
+
+  await expect(page.locator('iframe.embed-iframe')).toHaveAttribute(
+    'src',
+    '/agentteams/embed/conversation/renewed-token',
+  )
+  expect(sessionReads).toBeGreaterThanOrEqual(2)
 })

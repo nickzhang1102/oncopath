@@ -3,7 +3,6 @@
 负责组装完整的患者病历数据，为会诊提供全面的上下文信息。
 """
 
-import logging
 from typing import Optional
 from datetime import datetime, timedelta
 
@@ -16,9 +15,6 @@ from app.models.patient import Patient
 from app.models.medical import MedicalCheck, MedicalCheckDetail, MedicalExam, PathologyReport, MedicalRecord
 from app.models.timeline import TimelineEvent
 from app.models.medication import Medication
-
-logger = logging.getLogger(__name__)
-
 
 DEFAULT_USER_CONTENT_CONFIG = [
     {"name": "自定义内容", "type": "custom", "enabled": False, "customText": ""},
@@ -51,14 +47,9 @@ class MedicalPromptBuilder:
     3. 近期报告（近2个月的检验 + 检查报告）
     """
 
-    # 截断阈值常量
+    # 单条记录的展示阈值
     RECORD_CONTENT_LIMIT = 1000
     EXAM_FINDINGS_LIMIT = 500
-    PROMPT_LENGTH_LIMIT = 60000
-    PROMPT_TAIL_RESERVE = 8000
-    PROMPT_TRUNCATION_NOTICE = (
-        "\n\n[注意：原始病历过长，中间内容已截断，已保留开头资料和末尾诊断要求]\n\n"
-    )
 
     # 分类中文映射
     CATEGORY_MAP = {
@@ -72,26 +63,6 @@ class MedicalPromptBuilder:
 
     def __init__(self):
         self.timeframe_days = 60  # 近期报告时间范围（天）
-
-    @classmethod
-    def _limit_prompt_length(cls, prompt: str) -> str:
-        """限制 AgentTeams 输入长度，同时保留提示词首部和诊断尾部。"""
-        if len(prompt) <= cls.PROMPT_LENGTH_LIMIT:
-            return prompt
-
-        available = cls.PROMPT_LENGTH_LIMIT - len(cls.PROMPT_TRUNCATION_NOTICE)
-        tail_length = min(cls.PROMPT_TAIL_RESERVE, available // 2)
-        head_length = available - tail_length
-        logger.warning(
-            "会诊提示词超过 %s 个字符（当前 %s），正在截断中间内容",
-            cls.PROMPT_LENGTH_LIMIT,
-            len(prompt),
-        )
-        return (
-            prompt[:head_length]
-            + cls.PROMPT_TRUNCATION_NOTICE
-            + prompt[-tail_length:]
-        )
 
     @staticmethod
     def _to_chinese_num(n: int) -> str:
@@ -137,9 +108,6 @@ class MedicalPromptBuilder:
         if not patient:
             return ""
 
-        # 解密敏感字段 — DB中PHI字段是Fernet密文，脱敏前必须先解密
-        patient.decrypt_sensitive_fields()
-
         # Determine config
         config_items = None
         if prompt_config:
@@ -168,12 +136,13 @@ class MedicalPromptBuilder:
             患者基础信息字典（敏感字段已脱敏）
         """
         from app.services.desensitization import desensitization_service
+        patient_data = patient.to_dict()
         info = {
-            "姓名": desensitization_service.mask_name(patient.patient_name or ""),
+            "姓名": desensitization_service.mask_name(patient_data["patient_name"] or ""),
             "性别": self._translate_gender(patient.gender),
             "年龄": self._calculate_age(patient.birth_date) if patient.birth_date else "未填写",
-            "联系电话": desensitization_service.mask_phone(patient.patient_phone or ""),
-            "身份证号": desensitization_service.mask_id_card(patient.id_card or ""),
+            "联系电话": desensitization_service.mask_phone(patient_data["patient_phone"] or ""),
+            "身份证号": desensitization_service.mask_id_card(patient_data["id_card"] or ""),
         }
         if patient.allergies:
             info["过敏史"] = patient.allergies
@@ -184,9 +153,10 @@ class MedicalPromptBuilder:
     def _format_basic_info(self, patient: Patient) -> str:
         """格式化病人概况（含姓名、性别、年龄、病史、过敏史）"""
         from app.services.desensitization import desensitization_service
+        patient_data = patient.to_dict()
         lines = []
         info_pairs = [
-            ("姓名", desensitization_service.mask_name(patient.patient_name or "")),
+            ("姓名", desensitization_service.mask_name(patient_data["patient_name"] or "")),
             ("性别", self._translate_gender(patient.gender)),
             ("年龄", self._calculate_age(patient.birth_date) if patient.birth_date else "未填写"),
         ]
@@ -639,7 +609,7 @@ class MedicalPromptBuilder:
         if not has_diagnostic_requirement:
             sections.append("请基于以上患者资料，提供专业的会诊意见。")
 
-        return self._limit_prompt_length("\n".join(sections))
+        return "\n".join(sections)
 
     def _extract_medical_records(self, records: list) -> list:
         """提取病情记录

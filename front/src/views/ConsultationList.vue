@@ -295,7 +295,7 @@ const filteredConversations = computed(() => {
 
   // 状态筛选
   if (activeTab.value === 'active') {
-    list = list.filter(c => ['new', 'created', 'running', 'idle', 'assessing', 'forming_team', 'monitoring', 'summarizing', 'analyzing'].includes(getConversationStatus(c)))
+    list = list.filter(c => ['new', 'created', 'running', 'idle', 'assessing', 'questioning', 'forming_team', 'web_search', 'monitoring', 'executing', 'summarizing', 'analyzing'].includes(getConversationStatus(c)))
   } else if (activeTab.value === 'completed') {
     list = list.filter(c => ['completed', 'stopped', 'failed', 'error'].includes(getConversationStatus(c)))
   }
@@ -332,7 +332,10 @@ function getStatusClass(status) {
     'idle': 'status-new',
     'assessing': 'status-analyzing',
     'forming_team': 'status-analyzing',
+    'questioning': 'status-analyzing',
+    'web_search': 'status-analyzing',
     'monitoring': 'status-analyzing',
+    'executing': 'status-analyzing',
     'summarizing': 'status-analyzing',
     'failed': 'status-error',
     'stopped': 'status-error'
@@ -351,7 +354,10 @@ function getStatusText(status) {
     'idle': '新建',
     'assessing': '评估中',
     'forming_team': '组队中',
+    'questioning': '待补充',
+    'web_search': '检索中',
     'monitoring': '执行中',
+    'executing': '执行中',
     'summarizing': '汇总中',
     'failed': '失败',
     'stopped': '已停止'

@@ -1,7 +1,7 @@
 """AgentTeams 集成配置 Schema"""
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -56,3 +56,14 @@ class AgentTeamsExternalSessionResponse(BaseModel):
 
 class AgentTeamsStartResponse(AgentTeamsExternalSessionResponse):
     pass
+
+
+AgentTeamsSessionStatus = Literal[
+    "created", "idle", "assessing", "questioning", "forming_team",
+    "running", "web_search", "monitoring", "executing", "summarizing",
+    "completed", "failed", "stopped",
+]
+
+
+class AgentTeamsStatusUpdate(BaseModel):
+    status: AgentTeamsSessionStatus

@@ -2,9 +2,10 @@
 import hashlib
 import hmac
 import logging
+import re
 from typing import Optional
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
 
@@ -54,17 +55,25 @@ class EncryptionService:
         return self._fernet.encrypt(plaintext.encode()).decode()
 
     def decrypt(self, ciphertext: Optional[str]) -> Optional[str]:
-        """解密密文字段，解密失败时抛出 ValueError"""
+        """解密 PHI；历史明文原样返回，Fernet 验签失败则拒绝降级。"""
         if not ciphertext:
             return ciphertext
         self._ensure_initialized()
         if not self._fernet:
             return ciphertext
+        looks_like_fernet = (
+            ciphertext.startswith("gAAAA")
+            or (len(ciphertext) >= 80 and re.fullmatch(r"[A-Za-z0-9_-]+=*", ciphertext))
+        )
+        if not looks_like_fernet:
+            return ciphertext
         try:
             return self._fernet.decrypt(ciphertext.encode()).decode()
-        except Exception as e:
-            logger.error(f"解密失败: {e}")
-            raise ValueError(f"数据解密失败，可能密钥已轮换: {e}") from e
+        except InvalidToken as exc:
+            logger.error("PHI Fernet 密文无法使用当前 ENCRYPTION_KEY 解密")
+            raise ValueError(
+                "PHI Fernet 密文与当前 ENCRYPTION_KEY 不匹配或密文已损坏"
+            ) from exc
 
     def hash_for_index(self, plaintext: Optional[str]) -> Optional[str]:
         """单向 HMAC-SHA256 哈希，用于身份证查重索引（不可逆）。

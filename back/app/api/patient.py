@@ -29,7 +29,7 @@ router = APIRouter()
 
 
 def _desensitize_patient(patient: Patient) -> dict:
-    """对患者敏感字段脱敏后返回字典（调用前需已解密）"""
+    """在局部字典中解密并脱敏，不修改 ORM 对象状态。"""
     data = patient.to_dict()
     data['patient_name'] = desensitization_service.mask_name(data.get('patient_name', ''))
     data['patient_phone'] = desensitization_service.mask_phone(data.get('patient_phone') or '')
@@ -88,13 +88,12 @@ async def get_patient_list(
     response_list = []
     for row in rows:
         patient = row[0]
-        # 解密后脱敏
-        patient.decrypt_sensitive_fields()
+        patient_data = patient.to_dict()
         check_count = row.check_count or 0
         exam_count = row.exam_count or 0
         record_count = row.record_count or 0
 
-        masked_name = desensitization_service.mask_name(patient.patient_name)
+        masked_name = desensitization_service.mask_name(patient_data["patient_name"])
         age = calculate_age(patient.birth_date)
 
         response_list.append(PatientListResponse(
@@ -150,8 +149,6 @@ async def create_patient(
     await db.commit()
     await db.refresh(new_patient)
 
-    # 解密后构建脱敏响应
-    new_patient.decrypt_sensitive_fields()
     return build_patient_response(new_patient)
 
 
@@ -172,7 +169,6 @@ async def get_primary_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="主患者不存在")
 
-    patient.decrypt_sensitive_fields()
     return build_patient_response(patient)
 
 
@@ -218,19 +214,22 @@ async def update_patient(
     """更新患者信息"""
     patient = await verify_patient_access(db, patient_id, current_user.account_id)
 
-    # 更新字段
+    # 只加密本次更新的 PHI 字段，避免把未修改的 Fernet 密文再次加密。
     update_data = patient_data.model_dump(exclude_unset=True)
+    sensitive_fields = {
+        "patient_name", "patient_phone", "id_card",
+        "emergency_contact", "emergency_phone",
+    }
     for field, value in update_data.items():
+        if field in sensitive_fields:
+            if field == "id_card":
+                patient.id_card_hash = encryption_service.hash_for_index(value)
+            value = encryption_service.encrypt(value)
         setattr(patient, field, value)
-
-    # 重新加密敏感字段
-    patient.encrypt_sensitive_fields()
 
     await db.commit()
     await db.refresh(patient)
 
-    # 解密后构建脱敏响应
-    patient.decrypt_sensitive_fields()
     return build_patient_response(patient)
 
 

@@ -235,9 +235,29 @@ async def test_agentteams_start_creates_mapping_and_returns_embed_url(
     assert calls[0]["request_id"] == f"oncopath-conversation-{data['conversation_id']}"
     assert calls[0]["payload"]["source_conversation_id"] == data["conversation_id"]
     assert calls[0]["payload"]["message"] == "患者资料 prompt"
+    assert calls[0]["payload"]["locale"] == "zh-CN"
 
     session_result = await db_session.execute(select(LeaderSession))
     assert session_result.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_agentteams_start_sends_long_prompt_without_truncation(
+    client, db_session, current_user_override, patient, monkeypatch
+):
+    await save_enabled_config(db_session)
+    long_prompt = "BEGIN-PATIENT-CONTEXT\n" + ("X" * 61000) + "\nEND-PATIENT-CONTEXT"
+    patch_prompt(monkeypatch, prompt=long_prompt)
+    calls = []
+    patch_launch_success(monkeypatch, calls)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["payload"]["message"] == long_prompt
 
 
 @pytest.mark.asyncio
@@ -534,6 +554,49 @@ async def test_agentteams_history_rejects_patient_mismatch_before_renew(
 
     assert response.status_code == 404
     assert renew_calls == []
+
+
+@pytest.mark.asyncio
+async def test_agentteams_status_update_requires_owner_and_persists_status(
+    client, db_session, current_user_override, patient, test_user
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title='AgentTeams 会诊',
+        status='analyzing',
+        category='medical',
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    mapping = ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id='1001',
+        external_session_id='2001',
+        embed_url='https://agentteams.example.com/embed/conversation/token',
+        status='assessing',
+    )
+    db_session.add(mapping)
+    await db_session.commit()
+
+    response = await client.patch(
+        f'/api/v1/consultation/agentteams/sessions/{conversation.id}/status',
+        params={'patient_id': patient.patient_id},
+        json={'status': 'web_search'},
+    )
+    assert response.status_code == 200
+    assert response.json()['status'] == 'web_search'
+
+    await db_session.refresh(mapping)
+    assert mapping.status == 'web_search'
+
+    invalid = await client.patch(
+        f'/api/v1/consultation/agentteams/sessions/{conversation.id}/status',
+        params={'patient_id': patient.patient_id + 999},
+        json={'status': 'completed'},
+    )
+    assert invalid.status_code == 404
 
 
 @pytest.mark.asyncio

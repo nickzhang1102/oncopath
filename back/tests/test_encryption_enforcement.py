@@ -101,3 +101,34 @@ def test_encryption_service_works_with_valid_key():
         assert service._fernet is not None
         assert encrypted != "hello"
         assert service.decrypt(encrypted) == "hello"
+
+
+def test_encryption_service_accepts_legacy_plaintext_without_error(caplog):
+    """历史明文不是密钥轮换错误，应原样读取且不写错误日志。"""
+    from app.services.encryption_service import EncryptionService
+
+    with patch("app.services.encryption_service.settings") as mock_settings:
+        from cryptography.fernet import Fernet
+
+        mock_settings.ENCRYPTION_KEY = Fernet.generate_key().decode()
+        mock_settings.ALLOW_UNENCRYPTED_PHI = False
+        service = EncryptionService()
+
+        assert service.decrypt("历史患者姓名") == "历史患者姓名"
+        assert "解密" not in caplog.text
+
+
+def test_encryption_service_rejects_fernet_token_from_another_key():
+    """真正的密钥不匹配不能降级为明文。"""
+    from app.services.encryption_service import EncryptionService
+    from cryptography.fernet import Fernet
+
+    old_fernet = Fernet(Fernet.generate_key())
+    old_ciphertext = old_fernet.encrypt(b"protected").decode()
+    with patch("app.services.encryption_service.settings") as mock_settings:
+        mock_settings.ENCRYPTION_KEY = Fernet.generate_key().decode()
+        mock_settings.ALLOW_UNENCRYPTED_PHI = False
+        service = EncryptionService()
+
+        with pytest.raises(ValueError, match="ENCRYPTION_KEY"):
+            service.decrypt(old_ciphertext)

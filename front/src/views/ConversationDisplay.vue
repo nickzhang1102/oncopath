@@ -19,6 +19,8 @@
       v-else-if="externalSession"
       :session="externalSession"
       @back="handleBack"
+      @status-change="handleExternalStatusChange"
+      @renew-required="handleEmbedRenewRequired"
     />
 
     <AgentTeamsErrorDialog
@@ -53,9 +55,38 @@ const loadErrorMessage = ref('')
 const showAgentTeamsError = ref(false)
 const agentTeamsError = ref({})
 const externalSession = ref(null)
+let statusUpdateChain = Promise.resolve()
+let renewPromise = null
 
 function handleBack() {
   router.push('/home/consultation')
+}
+
+function handleExternalStatusChange(status) {
+  if (!externalSession.value) return
+  externalSession.value = { ...externalSession.value, status }
+  const conversationId = externalSession.value.conversation_id
+  const patientId = Number(route.query.patient_id)
+  statusUpdateChain = statusUpdateChain
+    .then(() => consultationApi.updateAgentTeamsExternalStatus(
+      conversationId,
+      patientId,
+      status,
+    ))
+    .catch(() => {})
+}
+
+async function handleEmbedRenewRequired() {
+  if (renewPromise) return renewPromise
+  renewPromise = loadExternalSession()
+    .catch(error => {
+      if (isAgentTeamsError(error)) setAgentTeamsError(error)
+      else setPlainError('AgentTeams 会诊链接续期失败')
+    })
+    .finally(() => {
+      renewPromise = null
+    })
+  return renewPromise
 }
 
 function getRouteToken() {
