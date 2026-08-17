@@ -44,7 +44,8 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
     if (patientHistory?.delay) {
       await new Promise(resolve => setTimeout(resolve, patientHistory.delay))
     }
-    const conversations = patientHistory
+    const suppliedConversations = options.conversationsByPatient?.[patientId]
+    const conversations = suppliedConversations || (patientHistory
       ? [{
           id: patientHistory.id,
           title: patientHistory.title,
@@ -67,7 +68,7 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
             created_at: '2026-07-09T10:00:00',
             updated_at: '2026-07-09T10:00:00',
           },
-        ]
+        ])
     route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
@@ -104,15 +105,20 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
         external_conversation_id: '1001',
         external_session_id: '2001',
         embed_url: '/agentteams/embed/conversation/embed-token',
-        status: payload.status,
+        status: options.statusResponseStatus || payload.status,
       }),
     })
   })
   await page.route('**/agentteams/embed/conversation/embed-token', route => {
+    const embedStatuses = JSON.stringify(options.embedStatuses || ['completed'])
     route.fulfill({
       contentType: 'text/html',
       body: `<html><body style="margin:0"><main style="min-height:100vh">AgentTeams embed</main><script>
-        window.parent.postMessage({ type: 'oncopath:embed-status', status: 'completed', version: 'e2e-completed' }, window.location.origin)
+        const statuses = ${embedStatuses}
+        statuses.forEach((status, index) => setTimeout(() => {
+          window.parent.postMessage({ type: 'oncopath:embed-status', status, version: 'e2e-' + status }, window.location.origin)
+          if (index === statuses.length - 1) document.body.dataset.statusSequenceDone = 'true'
+        }, index * 25))
       </script></body></html>`,
     })
   })
@@ -155,6 +161,32 @@ test('AgentTeams iframe fits mobile consultation detail', async ({ page }) => {
   await expect(page.locator('.status-badge')).toContainText('已完成')
 })
 
+test('AgentTeams terminal status ignores a late running iframe update', async ({ page }) => {
+  const counters = {}
+  await mockEmbedApis(page, counters, { embedStatuses: ['completed', 'monitoring'] })
+
+  await page.goto(`${baseURL}/home/consultation/900?patient_id=1`, { waitUntil: 'domcontentloaded' })
+
+  const iframeBody = page.frameLocator('iframe.embed-iframe').locator('body')
+  await expect(iframeBody).toHaveAttribute('data-status-sequence-done', 'true')
+  await page.waitForTimeout(50)
+  await expect(page.locator('.status-badge')).toContainText('已完成')
+  expect(counters.statusUpdates).toEqual(['completed'])
+})
+
+test('AgentTeams status patch response is authoritative for the current badge', async ({ page }) => {
+  const counters = {}
+  await mockEmbedApis(page, counters, {
+    embedStatuses: ['monitoring'],
+    statusResponseStatus: 'completed',
+  })
+
+  await page.goto(`${baseURL}/home/consultation/900?patient_id=1`, { waitUntil: 'domcontentloaded' })
+
+  await expect.poll(() => counters.statusUpdates || []).toContain('monitoring')
+  await expect(page.locator('.status-badge')).toContainText('已完成')
+})
+
 test('AgentTeams history is scoped to the current patient and opens numeric detail', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1366, height: 768 })
   const counters = {}
@@ -174,6 +206,201 @@ test('AgentTeams history is scoped to the current patient and opens numeric deta
   await expect(page).toHaveURL(/\/home\/consultation\/900\?patient_id=1$/)
   await expect(page.getByText('AgentTeams')).toBeVisible()
   await expect(page.locator('iframe.embed-iframe')).toHaveAttribute('src', '/agentteams/embed/conversation/embed-token')
+})
+
+test('AgentTeams launch keeps the same request id across a lost response retry', async ({ page }) => {
+  const requestBodies = []
+  let launchAttempts = 0
+  await mockEmbedApis(page)
+  await page.route('**/api/v1/consultation/agentteams/availability', route => {
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: true, enabled: true, upsell: {} }),
+    })
+  })
+  await page.route('**/api/v1/consultation/agentteams/start', route => {
+    requestBodies.push(route.request().postDataJSON())
+    launchAttempts += 1
+    if (launchAttempts === 1) {
+      route.fulfill({
+        status: 502,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: { error: 'agentteams_unavailable' } }),
+      })
+      return
+    }
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 901,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        external_share_token: 'share-token',
+        embed_url: '/agentteams/embed/conversation/embed-token',
+        status: 'created',
+      }),
+    })
+  })
+  await page.route('**/api/v1/consultation/agentteams/sessions/901**', route => {
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 901,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        external_share_token: 'share-token',
+        embed_url: '/agentteams/embed/conversation/embed-token',
+        status: 'created',
+      }),
+    })
+  })
+
+  await page.goto(`${baseURL}/home/consultation`, { waitUntil: 'domcontentloaded' })
+  const startButton = page.getByRole('button', { name: '开始会诊' }).first()
+  await expect(startButton).toBeVisible()
+
+  await startButton.click()
+  await expect.poll(() => requestBodies.length).toBe(1)
+  const requestId = requestBodies[0].request_id
+  expect(requestId).toMatch(/^[0-9a-f-]{36}$/i)
+  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage)
+    .find(key => key.startsWith('oncopath:agentteams-launch:')))).toBeTruthy()
+  await page.getByRole('button', { name: '关闭' }).click()
+
+  await startButton.click()
+  await expect.poll(() => requestBodies.length).toBe(2)
+  expect(requestBodies[1].request_id).toBe(requestId)
+  await expect(page).toHaveURL(/\/home\/consultation\/901\?patient_id=1$/)
+  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage)
+    .some(key => key.startsWith('oncopath:agentteams-launch:')))).toBe(false)
+})
+
+test('AgentTeams idempotency conflict discards the stale request id before retry', async ({ page }) => {
+  const requestBodies = []
+  await mockEmbedApis(page)
+  await page.route('**/api/v1/consultation/agentteams/availability', route => {
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ configured: true, enabled: true, upsell: {} }),
+    })
+  })
+  await page.route('**/api/v1/consultation/agentteams/start', route => {
+    requestBodies.push(route.request().postDataJSON())
+    if (requestBodies.length === 1) {
+      route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: {
+            error: 'agentteams_idempotency_conflict',
+            message: 'raw remote conflict details',
+          },
+        }),
+      })
+      return
+    }
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 901,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        external_share_token: 'share-token',
+        embed_url: '/agentteams/embed/conversation/embed-token',
+        status: 'created',
+      }),
+    })
+  })
+  await page.route('**/api/v1/consultation/agentteams/sessions/901**', route => {
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 901,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        embed_url: '/agentteams/embed/conversation/embed-token',
+        status: 'created',
+      }),
+    })
+  })
+
+  await page.goto(`${baseURL}/home/consultation`, { waitUntil: 'domcontentloaded' })
+  const startButton = page.getByRole('button', { name: '开始会诊' }).first()
+  await expect(startButton).toBeVisible()
+
+  await startButton.click()
+  await expect.poll(() => requestBodies.length).toBe(1)
+  const staleRequestId = requestBodies[0].request_id
+  await expect(page.getByText('会诊启动标识已失效')).toBeVisible()
+  await expect(page.getByText('raw remote conflict details')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage)
+    .some(key => key.startsWith('oncopath:agentteams-launch:')))).toBe(false)
+
+  await page.getByRole('button', { name: '关闭' }).click()
+  await startButton.click()
+  await expect.poll(() => requestBodies.length).toBe(2)
+  expect(requestBodies[1].request_id).not.toBe(staleRequestId)
+  expect(requestBodies[1].request_id).toMatch(/^[0-9a-f-]{36}$/i)
+  await expect(page).toHaveURL(/\/home\/consultation\/901\?patient_id=1$/)
+})
+
+test('legacy generic consultation titles remain distinguishable on desktop and mobile', async ({ page }) => {
+  await mockEmbedApis(page, {}, {
+    conversationsByPatient: {
+      1: [
+        {
+          id: 901,
+          title: '虚拟会诊',
+          patient_id: 1,
+          provider: 'agentteams',
+          external_session_status: 'completed',
+          status: 'completed',
+          created_at: '2026-07-09T10:00:00',
+          updated_at: '2026-07-09T10:00:00',
+        },
+        {
+          id: 902,
+          title: 'AgentTeams 会诊',
+          patient_id: 1,
+          provider: 'agentteams',
+          external_session_status: 'completed',
+          status: 'completed',
+          created_at: '2026-07-10T11:30:00',
+          updated_at: '2026-07-10T11:30:00',
+        },
+        {
+          id: 903,
+          title: '待生成会诊标题',
+          patient_id: 1,
+          provider: 'agentteams',
+          external_session_status: 'completed',
+          status: 'completed',
+          created_at: '2026-07-11T12:00:00',
+          updated_at: '2026-07-11T12:00:00',
+        },
+      ],
+    },
+  })
+
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await page.goto(`${baseURL}/home/consultation`)
+
+  await expect(page.locator('.desktop-card-title')).toHaveText([
+    '病情分析-#901',
+    '病情分析-#902',
+    '病情分析-#903',
+  ])
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.card-title')).toHaveText([
+    '病情分析-#901',
+    '病情分析-#902',
+    '病情分析-#903',
+  ])
 })
 
 test('AgentTeams history card fits the mobile viewport', async ({ page }, testInfo) => {
@@ -265,9 +492,12 @@ test('expired embed notification renews and replaces the iframe URL', async ({ p
   const counters = {}
   await mockEmbedApis(page, counters)
   let sessionReads = 0
+  const renewQueries = []
   await page.route('**/api/v1/consultation/agentteams/sessions/900**', route => {
     sessionReads += 1
-    const renewed = sessionReads > 1
+    const renew = new URL(route.request().url()).searchParams.get('renew')
+    renewQueries.push(renew)
+    const renewed = renew === 'true'
     route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
@@ -304,4 +534,5 @@ test('expired embed notification renews and replaces the iframe URL', async ({ p
     '/agentteams/embed/conversation/renewed-token',
   )
   expect(sessionReads).toBeGreaterThanOrEqual(2)
+  expect(renewQueries.slice(0, 2)).toEqual(['false', 'true'])
 })

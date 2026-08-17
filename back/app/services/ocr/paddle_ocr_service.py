@@ -6,7 +6,8 @@
 注意:
 - PaddleOCR 3.4.0 要求 PaddlePaddle >= 3.0.0
 - Windows用户需使用 PaddlePaddle 3.2.0 以避免oneDNN兼容性问题
-- 安装: pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+- CPU安装: pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+- NVIDIA GPU安装: pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 """
 import os
 
@@ -46,6 +47,32 @@ def _require_cv2():
         ) from exc
 
 
+def _configure_paddle_device(paddle_module, device: str) -> None:
+    """配置 Paddle 推理设备，并阻止 GPU 配置静默退回 CPU。"""
+    if device.startswith("gpu"):
+        paddle_device = getattr(paddle_module, "device", None)
+        is_compiled_with_cuda = getattr(paddle_device, "is_compiled_with_cuda", None)
+        if not callable(is_compiled_with_cuda) or not is_compiled_with_cuda():
+            raise RuntimeError(
+                "OCR_PADDLE_DEVICE 配置为 GPU，但当前 PaddlePaddle 不包含 CUDA 支持。"
+                "请使用 docker-compose.gpu.yml 重新构建 GPU 镜像。"
+            )
+
+    try:
+        paddle_module.set_device(device)
+    except Exception as exc:
+        if device.startswith("gpu"):
+            raise RuntimeError(
+                f"无法初始化 PaddleOCR GPU 设备 {device}。请检查 NVIDIA 驱动、"
+                "NVIDIA Container Toolkit、容器 GPU 权限以及 nvidia-smi 输出。"
+            ) from exc
+        raise RuntimeError(f"无法初始化 PaddleOCR CPU 设备: {exc}") from exc
+
+    if device == "cpu":
+        # CPU 环境禁用 oneDNN，规避 PaddlePaddle 3.x 的已知 PIR 转换问题。
+        paddle_module.set_flags({"FLAGS_use_onednn": False})
+
+
 class PaddleOCRService:
     """PaddleOCR服务封装"""
 
@@ -69,10 +96,7 @@ class PaddleOCRService:
                     "paddlepaddle/paddleocr/paddlex 后重试。"
                 ) from exc
 
-            # 显式设置使用 CPU 设备
-            paddle.set_device('cpu')
-            # 禁用 oneDNN
-            paddle.set_flags({"FLAGS_use_onednn": False})
+            _configure_paddle_device(paddle, ocr_config.paddle_device)
 
             # PaddleOCR 3.x API
             # 注意: 使用 predict() 方法，初始化参数已更新
@@ -84,6 +108,7 @@ class PaddleOCRService:
                 use_textline_orientation=ocr_config.paddle_use_angle_cls
             )
             self._initialized = True
+            logger.info("[PaddleOCR] 基础识别模型初始化完成，device=%s", ocr_config.paddle_device)
 
     async def extract_text_from_image(self, image_path: str) -> List[Dict]:
         """从图片/PDF中提取文本
@@ -458,10 +483,13 @@ class PaddleOCRService:
         """尝试初始化表格识别管线"""
         try:
             from paddleocr import TableRecognitionPipelineV2
-            self._table_pipeline = TableRecognitionPipelineV2(device="cpu")
+            self._table_pipeline = TableRecognitionPipelineV2(device=ocr_config.paddle_device)
             self._table_initialized = True
             self._table_init_failed = False
-            logger.info("[TablePipeline] TableRecognitionPipelineV2 (CPU) 初始化完成")
+            logger.info(
+                "[TablePipeline] TableRecognitionPipelineV2 初始化完成，device=%s",
+                ocr_config.paddle_device,
+            )
         except ImportError as e:
             logger.error(f"[TablePipeline] PaddleOCR 依赖未安装: {e}")
             self._table_pipeline = None

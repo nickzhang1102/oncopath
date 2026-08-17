@@ -48,7 +48,7 @@
               @click="handleOpenConversation(conv)"
             >
               <div class="card-header">
-                <span class="card-title">{{ conv.title || '虚拟会诊' }}</span>
+                <span class="card-title">{{ getConversationTitle(conv) }}</span>
                 <span :class="['status-tag', getStatusClass(getConversationStatus(conv))]">
                   {{ getStatusText(getConversationStatus(conv)) }}
                 </span>
@@ -87,7 +87,7 @@
           @click="handleOpenConversation(conv)"
         >
           <div class="desktop-card-header">
-            <span class="desktop-card-title">{{ conv.title || '虚拟会诊' }}</span>
+            <span class="desktop-card-title">{{ getConversationTitle(conv) }}</span>
             <span :class="['status-tag', getStatusClass(getConversationStatus(conv))]">
               {{ getStatusText(getConversationStatus(conv)) }}
             </span>
@@ -229,6 +229,20 @@ function handleBack() {
 
 function getConversationStatus(conv) {
   return conv?.external_session_status || conv?.status || 'new'
+}
+
+function getConversationTitle(conv) {
+  const title = String(conv?.title || '').trim()
+  if (
+    title &&
+    title !== '待生成会诊标题' &&
+    title !== '虚拟会诊' &&
+    title !== 'AgentTeams 会诊'
+  ) {
+    return title
+  }
+
+  return `病情分析${conv?.id ? `-#${conv.id}` : ''}`
 }
 
 function getStatusClass(status) {

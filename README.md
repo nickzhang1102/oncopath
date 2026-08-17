@@ -22,32 +22,69 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 
 ## 界面预览
 
-> 桌面端满宽展示以保留界面细节，移动端响应式适配。
+> 以下截图均由当前前端以固定的虚构演示数据自动生成。姓名、联系方式、证件号等身份字段已掩码，并带有“演示数据 · 已脱敏”标记；不含真实患者资料。生成与审查规则见 [截图维护说明](docs/screenshots/README.md)。
 
-### 桌面端
+### 首页与重要指标
 
-**🏠 仪表盘首页** — 患者概览 · 数据统计 · 异常指标追踪 · 待办提醒 · 重要指标趋势
+**首页重要指标列表** — 在一个工作台查看报告数量、异常项、待办和分组指标。
 
-<p align="center"><img src="docs/screenshots/desktop-home.png" alt="仪表盘首页" /></p>
+<p align="center"><img src="docs/screenshots/desktop-home-indicators-list.png" alt="桌面端首页重要指标列表，使用脱敏演示数据" /></p>
 
-**🔬 指标标准库** — 116+ 标准指标 · 分类导航 · 中英文对照 · 参考范围 · 指标对比
+**首页重要指标图表** — 结合参考范围与连续时间点查看关键指标的变化。
 
-<p align="center"><img src="docs/screenshots/desktop-indicators.png" alt="指标标准库" /></p>
+<p align="center"><img src="docs/screenshots/desktop-home-indicators-chart.png" alt="桌面端首页重要指标图表，使用脱敏演示数据" /></p>
 
-**⚙️ 管理后台** — 用户与会诊统计 · 近 30 天趋势图 · 指标库管理 · 系统配置
+### 报告归集
 
-<p align="center"><img src="docs/screenshots/desktop-admin.png" alt="管理后台" /></p>
+**检验报告** — 原始指标、异常状态、参考范围与 AI 辅助解读在同一详情页呈现。
 
-### 移动端（响应式）
+<p align="center"><img src="docs/screenshots/desktop-lab-report.png" alt="桌面端检验报告详情，使用脱敏演示数据" /></p>
 
-<p align="center">
-  <img src="docs/screenshots/mobile-login.png" width="200" alt="移动端登录" />
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/mobile-home.png" width="200" alt="移动端首页" />
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/mobile-indicators.png" width="200" alt="移动端指标查询" />
-</p>
-<p align="center"><sub>登录 · 首页仪表盘 · 指标查询 —— 桌面 / 平板 / 手机全端适配</sub></p>
+**检查报告** — 统一呈现检查所见、诊断意见和随访提示。
+
+<p align="center"><img src="docs/screenshots/desktop-exam-report.png" alt="桌面端检查报告详情，使用脱敏演示数据" /></p>
+
+**病理报告** — 按报告结构归集病理诊断、组织学、免疫组化与基因检测信息。
+
+<p align="center"><img src="docs/screenshots/desktop-pathology-report.png" alt="桌面端病理报告详情，使用脱敏演示数据" /></p>
+
+### 组合指标查询
+
+**组合指标表格** — 将多项相关指标按日期对齐，便于横向比较。
+
+<p align="center"><img src="docs/screenshots/desktop-indicator-comparison-table.png" alt="桌面端组合指标查询表格，使用脱敏演示数据" /></p>
+
+**组合指标趋势** — 选择一到两项指标进入趋势图，减少跨页面切换。
+
+<p align="center"><img src="docs/screenshots/desktop-indicator-comparison-chart.png" alt="桌面端组合指标趋势图，使用脱敏演示数据" /></p>
+
+### 虚拟会诊与知识库
+
+**虚拟会诊历史** — 查看会诊状态、摘要与继续跟进入口。
+
+<p align="center"><img src="docs/screenshots/desktop-consultation-list.png" alt="桌面端虚拟会诊历史，使用脱敏演示数据" /></p>
+
+**虚拟会诊工作台** — OncoPath 聚合资料并承接 AgentTeams 的多智能体会诊过程。
+
+<p align="center"><img src="docs/screenshots/desktop-consultation-room.png" alt="桌面端虚拟会诊工作台，使用脱敏演示数据" /></p>
+
+**知识库** — 用分类、搜索、摘要与预览沉淀随访和护理资料。
+
+<p align="center"><img src="docs/screenshots/desktop-knowledge-base.png" alt="桌面端知识库，使用脱敏演示数据" /></p>
+
+### 移动端
+
+移动端继续使用相同的脱敏演示数据，重点覆盖首页、报告、组合指标、虚拟会诊与知识库的窄屏操作路径。
+
+<p align="center"><img src="docs/screenshots/mobile-home.png" width="320" alt="移动端首页，使用脱敏演示数据" /></p>
+
+<p align="center"><img src="docs/screenshots/mobile-lab-report.png" width="320" alt="移动端检验报告，使用脱敏演示数据" /></p>
+
+<p align="center"><img src="docs/screenshots/mobile-indicator-comparison.png" width="320" alt="移动端组合指标趋势，使用脱敏演示数据" /></p>
+
+<p align="center"><img src="docs/screenshots/mobile-consultation.png" width="320" alt="移动端虚拟会诊，使用脱敏演示数据" /></p>
+
+<p align="center"><img src="docs/screenshots/mobile-knowledge-base.png" width="320" alt="移动端知识库，使用脱敏演示数据" /></p>
 
 ---
 
@@ -91,7 +128,7 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 | 数据库 | PostgreSQL 17 + pgvector 扩展 |
 | 缓存 / 锁 / 会话 | Redis 7 |
 | AI | OpenAI 兼容 LLM API（解读 / OCR 解析）；虚拟会诊执行由 AgentTeams 集成承接 |
-| OCR | PaddleOCR 3.x + LLM（OpenAI 兼容接口） |
+| OCR | PaddleOCR 3.x（默认 CPU，可选 NVIDIA GPU）+ LLM（OpenAI 兼容接口） |
 | 异步任务 | Celery + Redis（随访提醒定时任务） |
 | 安全 | Fernet 对称加密（PHI 字段静态加密）、bcrypt、JWT |
 | 限流 | SlowAPI |
@@ -368,6 +405,8 @@ pytest tests/integration/ -v
 ## 部署
 
 生产部署以 `docker-compose.yml` 为准。部署前请逐项确认【安全说明】中的必改项：
+
+PaddleOCR 默认使用 CPU。NVIDIA GPU 环境需要同时叠加 `docker-compose.gpu.yml`，并预先安装 NVIDIA Container Toolkit；两套环境的硬件要求、完整命令、验证、切换和排障见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./docs/deployment/ocr-cpu-gpu.md)。
 
 - 修改 `.env` 中的 `SECRET_KEY`、`DB_PASSWORD`、`REDIS_PASSWORD`、`ENCRYPTION_KEY`、`LLM_API_KEY`
 - 设置 `ADMIN_INITIAL_PASSWORD` 为强密码，并登录后立即修改 admin 密码

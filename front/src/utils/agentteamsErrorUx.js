@@ -34,6 +34,11 @@ const ERROR_COPY = {
     message: '当前无法连接 AgentTeams 服务，请稍后重试，或检查 AgentTeams 服务和反向代理是否正常运行。',
     cta_label: '查看配置说明',
   },
+  agentteams_idempotency_conflict: {
+    title: '会诊启动标识已失效',
+    message: '本次启动标识已用于其他会诊，请关闭提示后重新发起。',
+    cta_label: '重新发起',
+  },
   launch_failed: {
     title: '会诊启动失败',
     message: '当前未能启动 AgentTeams 会诊，请稍后重试；如果问题持续存在，请检查 AgentTeams 集成配置。',

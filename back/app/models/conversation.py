@@ -59,6 +59,7 @@ class ConsultationExternalSession(Base):
     id = Column(Integer, primary_key=True, index=True)
     conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     provider = Column(String(50), default="agentteams", nullable=False, index=True)
+    launch_request_id = Column(String(100), nullable=True)
     external_conversation_id = Column(String(100), nullable=False)
     external_session_id = Column(String(100), nullable=True)
     external_share_token = Column(String(200), nullable=True)
@@ -72,6 +73,7 @@ class ConsultationExternalSession(Base):
 
     __table_args__ = (
         Index("ix_consultation_external_provider_status", "provider", "status"),
+        UniqueConstraint("provider", "launch_request_id", name="uq_consultation_external_provider_request"),
     )
 
 

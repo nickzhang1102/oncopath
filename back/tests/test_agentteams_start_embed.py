@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import pytest
 import pytest_asyncio
@@ -15,6 +16,10 @@ from app.models.prompt import PromptConfig
 from app.models.user import LoginAccount
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
 from app.services.agentteams_start_service import AgentTeamsStartService
+from conftest import TestSessionLocal
+
+
+LAUNCH_REQUEST_ID = "12345678-1234-4234-8234-123456789abc"
 
 
 class FakeEncryptionService:
@@ -35,6 +40,7 @@ class FakeEncryptionService:
         ("service_account_not_configured", 403, "agentteams_service_account_not_configured", "AgentTeams 服务账户未配置"),
         ("integration_disabled", 403, "agentteams_integration_disabled", "AgentTeams 集成未启用"),
         ("unsupported_version", 426, "agentteams_unsupported_version", "AgentTeams 版本不兼容"),
+        ("idempotency_conflict", 409, "agentteams_idempotency_conflict", "该启动标识已用于其他会诊，请重新发起"),
     ],
 )
 def test_agentteams_error_mapping_returns_stable_safe_detail(
@@ -142,8 +148,10 @@ async def patient(db_session, test_user):
 
 @pytest_asyncio.fixture
 async def current_user_override(test_user):
+    current_user = LoginAccount(account_id=test_user.account_id)
+
     async def _override():
-        return test_user
+        return current_user
 
     app.dependency_overrides[get_current_user] = _override
     yield
@@ -221,7 +229,7 @@ async def test_agentteams_start_creates_mapping_and_returns_embed_url(
 
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
     assert response.status_code == 200
@@ -238,13 +246,235 @@ async def test_agentteams_start_creates_mapping_and_returns_embed_url(
     assert mapping.provider == "agentteams"
 
     assert calls[0]["integration_secret"] == "secret-1234"
-    assert calls[0]["request_id"] == f"oncopath-conversation-{data['conversation_id']}"
+    assert calls[0]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
+    assert mapping.launch_request_id == LAUNCH_REQUEST_ID
     assert calls[0]["payload"]["source_conversation_id"] == data["conversation_id"]
+    assert calls[0]["payload"]["title"] == f"prompt-#{data['conversation_id']}"
+    assert calls[0]["payload"]["title"] != "虚拟会诊"
+    assert len(calls[0]["payload"]["title"]) <= AgentTeamsStartService.MAX_TITLE_LENGTH
     assert calls[0]["payload"]["message"] == "患者资料 prompt"
+    assert calls[0]["payload"]["message"] not in calls[0]["payload"]["title"]
     assert calls[0]["payload"]["locale"] == "zh-CN"
+
+    conversation_result = await db_session.execute(
+        select(Conversation).where(Conversation.id == data["conversation_id"])
+    )
+    assert conversation_result.scalar_one().title == calls[0]["payload"]["title"]
 
     session_result = await db_session.execute(select(LeaderSession))
     assert session_result.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_agentteams_start_reuses_request_id_after_lost_success_response(
+    client, db_session, current_user_override, patient, monkeypatch
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    launch_calls = []
+    remote_result = {
+        "agentteams_conversation_id": 1001,
+        "agentteams_share_token": "share-token",
+        "agentteams_session_id": 2001,
+        "embed_path": "/embed/conversation/embed-token",
+        "status": "created",
+    }
+
+    async def fake_launch(self, base_url, integration_secret, request_id, payload):
+        launch_calls.append({"request_id": request_id, "payload": payload})
+        if len(launch_calls) == 1:
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "agentteams_unavailable", "message": "response lost"},
+            )
+        return remote_result
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
+
+    payload = {"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID}
+    first = await client.post("/api/v1/consultation/agentteams/start", json=payload)
+    assert first.status_code == 502
+    assert (await db_session.execute(select(Conversation))).scalars().all() == []
+
+    second = await client.post("/api/v1/consultation/agentteams/start", json=payload)
+    assert second.status_code == 200
+    assert [call["request_id"] for call in launch_calls] == [
+        f"oncopath-launch-{LAUNCH_REQUEST_ID}",
+        f"oncopath-launch-{LAUNCH_REQUEST_ID}",
+    ]
+    assert len((await db_session.execute(select(Conversation))).scalars().all()) == 1
+    mapping = (await db_session.execute(select(ConsultationExternalSession))).scalar_one()
+    assert mapping.launch_request_id == LAUNCH_REQUEST_ID
+
+    renew_calls = []
+    patch_embed_renew_success(monkeypatch, renew_calls)
+    renewed = await client.get(
+        f"/api/v1/consultation/agentteams/sessions/{mapping.conversation_id}",
+        params={"patient_id": patient.patient_id, "renew": True},
+    )
+    assert renewed.status_code == 200
+    assert renew_calls[0]["payload"]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
+
+
+@pytest.mark.asyncio
+async def test_agentteams_start_converges_to_concurrent_request_winner(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    winner_conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="并发 winner",
+        status="analyzing",
+        category="medical",
+    )
+    db_session.add(winner_conversation)
+    await db_session.commit()
+    await db_session.refresh(winner_conversation)
+    winner_conversation_id = winner_conversation.id
+
+    async def fake_launch(self, base_url, integration_secret, request_id, payload):
+        async with TestSessionLocal() as winner_session:
+            winner_session.add(ConsultationExternalSession(
+                conversation_id=winner_conversation_id,
+                provider=AgentTeamsStartService.PROVIDER,
+                launch_request_id=LAUNCH_REQUEST_ID,
+                external_conversation_id="1001",
+                external_session_id="2001",
+                embed_url="https://agentteams.example.com/embed/conversation/winner-token",
+                status="created",
+            ))
+            await winner_session.commit()
+        return {
+            "agentteams_conversation_id": 1001,
+            "agentteams_session_id": 2001,
+            "embed_path": "/embed/conversation/loser-token",
+            "status": "created",
+        }
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["conversation_id"] == winner_conversation_id
+    assert response.json()["embed_url"].endswith("/winner-token")
+    conversations = (await db_session.execute(select(Conversation))).scalars().all()
+    mappings = (
+        await db_session.execute(select(ConsultationExternalSession))
+    ).scalars().all()
+    assert [conversation.id for conversation in conversations] == [winner_conversation_id]
+    assert len(mappings) == 1
+
+
+@pytest.mark.asyncio
+async def test_agentteams_new_start_requires_stable_request_id(
+    client, current_user_override, patient
+):
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_agentteams_start_rejects_mismatched_request_and_conversation_ids(
+    client, db_session, current_user_override, patient, monkeypatch
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    patch_launch_success(monkeypatch, [])
+    patch_embed_renew_success(monkeypatch, [])
+
+    started = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+    assert started.status_code == 200
+    conversation_id = started.json()["conversation_id"]
+
+    wrong_conversation = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={
+            "patient_id": patient.patient_id,
+            "conversation_id": conversation_id + 999,
+            "request_id": LAUNCH_REQUEST_ID,
+        },
+    )
+    assert wrong_conversation.status_code == 409
+    assert wrong_conversation.json()["detail"]["error"] == "agentteams_idempotency_conflict"
+
+    wrong_request = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={
+            "patient_id": patient.patient_id,
+            "conversation_id": conversation_id,
+            "request_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        },
+    )
+    assert wrong_request.status_code == 409
+    assert wrong_request.json()["detail"]["error"] == "agentteams_idempotency_conflict"
+
+
+def test_conversation_title_is_bounded_and_rejects_ciphertext_as_label():
+    conversation = Conversation(id=321, created_at=datetime(2026, 8, 11, 12, 17))
+
+    title = AgentTeamsStartService._build_conversation_title("姓名：gAAAAencrypted-name", conversation)
+
+    assert title == "病情分析-#321"
+    assert len(title) <= AgentTeamsStartService.MAX_TITLE_LENGTH
+
+
+def test_conversation_title_adds_analysis_suffix_to_short_chinese_topic():
+    conversation = Conversation(id=21, created_at=datetime(2026, 8, 11, 12, 17))
+
+    title = AgentTeamsStartService._build_conversation_title(
+        "诊断：胰腺癌肝转移", conversation
+    )
+
+    assert title == "胰腺癌肝转移病情分析-#21"
+
+
+def test_conversation_title_keeps_suffix_when_topic_exceeds_summary_budget():
+    conversation = Conversation(id=22, created_at=datetime(2026, 8, 11, 12, 17))
+
+    title = AgentTeamsStartService._build_conversation_title(
+        "诊断：结直肠癌肝转移", conversation
+    )
+
+    assert title == "结直肠癌肝转病情分析-#22"
+
+
+def test_conversation_titles_are_distinct_for_same_patient_and_minute():
+    created_at = datetime(2026, 8, 11, 12, 17)
+
+    first = AgentTeamsStartService._build_conversation_title(
+        "患者资料", Conversation(id=321, created_at=created_at)
+    )
+    second = AgentTeamsStartService._build_conversation_title(
+        "患者资料", Conversation(id=322, created_at=created_at)
+    )
+
+    assert first == "病情分析-#321"
+    assert second == "病情分析-#322"
+    assert first != second
+
+
+def test_conversation_title_preserves_sequence_with_full_summary_budget():
+    conversation = Conversation(id=2147483647)
+
+    title = AgentTeamsStartService._build_conversation_title(
+        "diagnosisabcdefghijk", conversation
+    )
+
+    assert title.endswith("-#2147483647")
+    assert len(title) <= AgentTeamsStartService.MAX_TITLE_LENGTH
 
 
 @pytest.mark.asyncio
@@ -259,7 +489,7 @@ async def test_agentteams_start_sends_long_prompt_without_truncation(
 
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
     assert response.status_code == 200
@@ -301,7 +531,7 @@ async def test_agentteams_start_uses_saved_prompt_config_without_truncation(
 
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
     assert response.status_code == 200
@@ -344,7 +574,7 @@ async def test_agentteams_start_uses_patient_config_with_legacy_stale_account_id
 
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
     assert response.status_code == 200
@@ -363,7 +593,7 @@ async def test_legacy_local_consultation_endpoints_are_disabled(
 
     create_response = await client.post(
         "/api/v1/consultation/conversations",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
     assert create_response.status_code == 410
     assert create_response.json()["detail"] == disabled_detail
@@ -422,7 +652,7 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
 
     started = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
     conversation_id = started.json()["conversation_id"]
 
@@ -438,6 +668,7 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
             "integration_secret": "secret-1234",
             "payload": {
                 "source_conversation_id": conversation_id,
+                "request_id": f"oncopath-launch-{LAUNCH_REQUEST_ID}",
                 "agentteams_conversation_id": 1001,
                 "agentteams_session_id": 2001,
             },
@@ -453,12 +684,20 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
     assert read_response.status_code == 200
     assert read_response.json()["embed_url"] == "/agentteams/embed/conversation/renewed-token"
     assert read_response.json()["status"] == "running"
+    assert renew_calls == []
+
+    explicit_renew = await client.get(
+        f"/api/v1/consultation/agentteams/sessions/{conversation_id}",
+        params={"patient_id": patient.patient_id, "renew": True},
+    )
+    assert explicit_renew.status_code == 200
     assert renew_calls == [
         {
             "base_url": "/agentteams",
             "integration_secret": "secret-1234",
             "payload": {
                 "source_conversation_id": conversation_id,
+                "request_id": f"oncopath-launch-{LAUNCH_REQUEST_ID}",
                 "agentteams_conversation_id": 1001,
                 "agentteams_session_id": 2001,
             },
@@ -479,12 +718,87 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
 
 
 @pytest.mark.asyncio
+async def test_agentteams_start_rejects_non_owned_patient_with_403(
+    client, db_session, current_user_override, test_user
+):
+    await save_enabled_config(db_session)
+    other_owner = LoginAccount(
+        username="agentteams-other-owner",
+        password="test-password",
+        account_name="其他用户",
+        status="active",
+    )
+    db_session.add(other_owner)
+    await db_session.flush()
+    other_patient = Patient(
+        account_id=other_owner.account_id,
+        patient_name="其他患者",
+        gender="unknown",
+    )
+    db_session.add(other_patient)
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": other_patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "无权访问该患者"
+
+
+@pytest.mark.asyncio
+async def test_agentteams_restart_refreshes_legacy_title_before_renew(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch, "诊断：胰腺癌肝转移")
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="测试患者 · 2026-08-11 · 会诊#321",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    mapping = ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id="1001",
+        external_session_id="2001",
+        embed_url="https://agentteams.example.com/embed/conversation/token",
+        status="completed",
+    )
+    db_session.add(mapping)
+    await db_session.commit()
+    renew_calls = []
+    patch_embed_renew_success(monkeypatch, renew_calls)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={
+            "patient_id": patient.patient_id,
+            "conversation_id": conversation.id,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    await db_session.refresh(conversation)
+    await db_session.refresh(mapping)
+    assert conversation.title == f"胰腺癌肝转移病情分析-#{conversation.id}"
+    assert mapping.status == "completed"
+    assert len(renew_calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_agentteams_start_unconfigured_does_not_create_conversation(
     client, db_session, current_user_override, patient
 ):
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
     assert response.status_code == 503
@@ -511,7 +825,7 @@ async def test_agentteams_capacity_error_rolls_back_local_shell(
 
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id},
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
     assert response.status_code == 402
@@ -682,6 +996,22 @@ async def test_agentteams_status_update_requires_owner_and_persists_status(
 
     await db_session.refresh(mapping)
     assert mapping.status == 'web_search'
+
+    completed = await client.patch(
+        f'/api/v1/consultation/agentteams/sessions/{conversation.id}/status',
+        params={'patient_id': patient.patient_id},
+        json={'status': 'completed'},
+    )
+    assert completed.status_code == 200
+    assert completed.json()['status'] == 'completed'
+
+    stale = await client.patch(
+        f'/api/v1/consultation/agentteams/sessions/{conversation.id}/status',
+        params={'patient_id': patient.patient_id},
+        json={'status': 'monitoring'},
+    )
+    assert stale.status_code == 200
+    assert stale.json()['status'] == 'completed'
 
     invalid = await client.patch(
         f'/api/v1/consultation/agentteams/sessions/{conversation.id}/status',

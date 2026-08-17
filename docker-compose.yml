@@ -49,7 +49,11 @@ services:
 
   # Backend
   backend:
-    build: ./back
+    build:
+      context: ./back
+      args:
+        # 默认部署始终构建 CPU PaddlePaddle；GPU 请叠加 docker-compose.gpu.yml。
+        OCR_PADDLE_DEVICE: cpu
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -68,6 +72,7 @@ services:
       - OCR_LLM_API_KEY=${OCR_LLM_API_KEY:-}
       - OCR_LLM_API_BASE=${OCR_LLM_API_BASE:-https://api.openai.com/v1}
       - OCR_LLM_MODEL_NAME=${OCR_LLM_MODEL_NAME:-gpt-4o}
+      - OCR_PADDLE_DEVICE=cpu
       - INTERPRETATION_LLM_API_KEY=${INTERPRETATION_LLM_API_KEY:-}
       - INTERPRETATION_LLM_API_BASE=${INTERPRETATION_LLM_API_BASE:-}
       - INTERPRETATION_LLM_MODEL_NAME=${INTERPRETATION_LLM_MODEL_NAME:-}

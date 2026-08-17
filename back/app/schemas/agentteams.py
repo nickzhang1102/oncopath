@@ -3,7 +3,8 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from uuid import UUID
 
 
 class AgentTeamsUpsell(BaseModel):
@@ -42,6 +43,13 @@ class AgentTeamsAvailabilityResponse(BaseModel):
 class AgentTeamsStartRequest(BaseModel):
     patient_id: int
     conversation_id: Optional[int] = None
+    request_id: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def require_request_id_for_new_launch(self):
+        if self.conversation_id is None and self.request_id is None:
+            raise ValueError("request_id is required when starting a new consultation")
+        return self
 
 
 class AgentTeamsExternalSessionResponse(BaseModel):

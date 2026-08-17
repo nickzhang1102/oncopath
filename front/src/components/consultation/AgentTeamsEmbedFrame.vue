@@ -42,6 +42,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { mergeAgentTeamsStatus } from '@/utils/agentteamsStatus'
 
 const EMBED_STATUS_MESSAGE = 'oncopath:embed-status'
 const EMBED_RENEW_MESSAGE = 'oncopath:embed-renew-required'
@@ -81,7 +82,7 @@ let loadTimer = null
 watch(
   () => props.session?.status,
   status => {
-    if (status) currentStatus.value = status
+    currentStatus.value = mergeAgentTeamsStatus(currentStatus.value, status)
   }
 )
 
@@ -143,8 +144,10 @@ function handleEmbedStatus(event) {
   if (event.data?.type !== EMBED_STATUS_MESSAGE) return
   if (!EMBED_STATES.has(event.data.status)) return
 
-  currentStatus.value = event.data.status
-  emit('status-change', event.data.status)
+  const nextStatus = mergeAgentTeamsStatus(currentStatus.value, event.data.status)
+  if (nextStatus === currentStatus.value) return
+  currentStatus.value = nextStatus
+  emit('status-change', nextStatus)
 }
 
 onMounted(() => {

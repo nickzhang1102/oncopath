@@ -3,276 +3,230 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OncoPath — 智能健康信息整理与医疗报告管理</title>
-  <meta name="description" content="基于 FastAPI + Vue 3 的智能健康信息整理与医疗报告管理工具：OCR 指标识别、治疗时间线、AI 解读、虚拟会诊。">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <meta name="description" content="OncoPath 是面向家庭自部署的智能健康信息整理与医疗报告管理工具。">
+  <title>OncoPath | 智能健康信息整理</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- 导航栏 -->
-  <nav class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="#" class="nav-logo">
-        <span class="logo-icon">🛡️</span>
-        <span class="logo-text">OncoPath</span>
-      </a>
-      <div class="nav-links">
-        <a href="#features">功能</a>
-        <a href="#screenshots">界面</a>
-        <a href="#tech">技术栈</a>
-        <a href="#quickstart">快速开始</a>
-      </div>
-      <a href="https://github.com/nickzhang1102/oncopath" class="nav-github" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        GitHub
-      </a>
+  <nav class="site-nav" aria-label="主导航">
+    <a class="brand" href="#top" aria-label="OncoPath 首页">
+      <span class="brand-mark" aria-hidden="true">O</span>
+      <span>OncoPath</span>
+    </a>
+    <div class="nav-links">
+      <a href="#capabilities">能力</a>
+      <a href="#showcase">界面</a>
+      <a href="#deploy">部署</a>
     </div>
+    <a class="github-link" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">GitHub</a>
   </nav>
 
-  <!-- Hero -->
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-content">
-      <div class="hero-badge">Apache-2.0 开源 · 早期公开版</div>
-      <h1>OncoPath</h1>
-      <p class="hero-tagline">智能健康信息整理与医疗报告管理</p>
-      <p class="hero-desc">
-        将散落在各处的检验、检查、病理、用药、随访数据<br>
-        汇聚成一条可追溯的治疗时间线
-      </p>
-      <div class="hero-actions">
-        <a href="https://github.com/nickzhang1102/oncopath" class="btn btn-primary" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          GitHub 仓库
-        </a>
-        <a href="#quickstart" class="btn btn-outline">快速开始</a>
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">开源 · 家庭自部署</p>
+        <h1 id="hero-title">OncoPath</h1>
+        <p class="hero-lede">把检验、检查、病理与随访资料整理为可追溯、可理解的健康信息工作台。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">查看源码</a>
+          <a class="button secondary" href="#showcase">浏览界面</a>
+        </div>
+        <p class="hero-note">仅作健康信息整理与辅助分析，不构成医疗诊断或治疗建议。</p>
       </div>
-      <div class="hero-stats">
-        <div class="stat"><span class="stat-num">30+</span><span class="stat-label">API 模块</span></div>
-        <div class="stat"><span class="stat-num">116+</span><span class="stat-label">标准指标</span></div>
-        <div class="stat"><span class="stat-num">5</span><span class="stat-label">数据源聚合</span></div>
+      <a class="hero-screen" href="#showcase" aria-label="查看 OncoPath 界面预览">
+        <img src="screenshots/desktop-home-indicators-list.png" alt="OncoPath 仪表盘展示脱敏的重要指标和待办事项" fetchpriority="high">
+      </a>
+      <a class="hero-next" href="#capabilities">向下浏览 <span aria-hidden="true">↓</span></a>
+    </section>
+
+    <section class="intro" id="capabilities" aria-labelledby="capability-title">
+      <div class="section-heading">
+        <p class="eyebrow">从资料到脉络</p>
+        <h2 id="capability-title">围绕持续随访的核心能力</h2>
       </div>
-    </div>
-  </section>
-
-  <!-- 功能 -->
-  <section class="section features" id="features">
-    <div class="container">
-      <h2 class="section-title">核心功能</h2>
-      <p class="section-subtitle">从数据录入到智能分析，覆盖医疗信息管理全流程</p>
-      <div class="feature-grid">
-        <div class="feature-card">
-          <div class="feature-icon">📷</div>
-          <h3>OCR 指标提取</h3>
-          <p>PaddleOCR + LLM 智能识别检验报告图片，自动解析表格结构并匹配标准指标库，支持人工审查修正。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h3>治疗时间线</h3>
-          <p>统一聚合检验、检查、病理、用药、事件 5 张表，可视化治疗历程，支持里程碑标记与多维筛选。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🤖</div>
-          <h3>AI 检验解读</h3>
-          <p>LLM 将专业指标翻译为通俗语言，输出整体评估、异常解读、趋势变化与复查建议，自动创建随访提醒。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">👥</div>
-          <h3>虚拟会诊</h3>
-          <p>通过 AgentTeams 集成入口，由多 Agent 专家团队进行会诊分析，OncoPath 负责资料聚合与结果展示。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">💊</div>
-          <h3>用药与随访</h3>
-          <p>用药记录管理、服药打卡、依从性统计；随访提醒支持手动 / AI 解读 / 会诊三种来源，确认复查闭环。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>数据安全</h3>
-          <p>PHI 字段 Fernet 加密存储、SSO 单点登录、登录失败锁定、XSS 防护、路径遍历防护、PHI 审计日志。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📱</div>
-          <h3>全端适配</h3>
-          <p>桌面端侧边栏导航 + 移动端底部 Tab 栏，响应式布局自动适配，平板 / 手机 / 桌面一致体验。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📄</div>
-          <h3>导出与分享</h3>
-          <p>检验报告 / 时间线 / 完整病历 PDF 导出（内置中文字体）；报告分享令牌支持限时限次访问。</p>
-        </div>
+      <div class="capability-grid">
+        <article>
+          <span class="capability-index">01</span>
+          <h3>报告归集</h3>
+          <p>检验、检查和病理报告统一管理；OCR 识别结果可人工审查和修正。</p>
+        </article>
+        <article>
+          <span class="capability-index">02</span>
+          <h3>趋势理解</h3>
+          <p>将重要指标和多项组合指标放入同一时间轴，结合参考范围查看连续变化。</p>
+        </article>
+        <article>
+          <span class="capability-index">03</span>
+          <h3>会诊协作</h3>
+          <p>通过 AgentTeams 集成入口聚合患者资料、启动会诊并保留可追溯的历史壳。</p>
+        </article>
+        <article>
+          <span class="capability-index">04</span>
+          <h3>资料沉淀</h3>
+          <p>用分类知识库整理随访计划、检查准备和用药资料，方便后续查阅。</p>
+        </article>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- 界面预览 -->
-  <section class="section screenshots" id="screenshots">
-    <div class="container">
-      <h2 class="section-title">界面预览</h2>
-      <p class="section-subtitle">清爽的医疗信息界面，桌面与移动端全端适配</p>
-
-      <h3 class="sub-title">桌面端</h3>
-      <div class="screenshot-grid desktop-grid">
-        <div class="screenshot-item">
-          <img src="screenshots/desktop-home.png" alt="仪表盘首页" loading="lazy">
-          <p>仪表盘首页</p>
-        </div>
-        <div class="screenshot-item">
-          <img src="screenshots/desktop-indicators.png" alt="指标标准库" loading="lazy">
-          <p>指标标准库</p>
-        </div>
-        <div class="screenshot-item">
-          <img src="screenshots/desktop-admin.png" alt="管理后台" loading="lazy">
-          <p>管理后台</p>
-        </div>
+    <section class="showcase" id="showcase" aria-labelledby="showcase-title">
+      <div class="showcase-heading">
+        <p class="eyebrow">真实界面 · 脱敏演示数据</p>
+        <h2 id="showcase-title">每一次滚动，看到一个完整工作环节</h2>
+        <p>所有截图均由当前前端以固定虚构数据自动生成；身份字段已掩码处理。</p>
       </div>
 
-      <h3 class="sub-title">移动端</h3>
-      <div class="screenshot-grid mobile-grid">
-        <div class="screenshot-item mobile-item">
-          <img src="screenshots/mobile-login.png" alt="登录" loading="lazy">
-          <p>登录</p>
-        </div>
-        <div class="screenshot-item mobile-item">
-          <img src="screenshots/mobile-home.png" alt="首页" loading="lazy">
-          <p>首页</p>
-        </div>
-        <div class="screenshot-item mobile-item">
-          <img src="screenshots/mobile-indicators.png" alt="指标查询" loading="lazy">
-          <p>指标查询</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 技术栈 -->
-  <section class="section tech" id="tech">
-    <div class="container">
-      <h2 class="section-title">技术栈</h2>
-      <p class="section-subtitle">现代化全栈架构，安全与性能并重</p>
-      <div class="tech-columns">
-        <div class="tech-col">
-          <h3>后端</h3>
-          <div class="tech-tags">
-            <span class="tag">FastAPI</span>
-            <span class="tag">SQLAlchemy 2.0</span>
-            <span class="tag">PostgreSQL 17</span>
-            <span class="tag">Redis 7</span>
-            <span class="tag">Celery</span>
-            <span class="tag">PaddleOCR</span>
-            <span class="tag">Fernet 加密</span>
-            <span class="tag">SlowAPI</span>
+      <div class="showcase-story desktop-story" data-story="desktop">
+        <div class="showcase-stage" aria-live="polite">
+          <div class="showcase-copy">
+            <p class="showcase-index">01 / 10</p>
+            <h3>首页重要指标列表</h3>
+            <p>把报告数量、异常项、待办和分组指标收在同一处，先建立当前状态的全局视图。</p>
           </div>
+          <button class="showcase-image-button" type="button" aria-label="在新窗口查看首页重要指标列表原图">
+            <img src="screenshots/desktop-home-indicators-list.png" alt="首页重要指标列表" loading="eager">
+          </button>
+          <p class="showcase-progress" aria-hidden="true">01</p>
         </div>
-        <div class="tech-col">
-          <h3>前端</h3>
-          <div class="tech-tags">
-            <span class="tag">Vue 3</span>
-            <span class="tag">Vant 4</span>
-            <span class="tag">Pinia</span>
-            <span class="tag">Vite 8</span>
-            <span class="tag">ECharts 6</span>
-            <span class="tag">DOMPurify</span>
-            <span class="tag">axios</span>
-          </div>
-        </div>
-        <div class="tech-col">
-          <h3>部署</h3>
-          <div class="tech-tags">
-            <span class="tag">Docker</span>
-            <span class="tag">Docker Compose</span>
-            <span class="tag">Nginx</span>
-            <span class="tag">Alembic</span>
-            <span class="tag">GitHub Actions</span>
-          </div>
-        </div>
+        <article class="showcase-step active" data-index="01" data-title="首页重要指标列表" data-description="把报告数量、异常项、待办和分组指标收在同一处，先建立当前状态的全局视图。" data-image="screenshots/desktop-home-indicators-list.png" data-alt="首页重要指标列表"></article>
+        <article class="showcase-step" data-index="02" data-title="首页重要指标图表" data-description="从列表切换到趋势图，以参考范围和连续时间点观察关键指标的变化。" data-image="screenshots/desktop-home-indicators-chart.png" data-alt="首页重要指标图表"></article>
+        <article class="showcase-step" data-index="03" data-title="检验报告与 AI 解读" data-description="在一个报告详情中查看原始指标、异常状态、参考范围和辅助解读内容。" data-image="screenshots/desktop-lab-report.png" data-alt="检验报告详情"></article>
+        <article class="showcase-step" data-index="04" data-title="检查报告" data-description="检查所见、诊断意见和随访提示统一呈现，便于与既往记录连续对照。" data-image="screenshots/desktop-exam-report.png" data-alt="检查报告详情"></article>
+        <article class="showcase-step" data-index="05" data-title="病理报告" data-description="病理诊断、组织学、免疫组化和基因检测信息按报告结构清晰归集。" data-image="screenshots/desktop-pathology-report.png" data-alt="病理报告详情"></article>
+        <article class="showcase-step" data-index="06" data-title="组合指标表格" data-description="将多项相关指标按日期对齐，保留单位和完整时间点，适合快速横向比较。" data-image="screenshots/desktop-indicator-comparison-table.png" data-alt="组合指标表格"></article>
+        <article class="showcase-step" data-index="07" data-title="组合指标趋势" data-description="同一组合可选择一到两项进入双轴趋势图，减少跨页面来回切换。" data-image="screenshots/desktop-indicator-comparison-chart.png" data-alt="组合指标趋势图"></article>
+        <article class="showcase-step" data-index="08" data-title="虚拟会诊历史" data-description="会诊卡片展示状态、摘要和进入入口，方便从历史记录继续跟进。" data-image="screenshots/desktop-consultation-list.png" data-alt="虚拟会诊历史"></article>
+        <article class="showcase-step" data-index="09" data-title="虚拟会诊工作台" data-description="OncoPath 提供资料聚合和状态承接，AgentTeams 负责多智能体会诊过程。" data-image="screenshots/desktop-consultation-room.png" data-alt="嵌入式虚拟会诊工作台"></article>
+        <article class="showcase-step" data-index="10" data-title="护理指南知识库" data-description="用分类、搜索、摘要和预览沉淀资料，让复查和用药准备更容易查找。" data-image="screenshots/desktop-knowledge-base.png" data-alt="护理指南知识库"></article>
       </div>
-    </div>
-  </section>
 
-  <!-- 快速开始 -->
-  <section class="section quickstart" id="quickstart">
-    <div class="container">
-      <h2 class="section-title">快速开始</h2>
-      <p class="section-subtitle">Docker Compose 一键拉起完整环境</p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-content">
-            <h3>克隆与配置</h3>
-            <pre><code>git clone https://github.com/nickzhang1102/oncopath.git
+      <div class="showcase-story mobile-story" data-story="mobile">
+        <div class="showcase-stage" aria-live="polite">
+          <div class="showcase-copy">
+            <p class="showcase-index">01 / 05</p>
+            <h3>移动端首页</h3>
+            <p>在手机上先看待办、异常项与重要指标，关键状态保持可扫读。</p>
+          </div>
+          <button class="showcase-image-button" type="button" aria-label="在新窗口查看移动端首页原图">
+            <img src="screenshots/mobile-home.png" alt="移动端首页" loading="lazy">
+          </button>
+          <p class="showcase-progress" aria-hidden="true">01</p>
+        </div>
+        <article class="showcase-step active" data-index="01" data-title="移动端首页" data-description="在手机上先看待办、异常项与重要指标，关键状态保持可扫读。" data-image="screenshots/mobile-home.png" data-alt="移动端首页"></article>
+        <article class="showcase-step" data-index="02" data-title="移动端检验报告" data-description="报告指标按卡片排列，异常状态和参考范围在窄屏上仍清楚可读。" data-image="screenshots/mobile-lab-report.png" data-alt="移动端检验报告"></article>
+        <article class="showcase-step" data-index="03" data-title="移动端组合指标趋势" data-description="用触控友好的切换与勾选控件查看组合指标的连续变化。" data-image="screenshots/mobile-indicator-comparison.png" data-alt="移动端组合指标趋势"></article>
+        <article class="showcase-step" data-index="04" data-title="移动端虚拟会诊" data-description="会诊历史、状态和发起入口适配小屏操作。" data-image="screenshots/mobile-consultation.png" data-alt="移动端虚拟会诊"></article>
+        <article class="showcase-step" data-index="05" data-title="移动端知识库" data-description="随访资料和护理文档可在移动端分类查找与阅读。" data-image="screenshots/mobile-knowledge-base.png" data-alt="移动端知识库"></article>
+      </div>
+
+      <noscript>
+        <div class="no-js-gallery" aria-label="界面预览">
+          <figure><img src="screenshots/desktop-home-indicators-list.png" alt="首页重要指标列表"><figcaption>首页重要指标列表</figcaption></figure>
+          <figure><img src="screenshots/desktop-home-indicators-chart.png" alt="首页重要指标图表"><figcaption>首页重要指标图表</figcaption></figure>
+          <figure><img src="screenshots/desktop-lab-report.png" alt="检验报告详情"><figcaption>检验报告与 AI 解读</figcaption></figure>
+          <figure><img src="screenshots/desktop-exam-report.png" alt="检查报告详情"><figcaption>检查报告</figcaption></figure>
+          <figure><img src="screenshots/desktop-pathology-report.png" alt="病理报告详情"><figcaption>病理报告</figcaption></figure>
+          <figure><img src="screenshots/desktop-indicator-comparison-table.png" alt="组合指标表格"><figcaption>组合指标表格</figcaption></figure>
+          <figure><img src="screenshots/desktop-indicator-comparison-chart.png" alt="组合指标趋势图"><figcaption>组合指标趋势</figcaption></figure>
+          <figure><img src="screenshots/desktop-consultation-list.png" alt="虚拟会诊历史"><figcaption>虚拟会诊历史</figcaption></figure>
+          <figure><img src="screenshots/desktop-consultation-room.png" alt="虚拟会诊工作台"><figcaption>虚拟会诊工作台</figcaption></figure>
+          <figure><img src="screenshots/desktop-knowledge-base.png" alt="护理指南知识库"><figcaption>护理指南知识库</figcaption></figure>
+        </div>
+      </noscript>
+    </section>
+
+    <section class="deploy" id="deploy" aria-labelledby="deploy-title">
+      <div class="section-heading">
+        <p class="eyebrow">本地掌握数据</p>
+        <h2 id="deploy-title">从自部署开始</h2>
+      </div>
+      <div class="deploy-grid">
+        <div>
+          <span>01</span>
+          <h3>配置环境</h3>
+          <pre><code>git clone https://github.com/nickzhang1102/oncopath.git
 cd oncopath
-cp .env.example .env
-# 编辑 .env，填写 SECRET_KEY / DB_PASSWORD / ENCRYPTION_KEY / LLM_API_KEY</code></pre>
-          </div>
+cp .env.example .env</code></pre>
         </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-content">
-            <h3>启动服务</h3>
-            <pre><code>docker compose up -d</code></pre>
-            <p>backend 容器自动执行数据库迁移与种子数据初始化。</p>
-          </div>
+        <div>
+          <span>02</span>
+          <h3>启动默认 CPU 环境</h3>
+          <pre><code>docker compose up -d --build</code></pre>
+          <p>NVIDIA GPU 环境以独立 Compose 覆盖文件启用，详见仓库部署文档。</p>
         </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-content">
-            <h3>访问</h3>
-            <p>前端：<code>http://localhost:3000</code><br>
-            默认管理员：<code>admin</code> / <code>admin123</code>（登录后请立即修改密码）</p>
-          </div>
+        <div>
+          <span>03</span>
+          <h3>阅读安全说明</h3>
+          <p>上线前必须配置真实密钥、限制 CORS、修改管理员初始密码，并完成适用的医疗数据合规评估。</p>
+          <a href="https://github.com/nickzhang1102/oncopath/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">安全说明</a>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- 页脚 -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <h4>OncoPath</h4>
-          <p>智能健康信息整理与医疗报告管理工具。面向懂技术的患者家属和家庭自部署场景。</p>
-        </div>
-        <div class="footer-col">
-          <h4>链接</h4>
-          <ul>
-            <li><a href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener">GitHub 仓库</a></li>
-            <li><a href="https://github.com/nickzhang1102/oncopath/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">贡献指南</a></li>
-            <li><a href="https://github.com/nickzhang1102/oncopath/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0 许可证</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>文档</h4>
-          <ul>
-            <li><a href="https://github.com/nickzhang1102/oncopath/blob/main/README.md" target="_blank" rel="noopener">README</a></li>
-            <li><a href="https://github.com/nickzhang1102/oncopath/blob/main/docs/deployment/README.md" target="_blank" rel="noopener">部署指南</a></li>
-            <li><a href="https://github.com/nickzhang1102/oncopath/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">免责声明</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>⚠️ 本系统仅作健康信息整理与辅助分析，不构成医疗诊断或治疗建议。详见 <a href="https://github.com/nickzhang1102/oncopath/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">DISCLAIMER.md</a>。</p>
-        <p>&copy; 2026 nickzhang1102 · Licensed under Apache-2.0</p>
-      </div>
+  <footer>
+    <div>
+      <strong>OncoPath</strong>
+      <p>智能健康信息整理与医疗报告管理工具。</p>
     </div>
+    <p>公开截图均为脱敏演示数据。<a href="https://github.com/nickzhang1102/oncopath/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">免责声明</a></p>
   </footer>
 
+  <dialog class="image-dialog" aria-label="截图原图预览">
+    <button class="dialog-close" type="button" aria-label="关闭原图预览">×</button>
+    <img src="screenshots/desktop-home-indicators-list.png" alt="">
+  </dialog>
+
   <script>
-    // 导航栏滚动效果
-    const navbar = document.getElementById('navbar');
-    window.addEventListener('scroll', () => {
-      navbar.classList.toggle('scrolled', window.scrollY > 50);
+    const nav = document.querySelector('.site-nav');
+    const dialog = document.querySelector('.image-dialog');
+    const dialogImage = dialog.querySelector('img');
+    const closeDialog = dialog.querySelector('.dialog-close');
+
+    window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 18), { passive: true });
+
+    document.querySelectorAll('.showcase-story').forEach((story) => {
+      const stage = story.querySelector('.showcase-stage');
+      const index = stage.querySelector('.showcase-index');
+      const title = stage.querySelector('h3');
+      const description = stage.querySelector('.showcase-copy > p:last-child');
+      const image = stage.querySelector('img');
+      const imageButton = stage.querySelector('.showcase-image-button');
+      const progress = stage.querySelector('.showcase-progress');
+      const steps = [...story.querySelectorAll('.showcase-step')];
+
+      function activate(step) {
+        if (step.classList.contains('active')) return;
+        steps.forEach((item) => item.classList.toggle('active', item === step));
+        stage.classList.add('is-changing');
+        window.setTimeout(() => {
+          index.textContent = `${step.dataset.index} / ${String(steps.length).padStart(2, '0')}`;
+          title.textContent = step.dataset.title;
+          description.textContent = step.dataset.description;
+          image.src = step.dataset.image;
+          image.alt = step.dataset.alt;
+          imageButton.setAttribute('aria-label', `在新窗口查看${step.dataset.title}原图`);
+          progress.textContent = step.dataset.index;
+          stage.classList.remove('is-changing');
+        }, 120);
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) activate(visible.target);
+      }, { rootMargin: '-42% 0px -42% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] });
+      steps.forEach((step) => observer.observe(step));
     });
 
-    // 平滑滚动
-    document.querySelectorAll('a[href^="#"]').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        const target = document.querySelector(a.getAttribute('href'));
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.showcase-image-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const source = button.querySelector('img');
+        dialogImage.src = source.currentSrc || source.src;
+        dialogImage.alt = source.alt;
+        dialog.showModal();
       });
     });
+    closeDialog.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
   </script>
 </body>
 </html>

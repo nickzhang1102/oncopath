@@ -50,6 +50,7 @@ __pycache__/
 /docs/deployment/*
 !/docs/deployment/docker-deploy.md
 !/docs/deployment/agentteams-integration.md
+!/docs/deployment/ocr-cpu-gpu.md
 !/docs/testing/
 /docs/testing/*
 !/docs/testing/agentteams-consultation.md
@@ -59,6 +60,8 @@ __pycache__/
 /back/migrations/private_versions/
 /.pytest_cache/
 /back/.pytest_cache/
+/website/.vite/
+/website/.vite-website*.log
 
 # AI 协作文档与工具配置（保留本地，不上传 git）
 CLAUDE.md

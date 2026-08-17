@@ -55,7 +55,9 @@ openai>=1.0.0
 # pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
 torch==2.13.0
 # 注意: PaddlePaddle 3.3.0在Windows上存在oneDNN兼容性问题，需使用3.2.0
-# 安装命令: pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+# CPU: pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+# NVIDIA GPU (CUDA 12.6): pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+# Dockerfile 会按部署环境选择其中一个 wheel；此处保留 CPU 依赖供本地默认安装。
 paddlepaddle==3.2.0
 paddleocr==3.5.0
 paddlex[ocr]==3.5.2

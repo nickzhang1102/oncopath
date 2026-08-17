@@ -73,6 +73,7 @@ async def start_agentteams_consultation(
 async def get_agentteams_external_session(
     conversation_id: int,
     patient_id: int = Query(ge=1),
+    renew: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user),
 ):
@@ -83,6 +84,7 @@ async def get_agentteams_external_session(
         conversation_id,
         current_user.account_id,
         patient_id=patient_id,
+        renew_embed=renew,
     )
 
 

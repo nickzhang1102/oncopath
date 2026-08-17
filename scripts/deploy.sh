@@ -1,16 +1,32 @@
 #!/bin/bash
 
 # 医疗报告系统部署脚本
-# 用法: bash scripts/deploy.sh [environment]
+# 用法: bash scripts/deploy.sh [environment] [ocr]
 # environment: development | production (默认: production)
+# ocr: cpu | gpu (默认: cpu)
 
 set -e
 
 ENVIRONMENT=${1:-production}
+OCR_DEPLOYMENT=${2:-cpu}
+
+case "${OCR_DEPLOYMENT}" in
+    cpu)
+        COMPOSE_ARGS=(-f docker-compose.yml)
+        ;;
+    gpu)
+        COMPOSE_ARGS=(-f docker-compose.yml -f docker-compose.gpu.yml)
+        ;;
+    *)
+        echo "❌ OCR 部署环境仅支持 cpu 或 gpu"
+        exit 1
+        ;;
+esac
 
 echo "=========================================="
 echo "  医疗报告系统 v2.0 部署脚本"
 echo "  环境: ${ENVIRONMENT}"
+echo "  PaddleOCR: ${OCR_DEPLOYMENT}"
 echo "=========================================="
 
 # 检查环境变量文件
@@ -43,17 +59,17 @@ echo "✅ 依赖检查通过"
 # 3. 构建镜像
 echo ""
 echo "[3/6] 构建 Docker 镜像..."
-docker compose build --no-cache
+docker compose "${COMPOSE_ARGS[@]}" build --no-cache
 
 # 4. 停止旧服务
 echo ""
 echo "[4/6] 停止旧服务..."
-docker compose down
+docker compose "${COMPOSE_ARGS[@]}" down
 
 # 5. 启动新服务
 echo ""
 echo "[5/6] 启动新服务..."
-docker compose up -d
+docker compose "${COMPOSE_ARGS[@]}" up -d
 
 # 6. 检查服务状态
 echo ""
@@ -86,8 +102,15 @@ echo "   前端: http://localhost:${FRONTEND_PORT}"
 echo "   API:  http://localhost:${FRONTEND_PORT}/api"
 echo ""
 echo "📋 常用命令:"
-echo "   查看日志:   docker compose logs -f"
-echo "   查看状态:   docker compose ps"
-echo "   停止服务:   docker compose down"
-echo "   重启服务:   docker compose restart"
+if [ "${OCR_DEPLOYMENT}" = "gpu" ]; then
+    echo "   查看日志:   docker compose -f docker-compose.yml -f docker-compose.gpu.yml logs -f"
+    echo "   查看状态:   docker compose -f docker-compose.yml -f docker-compose.gpu.yml ps"
+    echo "   停止服务:   docker compose -f docker-compose.yml -f docker-compose.gpu.yml down"
+    echo "   重启服务:   docker compose -f docker-compose.yml -f docker-compose.gpu.yml restart"
+else
+    echo "   查看日志:   docker compose -f docker-compose.yml logs -f"
+    echo "   查看状态:   docker compose -f docker-compose.yml ps"
+    echo "   停止服务:   docker compose -f docker-compose.yml down"
+    echo "   重启服务:   docker compose -f docker-compose.yml restart"
+fi
 echo ""

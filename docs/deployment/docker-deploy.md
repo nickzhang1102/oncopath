@@ -5,6 +5,7 @@
 ## 目录
 
 - [环境要求](#环境要求)
+- [选择 PaddleOCR CPU 或 GPU 环境](#选择-paddleocr-cpu-或-gpu-环境)
 - [快速部署（首次）](#快速部署首次)
 - [详细步骤](#详细步骤)
 - [数据库迁移](#数据库迁移)
@@ -26,6 +27,8 @@
 | 内存 | 4 GB | 8 GB |
 | 存储 | 20 GB | 50 GB SSD |
 
+GPU 部署另需 NVIDIA GPU（建议 8 GB 或以上显存）、支持 CUDA 12.6 的驱动和 NVIDIA Container Toolkit。完整前提与验证见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./ocr-cpu-gpu.md)。
+
 > 后端服务含 PaddleOCR 和 LLM 模型缓存，首次启动会下载约 2-3 GB 模型文件。
 
 ### 软件要求
@@ -35,6 +38,12 @@
 | Docker | 20.10+ | `docker --version` |
 | Docker Compose | 2.0+ | `docker compose version` |
 | Git | 任意 | `git --version` |
+
+## 选择 PaddleOCR CPU 或 GPU 环境
+
+- **CPU 是默认环境**：仅使用 `docker-compose.yml`，适合没有 NVIDIA GPU 的机器。
+- **GPU 是独立覆盖环境**：始终同时使用 `docker-compose.yml` 和 `docker-compose.gpu.yml`，安装 PaddlePaddle 3.2.0 CUDA 12.6 wheel，并使用 `gpu:0`。
+- 两种环境不能通过重启热切换；切换必须重建 backend。详细构建、验证、切换和排障命令见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./ocr-cpu-gpu.md)。
 
 ### 网络要求（国内环境）
 
@@ -66,7 +75,7 @@ sed -i "s/your-super-secret-key-change-this-in-production-must-be-at-least-32-ch
 sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=${ENCRYPTION_KEY}|" .env
 # 手动编辑 .env，填写 DB_PASSWORD、REDIS_PASSWORD、LLM_API_KEY 等
 
-# 3. 构建并启动
+# 3. 构建并启动（默认 CPU 环境）
 docker compose -p oncopath up -d --build
 
 # 4. backend entrypoint 自动执行 Alembic 迁移和幂等种子初始化
@@ -150,7 +159,7 @@ docker compose -p oncopath up -d --build
 docker compose -p oncopath logs -f backend
 ```
 
-> 首次构建会下载 PaddleOCR 模型（约 2 GB），后续构建会利用 Docker 缓存。
+> 首次构建会下载 PaddleOCR 模型（约 2 GB），后续构建会利用 Docker 缓存。NVIDIA GPU 部署不要直接使用本命令，应按 [GPU 部署步骤](./ocr-cpu-gpu.md#nvidia-gpu-环境) 同时叠加 `docker-compose.gpu.yml`。
 
 ### 第 4 步：检查服务状态
 
@@ -502,6 +511,8 @@ docker compose -p oncopath logs frontend
 ```
 
 ### OCR 功能不工作
+
+先确认部署选择的是 CPU 还是 GPU；GPU 环境的 wheel、容器权限与设备检查见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./ocr-cpu-gpu.md#故障排查)。
 
 ```bash
 # 检查模型是否下载成功

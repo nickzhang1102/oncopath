@@ -1,0 +1,17 @@
+# PaddleOCR NVIDIA GPU 部署覆盖文件。
+# 必须与 docker-compose.yml 同时使用；不要单独启动本文件。
+services:
+  backend:
+    build:
+      context: ./back
+      args:
+        OCR_PADDLE_DEVICE: gpu:0
+    environment:
+      - OCR_PADDLE_DEVICE=gpu:0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

@@ -1,4 +1,7 @@
 """OCR服务配置"""
+import re
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,6 +46,15 @@ class OCRConfig(BaseSettings):
     # 内容区域裁剪配置
     crop_padding: int = 24  # 裁剪边距
     crop_min_area_ratio: float = 0.98  # 裁剪后面积 >= 原面积 * 此比例时不裁剪
+
+    @field_validator("paddle_device")
+    @classmethod
+    def validate_paddle_device(cls, value: str) -> str:
+        """只接受 PaddleOCR 支持的本地 CPU/GPU 设备格式。"""
+        device = value.strip().lower()
+        if device == "cpu" or re.fullmatch(r"gpu(?::\d+)?", device):
+            return device
+        raise ValueError("OCR_PADDLE_DEVICE 仅支持 cpu、gpu 或 gpu:<非负设备序号>")
 
     model_config = SettingsConfigDict(
         env_prefix="OCR_",

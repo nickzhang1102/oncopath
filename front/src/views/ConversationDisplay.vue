@@ -38,6 +38,7 @@ import AgentTeamsEmbedFrame from '@/components/consultation/AgentTeamsEmbedFrame
 import AgentTeamsErrorDialog from '@/components/consultation/AgentTeamsErrorDialog.vue'
 import { consultationApi } from '@/api/consultation'
 import { getAgentTeamsErrorUx, isAgentTeamsError } from '@/utils/agentteamsErrorUx'
+import { mergeAgentTeamsStatus } from '@/utils/agentteamsStatus'
 
 const router = useRouter()
 const route = useRoute()
@@ -64,21 +65,34 @@ function handleBack() {
 
 function handleExternalStatusChange(status) {
   if (!externalSession.value) return
-  externalSession.value = { ...externalSession.value, status }
+  const nextStatus = mergeAgentTeamsStatus(externalSession.value.status, status)
+  if (nextStatus === externalSession.value.status) return
+  externalSession.value = { ...externalSession.value, status: nextStatus }
   const conversationId = externalSession.value.conversation_id
   const patientId = Number(route.query.patient_id)
   statusUpdateChain = statusUpdateChain
     .then(() => consultationApi.updateAgentTeamsExternalStatus(
       conversationId,
       patientId,
-      status,
+      nextStatus,
     ))
+    .then(updatedSession => {
+      if (externalSession.value?.conversation_id !== conversationId) return
+      externalSession.value = {
+        ...externalSession.value,
+        ...updatedSession,
+        status: mergeAgentTeamsStatus(
+          externalSession.value.status,
+          updatedSession?.status,
+        ),
+      }
+    })
     .catch(() => {})
 }
 
 async function handleEmbedRenewRequired() {
   if (renewPromise) return renewPromise
-  renewPromise = loadExternalSession()
+  renewPromise = loadExternalSession({ renew: true })
     .catch(error => {
       if (isAgentTeamsError(error)) setAgentTeamsError(error)
       else setPlainError('AgentTeams 会诊链接续期失败')
@@ -111,7 +125,7 @@ function handleAgentTeamsErrorCta(url) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-async function loadExternalSession() {
+async function loadExternalSession({ renew = false } = {}) {
   const token = String(getRouteToken())
   const patientId = String(route.query.patient_id || '')
   externalSession.value = null
@@ -138,6 +152,7 @@ async function loadExternalSession() {
     externalSession.value = await consultationApi.getAgentTeamsExternalSession(
       token,
       patientId,
+      renew,
     )
   } catch (error) {
     if (error?.response?.status === 404) {

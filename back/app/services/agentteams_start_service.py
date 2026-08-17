@@ -1,11 +1,13 @@
 """AgentTeams 会诊启动服务"""
 
 import logging
+import re
 from typing import Any
 
 import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -31,6 +33,10 @@ class AgentTeamsStartService:
     PROVIDER = "agentteams"
     CLIENT_LOCALE = "zh-CN"
     REQUEST_TIMEOUT_SECONDS = 20.0
+    MAX_TITLE_LENGTH = 32
+    TITLE_SUMMARY_LENGTH = 10
+    GENERIC_TITLES = {"", "待生成会诊标题", "虚拟会诊", "AgentTeams 会诊"}
+    TERMINAL_STATUSES = {"completed", "failed", "stopped"}
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -48,10 +54,44 @@ class AgentTeamsStartService:
             )
 
         await PatientService.verify_ownership(self.db, data.patient_id, account_id)
+        if data.request_id is not None:
+            existing_request_mapping = await self._get_external_session_by_request_id(
+                str(data.request_id), account_id, data.patient_id
+            )
+            if existing_request_mapping is not None:
+                if (
+                    data.conversation_id is not None
+                    and existing_request_mapping.conversation_id != data.conversation_id
+                ):
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "error": "agentteams_idempotency_conflict",
+                            "message": "启动标识与会诊记录不匹配，请重新发起",
+                        },
+                    )
+                await self._renew_embed_url(existing_request_mapping)
+                return AgentTeamsStartResponse(**self._to_response(existing_request_mapping).model_dump())
         conversation = await self._resolve_conversation(data, account_id)
         existing_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=False)
-        if existing_mapping:
-            renewed_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=True)
+        if (
+            existing_mapping is not None
+            and data.request_id is not None
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "agentteams_idempotency_conflict",
+                    "message": "启动标识与会诊记录不匹配，请重新发起",
+                },
+            )
+        if existing_mapping and not self._needs_title_refresh(conversation.title):
+            renewed_mapping = await self.get_external_session(
+                conversation.id,
+                account_id,
+                raise_not_found=True,
+                renew_embed=True,
+            )
             return AgentTeamsStartResponse(**renewed_mapping.model_dump())
 
         prompt_config = await self._load_prompt_config(data.patient_id, account_id)
@@ -66,6 +106,19 @@ class AgentTeamsStartService:
                 detail={"error": "launch_failed", "message": "无法生成会诊提示词"},
             )
 
+        if self._needs_title_refresh(conversation.title):
+            conversation.title = self._build_conversation_title(prompt, conversation)
+            await self.db.flush()
+
+        if existing_mapping:
+            renewed_mapping = await self.get_external_session(
+                conversation.id,
+                account_id,
+                raise_not_found=True,
+                renew_embed=True,
+            )
+            return AgentTeamsStartResponse(**renewed_mapping.model_dump())
+
         logger.info(
             "AgentTeams launch prompt prepared: conversation_id=%s patient_id=%s "
             "prompt_config_id=%s prompt_chars=%s",
@@ -78,7 +131,8 @@ class AgentTeamsStartService:
         conversation.status = "analyzing"
         await self.db.flush()
 
-        request_id = f"oncopath-conversation-{conversation.id}"
+        launch_request_id = str(data.request_id) if data.request_id is not None else None
+        request_id = self._build_remote_request_id(launch_request_id, conversation.id)
         try:
             launch_result = await self._call_agentteams_launch(
                 base_url=config.base_url,
@@ -89,7 +143,7 @@ class AgentTeamsStartService:
                     "source_user_id": f"oncopath:{account_id}",
                     "source_patient_id": str(data.patient_id),
                     "source_conversation_id": conversation.id,
-                    "title": conversation.title or "虚拟会诊",
+                    "title": conversation.title,
                     "message": prompt,
                     "locale": self.CLIENT_LOCALE,
                     "metadata": {"created_from": "oncopath"},
@@ -109,6 +163,7 @@ class AgentTeamsStartService:
         mapping = ConsultationExternalSession(
             conversation_id=conversation.id,
             provider=self.PROVIDER,
+            launch_request_id=launch_request_id,
             external_conversation_id=str(launch_result["agentteams_conversation_id"]),
             external_session_id=self._optional_str(launch_result.get("agentteams_session_id")),
             external_share_token=self._optional_str(launch_result.get("agentteams_share_token")),
@@ -116,7 +171,31 @@ class AgentTeamsStartService:
             status=str(launch_result.get("status") or "created"),
         )
         self.db.add(mapping)
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            if launch_request_id is not None:
+                winner = await self._get_external_session_by_request_id(
+                    launch_request_id,
+                    account_id,
+                    data.patient_id,
+                )
+                if winner is not None:
+                    logger.info(
+                        "AgentTeams launch converged to concurrent winner: request_id=%s conversation_id=%s",
+                        launch_request_id,
+                        winner.conversation_id,
+                    )
+                    return AgentTeamsStartResponse(**self._to_response(winner).model_dump())
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "agentteams_idempotency_conflict",
+                        "message": "该启动标识已用于其他会诊，请重新发起",
+                    },
+                ) from exc
+            raise
         await self.db.refresh(mapping)
         return self._to_response(mapping)
 
@@ -154,6 +233,7 @@ class AgentTeamsStartService:
         account_id: int,
         patient_id: int | None = None,
         raise_not_found: bool = True,
+        renew_embed: bool = False,
     ) -> AgentTeamsExternalSessionResponse | None:
         filters = [
             ConsultationExternalSession.conversation_id == conversation_id,
@@ -176,9 +256,27 @@ class AgentTeamsStartService:
             if raise_not_found:
                 raise HTTPException(status_code=404, detail="外部会诊映射不存在")
             return None
-        if raise_not_found:
+        if renew_embed:
             await self._renew_embed_url(mapping)
         return self._to_response(mapping)
+
+    async def _get_external_session_by_request_id(
+        self,
+        request_id: str,
+        account_id: int,
+        patient_id: int,
+    ) -> ConsultationExternalSession | None:
+        result = await self.db.execute(
+            select(ConsultationExternalSession)
+            .join(Conversation, Conversation.id == ConsultationExternalSession.conversation_id)
+            .where(
+                ConsultationExternalSession.provider == self.PROVIDER,
+                ConsultationExternalSession.launch_request_id == request_id,
+                Conversation.user_id == account_id,
+                Conversation.patient_id == patient_id,
+            )
+        )
+        return result.scalar_one_or_none()
 
     async def _renew_embed_url(self, mapping: ConsultationExternalSession) -> None:
         config = await AgentTeamsConfigService(self.db).get_runtime_config()
@@ -194,6 +292,9 @@ class AgentTeamsStartService:
                 integration_secret=config.integration_secret,
                 payload={
                     "source_conversation_id": mapping.conversation_id,
+                    "request_id": self._build_remote_request_id(
+                        mapping.launch_request_id, mapping.conversation_id
+                    ) if mapping.launch_request_id else None,
                     "agentteams_conversation_id": self._optional_int(mapping.external_conversation_id),
                     "agentteams_session_id": self._optional_int(mapping.external_session_id),
                 },
@@ -215,7 +316,10 @@ class AgentTeamsStartService:
             )
 
         mapping.embed_url = self._build_embed_url(config.base_url, str(embed_path))
-        mapping.status = str(renew_result.get("status") or mapping.status or "created")
+        mapping.status = self._merge_external_status(
+            mapping.status,
+            renew_result.get("status"),
+        )
         await self.db.flush()
         await self.db.commit()
         await self.db.refresh(mapping)
@@ -244,12 +348,16 @@ class AgentTeamsStartService:
         if mapping is None:
             raise HTTPException(status_code=404, detail="外部会诊映射不存在")
 
-        mapping.status = status
+        mapping.status = self._merge_external_status(mapping.status, status)
         await self.db.commit()
         await self.db.refresh(mapping)
         return self._to_response(mapping)
 
-    async def _resolve_conversation(self, data: AgentTeamsStartRequest, account_id: int) -> Conversation:
+    async def _resolve_conversation(
+        self,
+        data: AgentTeamsStartRequest,
+        account_id: int,
+    ) -> Conversation:
         service = ConversationService(self.db)
         if data.conversation_id:
             conversation = await service.get_conversation_by_id(data.conversation_id)
@@ -257,11 +365,75 @@ class AgentTeamsStartService:
                 raise HTTPException(status_code=404, detail="会诊记录不存在或无权访问")
             return conversation
 
-        return await service.create_conversation(
+        conversation = await service.create_conversation(
             user_id=account_id,
             patient_id=data.patient_id,
-            title="虚拟会诊",
+            title="待生成会诊标题",
         )
+        return conversation
+
+    @classmethod
+    def _is_generic_title(cls, title: str | None) -> bool:
+        return (title or "").strip() in cls.GENERIC_TITLES
+
+    @classmethod
+    def _needs_title_refresh(cls, title: str | None) -> bool:
+        normalized = (title or "").strip()
+        # 兼容 2026-08-11 前使用的“患者标识 · 创建时间 · 会诊#编号”标题。
+        return cls._is_generic_title(normalized) or bool(
+            re.search(r"·\s*(?:会诊\s*)?#\d+", normalized)
+        )
+
+    @classmethod
+    def _build_conversation_title(
+        cls,
+        prompt: str,
+        conversation: Conversation,
+    ) -> str:
+        """从会诊提示词提取不超过 10 字的主题，再拼接稳定编号。"""
+        summary = cls._summarize_prompt_title(prompt)
+        suffix = f"-#{conversation.id}"
+        summary_budget = max(cls.MAX_TITLE_LENGTH - len(suffix), 0)
+        return f"{summary[:summary_budget]}{suffix}"
+
+    @classmethod
+    def _summarize_prompt_title(cls, prompt: str) -> str:
+        raw_text = str(prompt or "").replace("\r", "")
+        lines = [re.sub(r"\s+", " ", line).strip() for line in raw_text.split("\n")]
+        lines = [line for line in lines if line]
+        if not lines:
+            return "病情分析"
+
+        # 优先取诊断/病理/病史字段，避免标题落到“姓名、性别”等低信号内容。
+        candidate = ""
+        for line in lines:
+            labeled = re.match(
+                r"(?:病理诊断|诊断结果|诊断意见|诊断|癌种|肿瘤类型|病史)\s*[:：]\s*(.+)$",
+                line,
+            )
+            if labeled:
+                candidate = labeled.group(1)
+                break
+        if not candidate:
+            candidate = lines[0].split("：", 1)[-1]
+
+        candidate = re.sub(r"^[\s#：:：、，,。.!！?？]+|[\s#：:：、，,。.!！?？]+$", "", candidate)
+        candidate = re.sub(r"(?:未填写|无|暂无|不详)$", "", candidate).strip()
+        if not candidate:
+            return "病情分析"
+
+        # 过滤提示词里的模板指令，保留疾病主题；中文标题按字符数控制。
+        candidate = re.sub(r"^(?:请根据以上信息|请提供|请给出|患者资料)\s*", "", candidate)
+        candidate = re.sub(r"[\s，,、；;。.!！?？:：]+", "", candidate)
+        if candidate.startswith(("gAAAA", "enc")):
+            return "病情分析"
+
+        # 中文主题统一保留固定语义后缀，主题总长度控制在 10 字内。
+        if re.fullmatch(r"[\u3400-\u9fff]+", candidate):
+            suffix = "病情分析"
+            candidate = f"{candidate[: cls.TITLE_SUMMARY_LENGTH - len(suffix)]}{suffix}"
+        candidate = candidate[: cls.TITLE_SUMMARY_LENGTH]
+        return candidate or "病情分析"
 
     async def _call_agentteams_launch(
         self,
@@ -353,6 +525,12 @@ class AgentTeamsStartService:
         return f"{base}{path}"
 
     @staticmethod
+    def _build_remote_request_id(request_id: str | None, conversation_id: int) -> str:
+        if request_id:
+            return f"oncopath-launch-{request_id}"
+        return f"oncopath-conversation-{conversation_id}"
+
+    @staticmethod
     def _raise_agentteams_error(response: httpx.Response) -> None:
         error_code = ""
         try:
@@ -369,6 +547,7 @@ class AgentTeamsStartService:
             "service_account_not_configured": (403, "agentteams_service_account_not_configured", "AgentTeams 服务账户未配置"),
             "integration_disabled": (403, "agentteams_integration_disabled", "AgentTeams 集成未启用"),
             "unsupported_version": (426, "agentteams_unsupported_version", "AgentTeams 版本不兼容"),
+            "idempotency_conflict": (409, "agentteams_idempotency_conflict", "该启动标识已用于其他会诊，请重新发起"),
         }
         status_code, mapped_error, message = mapping.get(
             error_code,
@@ -390,6 +569,13 @@ class AgentTeamsStartService:
             embed_url=mapping.embed_url,
             status=mapping.status,
         )
+
+    @classmethod
+    def _merge_external_status(cls, current: str | None, incoming: Any) -> str:
+        current_status = str(current or "created")
+        if current_status in cls.TERMINAL_STATUSES:
+            return current_status
+        return str(incoming or current_status)
 
     @staticmethod
     def _optional_str(value: Any) -> str | None:

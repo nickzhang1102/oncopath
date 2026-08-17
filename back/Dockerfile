@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# 由 Compose 部署环境在构建时选择；支持 cpu、gpu 或 gpu:<设备序号>。
+ARG OCR_PADDLE_DEVICE=cpu
+
 # 安装系统依赖（PostgreSQL + libffi for cryptography + libGL for OpenCV + gosu + 中文字体）
 # 注: fonts-wqy-zenhei (~5MB) 替代 fonts-noto-cjk (~120MB)，Chromium 渲染中文仅需一套 CJK 字体
 RUN apt-get update && apt-get install -y \
@@ -38,9 +41,20 @@ ENV HF_ENDPOINT=https://hf-mirror.com
 ENV PADDLE_PDX_HUGGING_FACE_ENDPOINT=https://hf-mirror.com
 # PaddleX 模型源优先级：bos(国内CDN) > modelscope > huggingface
 ENV PADDLE_PDX_MODEL_SOURCE=bos
+ENV OCR_PADDLE_DEVICE=${OCR_PADDLE_DEVICE}
 
-# 先安装 PaddlePaddle CPU 版（必须从官方源安装，PyPI 默认是 GPU 版）
-RUN pip install --no-cache-dir --timeout 600 paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+# CPU 和 GPU 使用不同的官方 PaddlePaddle wheel 源。GPU 环境固定为 CUDA 12.6，
+# 与 docker-compose.gpu.yml 及部署文档中的驱动要求保持一致。
+RUN if [ "$OCR_PADDLE_DEVICE" = "cpu" ]; then \
+        pip install --no-cache-dir --timeout 600 paddlepaddle==3.2.0 \
+            -i https://www.paddlepaddle.org.cn/packages/stable/cpu/; \
+    elif printf '%s' "$OCR_PADDLE_DEVICE" | grep -Eq '^gpu(:[0-9]+)?$'; then \
+        pip install --no-cache-dir --timeout 600 paddlepaddle-gpu==3.2.0 \
+            -i https://www.paddlepaddle.org.cn/packages/stable/cu126/; \
+    else \
+        echo "Unsupported OCR_PADDLE_DEVICE=$OCR_PADDLE_DEVICE (expected cpu, gpu or gpu:<index>)" >&2; \
+        exit 1; \
+    fi
 
 # 先安装 PyTorch CPU 版（必须从官方源安装，PyPI 默认是 GPU 版，会拉 nvidia CUDA 包）
 RUN pip install --no-cache-dir --timeout 600 torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
@@ -50,8 +64,8 @@ RUN pip install --no-cache-dir --timeout 600 torch==2.13.0 --index-url https://d
 RUN pip install --no-cache-dir --timeout 600 "paddlex[ocr]" -i https://pypi.tuna.tsinghua.edu.cn/simple || \
     pip install --no-cache-dir --timeout 600 "paddlex[ocr]"
 
-# 再安装其余依赖（跳过 paddlepaddle 和 torch 避免覆盖为 GPU 版）
-RUN grep -v -E "^(paddlepaddle|torch)==" requirements.txt > /tmp/req_no_gpu.txt && \
+# 再安装其余依赖（跳过 paddlepaddle 和 torch，避免覆盖已选的 CPU/GPU wheel）
+RUN grep -v -E "^(paddlepaddle(-gpu)?|torch)==" requirements.txt > /tmp/req_no_gpu.txt && \
     pip install --no-cache-dir --timeout 600 -i https://pypi.tuna.tsinghua.edu.cn/simple -r /tmp/req_no_gpu.txt
 
 # 安装 Playwright Chromium 浏览器（含系统依赖，用于 PDF 导出）
@@ -67,7 +81,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/.cache/ms-playwright
 RUN timeout 600 python -m playwright install chromium
 
-# 预下载 PaddleOCR 基础模型（避免运行时首次请求下载失败）
+# 模型文件与推理设备无关。构建阶段通常拿不到宿主机 GPU，因此统一用 CPU 初始化下载；
+# 容器运行时再按 OCR_PADDLE_DEVICE 选择真实推理设备。
 RUN timeout 600 python -c "from paddleocr import PaddleOCR; ocr = PaddleOCR(lang='ch', device='cpu', use_doc_orientation_classify=False, use_doc_unwarping=False, use_textline_orientation=False); print('PaddleOCR base models downloaded')" || echo "WARNING: PaddleOCR base model download failed, will retry at runtime"
 
 # 预下载表格识别模型（TableRecognitionPipelineV2 所需的 6 个子模型）
