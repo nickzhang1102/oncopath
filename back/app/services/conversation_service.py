@@ -8,6 +8,7 @@ import secrets
 from typing import Optional, List, Tuple
 from datetime import datetime, timedelta
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_, desc, delete as sa_delete
 from sqlalchemy.orm import selectinload
@@ -16,6 +17,7 @@ from app.models.conversation import (
     Conversation, ConsultationExternalSession, Message, LeaderSession, LeaderMessage,
     LeaderAgentResult, LeaderFinalReport,
 )
+from app.models.agentteams_launch_intent import AgentTeamsLaunchIntent
 from app.utils.time_utils import get_utc_now
 
 logger = logging.getLogger(__name__)
@@ -128,6 +130,22 @@ class ConversationService:
         conversation = result.scalar_one_or_none()
         if not conversation:
             return False
+
+        unresolved_result = await self.db.execute(
+            select(AgentTeamsLaunchIntent.status).where(
+                AgentTeamsLaunchIntent.conversation_id == conversation_id,
+                AgentTeamsLaunchIntent.status.in_(AgentTeamsLaunchIntent.UNRESOLVED_STATUSES),
+            )
+        )
+        unresolved_status = unresolved_result.scalar_one_or_none()
+        if unresolved_status is not None:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "agentteams_launch_pending",
+                    "message": "会诊启动结果尚未确认，暂不能删除本地记录",
+                },
+            )
 
         # 1. 删除外部会话映射
         await self.db.execute(

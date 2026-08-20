@@ -505,6 +505,35 @@ class AgentTeamsStartService:
                 detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回格式异常"},
             ) from exc
 
+    async def _call_agentteams_launch_status(
+        self,
+        base_url: str,
+        integration_secret: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        url = (
+            f"{self._build_agentteams_api_base(base_url)}"
+            f"/api/integrations/oncopath/consultation-launches/{request_id}"
+        )
+        headers = {"X-Integration-Key": integration_secret}
+        try:
+            async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
+                response = await client.get(url, headers=headers)
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "agentteams_unavailable", "message": "AgentTeams 服务暂时不可用"},
+            ) from exc
+        if response.status_code >= 400:
+            self._raise_agentteams_error(response)
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回格式异常"},
+            ) from exc
+
     def _build_agentteams_api_base(self, base_url: str) -> str:
         base = base_url.rstrip("/")
         if base.startswith("http://") or base.startswith("https://"):

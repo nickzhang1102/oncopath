@@ -1,8 +1,6 @@
 // front/src/api/consultation.js
 import request from './request'
 
-const launchRequestKey = patientId => `oncopath:agentteams-launch:${patientId}`
-
 function createUuid() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
   const bytes = new Uint8Array(16)
@@ -11,15 +9,6 @@ function createUuid() {
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   const hex = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-}
-
-function getLaunchRequestId(patientId) {
-  const key = launchRequestKey(patientId)
-  const existing = sessionStorage.getItem(key)
-  if (existing) return existing
-  const requestId = createUuid()
-  sessionStorage.setItem(key, requestId)
-  return requestId
 }
 
 export const consultationApi = {
@@ -73,21 +62,18 @@ export const consultationApi = {
   },
 
   async startAgentTeamsConsultation(patientId, conversationId = null) {
-    const requestId = conversationId == null ? getLaunchRequestId(patientId) : null
-    try {
-      const response = await request.post('/consultation/agentteams/start', {
-        patient_id: patientId,
-        conversation_id: conversationId,
-        request_id: requestId,
-      }, { silentError: true })
-      if (requestId) sessionStorage.removeItem(launchRequestKey(patientId))
-      return response
-    } catch (error) {
-      if (error?.response?.data?.detail?.error === 'agentteams_idempotency_conflict') {
-        sessionStorage.removeItem(launchRequestKey(patientId))
-      }
-      throw error
-    }
+    return request.post('/consultation/agentteams/start', {
+      patient_id: patientId,
+      conversation_id: conversationId,
+      request_id: conversationId == null ? createUuid() : null,
+    }, { silentError: true })
+  },
+
+  getActiveAgentTeamsLaunchIntent(patientId) {
+    return request.get('/consultation/agentteams/launch-intents/active', {
+      params: { patient_id: patientId },
+      silentError: true,
+    })
   },
 
   getAgentTeamsExternalSession(conversationId, patientId, renew = false) {

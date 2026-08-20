@@ -1,6 +1,22 @@
 #!/bin/bash
 set -e
 
+# Only the primary backend container owns schema and seed initialization. Worker
+# containers still wait for the database, but must not race that initialization.
+RUN_DB_MIGRATIONS="${RUN_DB_MIGRATIONS:-true}"
+case "${RUN_DB_MIGRATIONS}" in
+    true|TRUE|1|yes|YES)
+        RUN_DB_MIGRATIONS=true
+        ;;
+    false|FALSE|0|no|NO)
+        RUN_DB_MIGRATIONS=false
+        ;;
+    *)
+        echo "[entrypoint] RUN_DB_MIGRATIONS must be true or false" >&2
+        exit 1
+        ;;
+esac
+
 # ============================================================
 # 1. 修复 storage 目录权限（named volume 首次创建时可能属于 root）
 # ============================================================
@@ -46,13 +62,17 @@ if [ "$DB_READY" = false ]; then
     echo "[entrypoint] 30 秒后数据库仍未就绪，拒绝启动未初始化的服务" >&2
     exit 1
 else
-    echo "[entrypoint] 数据库已就绪，执行 schema 迁移..."
-    alembic -c /app/alembic.ini upgrade head
-    echo "[entrypoint] ✅ 数据库迁移完成"
+    if [ "$RUN_DB_MIGRATIONS" = true ]; then
+        echo "[entrypoint] 数据库已就绪，执行 schema 迁移..."
+        alembic -c /app/alembic.ini upgrade head
+        echo "[entrypoint] ✅ 数据库迁移完成"
 
-    echo "[entrypoint] 初始化幂等种子数据..."
-    python scripts/init_fresh_db.py
-    echo "[entrypoint] ✅ 种子数据初始化完成"
+        echo "[entrypoint] 初始化幂等种子数据..."
+        python scripts/init_fresh_db.py
+        echo "[entrypoint] ✅ 种子数据初始化完成"
+    else
+        echo "[entrypoint] 数据库已就绪，跳过 schema 迁移和种子初始化（RUN_DB_MIGRATIONS=false）"
+    fi
 fi
 
 # ============================================================

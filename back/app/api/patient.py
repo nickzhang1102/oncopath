@@ -11,6 +11,7 @@ from app.api.auth import get_current_user
 from app.api.deps import verify_patient_access
 from app.models.user import LoginAccount
 from app.models.patient import Patient
+from app.models.agentteams_launch_intent import AgentTeamsLaunchIntent
 from app.models.medical import MedicalCheck, MedicalExam, MedicalRecord, PathologyReport
 from app.schemas.patient import (
     PatientCreate, PatientUpdate, PatientResponse, PatientListResponse,
@@ -244,6 +245,25 @@ async def delete_patient(
 
     if patient.is_primary:
         raise HTTPException(status_code=400, detail="主患者不能删除")
+
+    unresolved_launch = await db.execute(
+        select(AgentTeamsLaunchIntent.status).where(
+            AgentTeamsLaunchIntent.patient_id == patient_id,
+            AgentTeamsLaunchIntent.status.in_(AgentTeamsLaunchIntent.UNRESOLVED_STATUSES),
+        )
+    )
+    # ``patient_id`` is not unique in the intent table: a historical/manual
+    # repair can leave more than one unresolved row.  We only need to know
+    # whether any row exists; scalar_one_or_none() would turn that safe 409
+    # guard into a 500 on such data.
+    if unresolved_launch.scalars().first() is not None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "agentteams_launch_pending",
+                "message": "该患者存在尚未确认的外部会诊启动，暂不能删除",
+            },
+        )
 
     # 统计关联数据
     from app.models.conversation import ConsultationExternalSession, LeaderSession, Conversation

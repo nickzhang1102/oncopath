@@ -407,6 +407,16 @@ const routes = [
           requiresAdmin: true,
           title: 'AgentTeams配置'
         }
+      },
+      {
+        path: 'agentteams-launch-reviews',
+        name: 'AdminAgentTeamsLaunchReviews',
+        component: () => import('@/views/admin/AdminAgentTeamsLaunchReviews.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresAdmin: true,
+          title: '会诊启动复核'
+        }
       }
     ]
   },

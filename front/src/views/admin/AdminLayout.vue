@@ -87,6 +87,7 @@ const menuItems = [
   { path: '/admin/categories', icon: 'apps-o', label: '分类管理' },
   { path: '/admin/llm-configs', icon: 'setting-o', label: 'LLM配置' },
   { path: '/admin/agentteams-config', icon: 'cluster-o', label: 'AgentTeams配置' },
+  { path: '/admin/agentteams-launch-reviews', icon: 'warning-o', label: '会诊启动复核' },
 ]
 
 const currentPageTitle = computed(() => {

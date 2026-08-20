@@ -9,6 +9,10 @@ MIGRATIONS_DIR = BACKEND_ROOT / "migrations"
 BASELINE_REVISION = "public_schema_baseline"
 COMPATIBILITY_REVISION = "drop_billing_appointment"
 SCHEMA_COMPAT_REVISION = "public_schema_compat"
+REQUEST_ID_REVISION = "agentteams_request_id"
+LAUNCH_INTENTS_REVISION = "agentteams_launch_intents"
+PAYLOAD_RETENTION_REVISION = "agentteams_launch_intent_payload_retention"
+MANUAL_REVIEW_AUDIT_REVISION = "agentteams_launch_manual_review_audit"
 
 
 def test_public_migration_graph_is_tracked_and_self_contained():
@@ -16,12 +20,16 @@ def test_public_migration_graph_is_tracked_and_self_contained():
     revisions = list(script.walk_revisions())
 
     assert [revision.revision for revision in revisions] == [
+        MANUAL_REVIEW_AUDIT_REVISION,
+        PAYLOAD_RETENTION_REVISION,
+        LAUNCH_INTENTS_REVISION,
+        REQUEST_ID_REVISION,
         SCHEMA_COMPAT_REVISION,
         COMPATIBILITY_REVISION,
         BASELINE_REVISION,
     ]
     assert script.get_base() == BASELINE_REVISION
-    assert script.get_current_head() == SCHEMA_COMPAT_REVISION
+    assert script.get_current_head() == MANUAL_REVIEW_AUDIT_REVISION
 
     alembic_config = (BACKEND_ROOT / "alembic.ini").read_text(encoding="utf-8")
     dockerignore = (BACKEND_ROOT / ".dockerignore").read_text(encoding="utf-8")
@@ -75,3 +83,5 @@ def test_entrypoint_migrates_before_running_idempotent_seeds():
     assert migration_position < seed_position
     assert "create_all" not in seed_script
     assert "stamp_alembic" not in seed_script
+    assert 'RUN_DB_MIGRATIONS="${RUN_DB_MIGRATIONS:-true}"' in entrypoint
+    assert "跳过 schema 迁移和种子初始化" in entrypoint

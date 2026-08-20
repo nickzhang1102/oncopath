@@ -26,12 +26,20 @@
           <van-button
             type="primary"
             icon="add-o"
-            :loading="agentTeamsAvailabilityLoading"
+            :loading="agentTeamsAvailabilityLoading || launchPending"
             @click="handleStartConsultation"
           >开始会诊</van-button>
         </div>
       </div>
     </header>
+
+    <van-notice-bar
+      v-if="launchPending"
+      color="#8a5a00"
+      background="#fff7e6"
+      left-icon="clock-o"
+      :text="launchNoticeText"
+    />
 
     <!-- 会诊列表 -->
     <van-pull-refresh v-if="!isDesktop" v-model="refreshing" @refresh="onRefresh">
@@ -70,7 +78,7 @@
           <van-button
             type="primary"
             class="empty-button"
-            :loading="agentTeamsAvailabilityLoading"
+            :loading="agentTeamsAvailabilityLoading || launchPending"
             @click="handleStartConsultation"
           >开始会诊</van-button>
         </van-empty>
@@ -107,7 +115,7 @@
       <van-empty v-else-if="!loadingMore" description="暂无会诊记录" image="search">
         <van-button
           type="primary"
-          :loading="agentTeamsAvailabilityLoading"
+          :loading="agentTeamsAvailabilityLoading || launchPending"
           @click="handleStartConsultation"
         >开始会诊</van-button>
       </van-empty>
@@ -133,7 +141,7 @@
       type="primary"
       icon="add-o"
       round
-      :loading="agentTeamsAvailabilityLoading"
+      :loading="agentTeamsAvailabilityLoading || launchPending"
       @click="handleStartConsultation"
     >开始会诊</van-button>
 
@@ -211,6 +219,7 @@ const agentTeamsError = ref({})
 const agentTeamsCtaUrl = ref('')
 const agentTeamsAvailabilityLoading = ref(false)
 const agentTeamsStartLoading = ref(false)
+const activeLaunchIntent = ref(null)
 const selectedPatientId = ref(null)
 const currentPage = ref(0)
 const pageSize = 20
@@ -221,6 +230,14 @@ const finished = computed(() => conversationsStore.finished)
 const currentPatient = computed(() => patientStore.currentPatient)
 const currentPatientId = computed(() => currentPatient.value?.patient_id || null)
 const currentPatientName = computed(() => currentPatient.value?.patient_name || '当前患者')
+const launchPending = computed(() => ['prepared', 'dispatching', 'confirming', 'manual_review'].includes(
+  activeLaunchIntent.value?.launch_status,
+))
+const launchNoticeText = computed(() => (
+  activeLaunchIntent.value?.launch_status === 'manual_review'
+    ? '虚拟会诊启动需要人工复核，请勿重复发起'
+    : '正在确认虚拟会诊启动结果，请勿重复发起'
+))
 
 // 方法
 function handleBack() {
@@ -373,7 +390,7 @@ async function handleDelete(conv) {
 }
 
 async function handleStartConsultation() {
-  if (agentTeamsAvailabilityLoading.value) return
+  if (agentTeamsAvailabilityLoading.value || launchPending.value) return
 
   agentTeamsAvailabilityLoading.value = true
   try {
@@ -425,13 +442,28 @@ async function confirmStartConsultation() {
     showToast('请选择患者')
     return
   }
-  if (agentTeamsStartLoading.value) return
+  if (agentTeamsStartLoading.value || launchPending.value) return
 
   showPatientPicker.value = false
   agentTeamsStartLoading.value = true
 
   try {
-    const result = await consultationApi.startAgentTeamsConsultation(selectedPatientId.value)
+    let result = await consultationApi.startAgentTeamsConsultation(selectedPatientId.value)
+    activeLaunchIntent.value = result
+    if (result.launch_status !== 'accepted') {
+      result = await waitForAgentTeamsLaunch(selectedPatientId.value)
+    }
+    if (!result || result.launch_status !== 'accepted' || !result.embed_url) {
+      if (result?.launch_status === 'rejected') {
+        activeLaunchIntent.value = null
+        showToast('虚拟会诊未创建，请检查配置或额度后重新发起')
+      } else if (result?.launch_status === 'manual_review') {
+        showToast('虚拟会诊启动需要人工复核，请勿重复发起')
+      } else {
+        showToast('会诊启动结果仍在确认中，可稍后返回本页查看')
+      }
+      return
+    }
     await conversationsStore.fetchConversations(pageSize, 0, false, selectedPatientId.value)
     currentPage.value = 1
     router.push({
@@ -450,11 +482,33 @@ async function confirmStartConsultation() {
   }
 }
 
+async function refreshActiveLaunchIntent(patientId) {
+  if (!patientId) {
+    activeLaunchIntent.value = null
+    return null
+  }
+  const result = await consultationApi.getActiveAgentTeamsLaunchIntent(patientId)
+  if (currentPatientId.value === patientId || selectedPatientId.value === patientId) {
+    activeLaunchIntent.value = result
+  }
+  return result
+}
+
+async function waitForAgentTeamsLaunch(patientId) {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    await new Promise(resolve => window.setTimeout(resolve, 2000))
+    const result = await refreshActiveLaunchIntent(patientId)
+    if (!result || ['accepted', 'rejected', 'manual_review'].includes(result.launch_status)) return result
+  }
+  return activeLaunchIntent.value
+}
+
 onMounted(async () => {
   if (!patientStore.loaded) {
     await patientStore.fetchPatientList()
   }
   await loadFirstPage()
+  await refreshActiveLaunchIntent(currentPatientId.value)
 })
 
 watch(currentPatientId, async (patientId, previousPatientId) => {
@@ -467,6 +521,7 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
   }
   if (!previousPatientId) return  // 从无到有，由 onMounted 负责首次加载
   await loadFirstPage()
+  await refreshActiveLaunchIntent(patientId)
 })
 </script>
 

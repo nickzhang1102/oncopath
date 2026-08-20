@@ -85,7 +85,7 @@ curl http://localhost:3000          # 前端页面
 curl http://localhost:3000/api/v1/health   # 通过前端反代检查后端
 ```
 
-> ⚠️ backend entrypoint 会先执行 `alembic upgrade head`，再运行 `init_fresh_db.py` 创建默认管理员（admin）、医疗标准指标库和指标分类。默认管理员密码为 `admin123`，首次登录后请立即修改。可通过环境变量 `ADMIN_INITIAL_PASSWORD` 自定义。
+> ⚠️ 只有 `backend` 容器负责执行 `alembic upgrade head` 和 `init_fresh_db.py`。`agentteams-launch-worker` 会等待 backend 健康检查通过后再启动，并通过 `RUN_DB_MIGRATIONS=false` 跳过迁移，避免多个容器并发改 schema。
 
 ---
 
@@ -171,7 +171,8 @@ docker compose -p oncopath ps
 # NAME                STATUS
 # oncopath-postgres   running (healthy)
 # oncopath-redis      running
-# oncopath-backend    running
+# oncopath-backend    running (healthy)
+# oncopath-agentteams-launch-worker running
 # oncopath-frontend   running
 ```
 
@@ -187,6 +188,8 @@ backend entrypoint 在每次启动时按固定顺序执行：
 2. `init_fresh_db.py` 幂等创建默认管理员账号（admin / admin123）
 3. 幂等初始化指标分类（36 种分类）
 4. 幂等初始化医疗标准指标库（血常规 / 生化 / 肿瘤标志物 / 凝血 / 尿常规，共 65 项）
+
+`agentteams-launch-worker` 不执行上述初始化。它只负责持久化 AgentTeams 启动意图的派发和不确定结果的状态查询；Compose 通过 backend 的 `/api/v1/health` 健康检查保证迁移完成后才启动 worker。
 
 自定义管理员密码：
 ```bash
@@ -206,13 +209,16 @@ docker compose -p oncopath exec -e ADMIN_INITIAL_PASSWORD=YourAdminPassword back
 
 ### 场景一：全新数据库（推荐）
 
-启动 backend 容器即可自动完成，见[第 5 步](#第-5-步初始化数据库)。手工执行时必须先运行 `alembic upgrade head`，再运行 `python scripts/init_fresh_db.py`。
+启动 backend 容器即可自动完成，见[第 5 步](#第-5-步初始化数据库)。手工执行时必须先运行 `alembic upgrade head`，再运行 `python scripts/init_fresh_db.py`；升级期间请先停止 `agentteams-launch-worker`，迁移完成并确认 backend 健康后再启动 worker。
 
 ### 场景二：公开版本升级
 
 从已发布的公开版本升级时，按仓库内连续的 Alembic revision 执行迁移：
 
 ```bash
+# 迁移期间停止会读取 launch intent 的 worker
+docker compose -p oncopath stop agentteams-launch-worker
+
 # 查看当前迁移版本
 docker compose -p oncopath exec backend alembic current
 
@@ -221,6 +227,9 @@ docker compose -p oncopath exec backend alembic history
 
 # 执行所有待迁移
 docker compose -p oncopath exec backend alembic upgrade head
+
+# 迁移完成、确认 backend healthy 后再启动持久化 launch worker
+docker compose -p oncopath up -d agentteams-launch-worker
 
 # 回滚一个版本（谨慎使用）
 docker compose -p oncopath exec backend alembic downgrade -1

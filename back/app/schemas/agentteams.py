@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from uuid import UUID
 
 
@@ -63,7 +63,25 @@ class AgentTeamsExternalSessionResponse(BaseModel):
 
 
 class AgentTeamsStartResponse(AgentTeamsExternalSessionResponse):
-    pass
+    request_id: Optional[UUID] = None
+    launch_status: Literal["accepted"] = "accepted"
+
+
+class AgentTeamsLaunchIntentResponse(BaseModel):
+    request_id: Optional[UUID] = None
+    conversation_id: int
+    patient_id: int
+    launch_status: Literal[
+        "prepared", "dispatching", "confirming", "accepted", "rejected", "manual_review"
+    ]
+    retry_after_seconds: int = 2
+    provider: str = "agentteams"
+    external_conversation_id: Optional[str] = None
+    external_session_id: Optional[str] = None
+    external_share_token: Optional[str] = None
+    embed_url: Optional[str] = None
+    status: str = "created"
+    error: Optional[str] = None
 
 
 AgentTeamsSessionStatus = Literal[
@@ -75,3 +93,52 @@ AgentTeamsSessionStatus = Literal[
 
 class AgentTeamsStatusUpdate(BaseModel):
     status: AgentTeamsSessionStatus
+
+
+class AgentTeamsManualReviewResolveRequest(BaseModel):
+    decision: Literal["confirmed_not_created"]
+    reason: str = Field(min_length=10, max_length=1000)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str) -> str:
+        normalized = value.strip()
+        if len(normalized) < 10:
+            raise ValueError("reason must contain at least 10 non-whitespace characters")
+        return normalized
+
+
+class AgentTeamsLaunchIntentAdminItem(BaseModel):
+    id: int
+    request_id: str
+    conversation_id: int
+    account_id: int
+    patient_id: int
+    launch_status: str
+    attempt_count: int
+    remote_status: Optional[str] = None
+    external_conversation_id: Optional[str] = None
+    external_session_id: Optional[str] = None
+    last_error_status: Optional[int] = None
+    last_error_code: Optional[str] = None
+    last_error_message: Optional[str] = None
+    payload_hash: str
+    payload_retained: bool
+    payload_purged_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgentTeamsLaunchIntentAuditItem(BaseModel):
+    id: int
+    actor_account_id: Optional[int] = None
+    action: str
+    before_status: str
+    after_status: str
+    reason: Optional[str] = None
+    error_code: Optional[str] = None
+    created_at: datetime
+
+
+class AgentTeamsLaunchIntentAdminDetail(AgentTeamsLaunchIntentAdminItem):
+    audits: list[AgentTeamsLaunchIntentAuditItem] = Field(default_factory=list)

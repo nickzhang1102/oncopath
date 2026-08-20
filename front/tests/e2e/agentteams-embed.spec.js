@@ -79,6 +79,13 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
       }),
     })
   })
+  await page.route('**/api/v1/consultation/agentteams/launch-intents/active?**', route => {
+    counters.activeLaunchIntentCalls = (counters.activeLaunchIntentCalls || 0) + 1
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(options.activeLaunchIntent || null),
+    })
+  })
   await page.route('**/api/v1/consultation/agentteams/sessions/900**', route => {
     counters.externalSessionCalls = (counters.externalSessionCalls || 0) + 1
     route.fulfill({
@@ -208,9 +215,9 @@ test('AgentTeams history is scoped to the current patient and opens numeric deta
   await expect(page.locator('iframe.embed-iframe')).toHaveAttribute('src', '/agentteams/embed/conversation/embed-token')
 })
 
-test('AgentTeams launch keeps the same request id across a lost response retry', async ({ page }) => {
+test('AgentTeams launch reconciles a lost response without reposting', async ({ page }) => {
   const requestBodies = []
-  let launchAttempts = 0
+  let activeIntentCalls = 0
   await mockEmbedApis(page)
   await page.route('**/api/v1/consultation/agentteams/availability', route => {
     route.fulfill({
@@ -220,24 +227,46 @@ test('AgentTeams launch keeps the same request id across a lost response retry',
   })
   await page.route('**/api/v1/consultation/agentteams/start', route => {
     requestBodies.push(route.request().postDataJSON())
-    launchAttempts += 1
-    if (launchAttempts === 1) {
-      route.fulfill({
-        status: 502,
-        contentType: 'application/json',
-        body: JSON.stringify({ detail: { error: 'agentteams_unavailable' } }),
-      })
-      return
-    }
     route.fulfill({
+      status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
         conversation_id: 901,
+        patient_id: 1,
+        request_id: requestBodies[requestBodies.length - 1].request_id,
         provider: 'agentteams',
+        launch_status: 'confirming',
+        external_conversation_id: '1001',
+        status: 'created',
+      }),
+    })
+  })
+  await page.route('**/api/v1/consultation/agentteams/launch-intents/active?**', route => {
+    if (requestBodies.length === 0) {
+      route.fulfill({ contentType: 'application/json', body: 'null' })
+      return
+    }
+    activeIntentCalls += 1
+    const accepted = activeIntentCalls > 1
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(accepted ? {
+        conversation_id: 901,
+        patient_id: 1,
+        request_id: requestBodies[0]?.request_id,
+        provider: 'agentteams',
+        launch_status: 'accepted',
         external_conversation_id: '1001',
         external_session_id: '2001',
         external_share_token: 'share-token',
         embed_url: '/agentteams/embed/conversation/embed-token',
+        status: 'created',
+      } : {
+        conversation_id: 901,
+        patient_id: 1,
+        request_id: requestBodies[0]?.request_id,
+        provider: 'agentteams',
+        launch_status: 'confirming',
         status: 'created',
       }),
     })
@@ -247,7 +276,10 @@ test('AgentTeams launch keeps the same request id across a lost response retry',
       contentType: 'application/json',
       body: JSON.stringify({
         conversation_id: 901,
+        patient_id: 1,
+        request_id: requestBodies[requestBodies.length - 1].request_id,
         provider: 'agentteams',
+        launch_status: 'accepted',
         external_conversation_id: '1001',
         external_session_id: '2001',
         external_share_token: 'share-token',
@@ -265,16 +297,9 @@ test('AgentTeams launch keeps the same request id across a lost response retry',
   await expect.poll(() => requestBodies.length).toBe(1)
   const requestId = requestBodies[0].request_id
   expect(requestId).toMatch(/^[0-9a-f-]{36}$/i)
-  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage)
-    .find(key => key.startsWith('oncopath:agentteams-launch:')))).toBeTruthy()
-  await page.getByRole('button', { name: '关闭' }).click()
-
-  await startButton.click()
-  await expect.poll(() => requestBodies.length).toBe(2)
-  expect(requestBodies[1].request_id).toBe(requestId)
+  await expect.poll(() => activeIntentCalls).toBeGreaterThan(1)
+  expect(requestBodies).toHaveLength(1)
   await expect(page).toHaveURL(/\/home\/consultation\/901\?patient_id=1$/)
-  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage)
-    .some(key => key.startsWith('oncopath:agentteams-launch:')))).toBe(false)
 })
 
 test('AgentTeams idempotency conflict discards the stale request id before retry', async ({ page }) => {
@@ -305,7 +330,10 @@ test('AgentTeams idempotency conflict discards the stale request id before retry
       contentType: 'application/json',
       body: JSON.stringify({
         conversation_id: 901,
+        patient_id: 1,
+        request_id: requestBodies[requestBodies.length - 1].request_id,
         provider: 'agentteams',
+        launch_status: 'accepted',
         external_conversation_id: '1001',
         external_session_id: '2001',
         external_share_token: 'share-token',
@@ -337,8 +365,6 @@ test('AgentTeams idempotency conflict discards the stale request id before retry
   const staleRequestId = requestBodies[0].request_id
   await expect(page.getByText('会诊启动标识已失效')).toBeVisible()
   await expect(page.getByText('raw remote conflict details')).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => Object.keys(sessionStorage)
-    .some(key => key.startsWith('oncopath:agentteams-launch:')))).toBe(false)
 
   await page.getByRole('button', { name: '关闭' }).click()
   await startButton.click()

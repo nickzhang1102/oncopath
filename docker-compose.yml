@@ -77,6 +77,7 @@ services:
       - INTERPRETATION_LLM_API_BASE=${INTERPRETATION_LLM_API_BASE:-}
       - INTERPRETATION_LLM_MODEL_NAME=${INTERPRETATION_LLM_MODEL_NAME:-}
       - AGENTTEAMS_INTERNAL_ORIGIN=${AGENTTEAMS_INTERNAL_ORIGIN:-http://frontend}
+      - RUN_DB_MIGRATIONS=true
       - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-}
       - DEBUG=false
       - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost","http://localhost:3000"]}
@@ -101,11 +102,57 @@ services:
     networks:
       - medical-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     deploy:
       resources:
         limits:
           cpus: '4'
           memory: 8G
+
+  # Durable AgentTeams launch dispatch and reconciliation
+  agentteams-launch-worker:
+    build:
+      context: ./back
+      args:
+        OCR_PADDLE_DEVICE: cpu
+    command: ["python", "-m", "app.workers.agentteams_launch_worker"]
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
+      - DB_NAME=${DB_NAME:-medical_report}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - ALLOW_UNENCRYPTED_PHI=${ALLOW_UNENCRYPTED_PHI:-false}
+      - AGENTTEAMS_INTERNAL_ORIGIN=${AGENTTEAMS_INTERNAL_ORIGIN:-http://frontend}
+      - RUN_DB_MIGRATIONS=false
+      - DEBUG=false
+    depends_on:
+      backend:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - medical-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   # Frontend
   frontend:
@@ -114,7 +161,8 @@ services:
       - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-3000}:80"
       # - "443:443"  # 取消注释以启用HTTPS（需提供SSL证书且端口未被占用）
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
       - ./front/ssl:/etc/nginx/ssl:ro
     extra_hosts:

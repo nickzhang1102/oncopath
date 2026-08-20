@@ -8,6 +8,7 @@
 |---|---|---|
 | 后台配置 API | `back/tests/test_agentteams_config_api.py` | 配置保存、掩码返回、availability 不泄露密钥 |
 | start/embed/history | `back/tests/test_agentteams_start_embed.py` | 启动 AgentTeams 会诊、embed 映射、历史详情、旧本地入口下线 |
+| 启动恢复与删除保护 | `back/tests/test_agentteams_start_embed.py` | 断连后只查询不重发、退避/人工复核、未确认启动阻止会诊/患者删除 |
 | 后端错误映射 | `back/tests/test_agentteams_start_embed.py` | quota、service account、integration disabled、unsupported version、invalid integration key、unknown raw body fallback |
 | upsell 和 start 错误 UX | `front/tests/e2e/agentteams-upsell.spec.js` | 未配置提示、开始会诊、容量和配置类错误弹窗 |
 | iframe 和历史详情 | `front/tests/e2e/agentteams-embed.spec.js` | 桌面/移动 iframe 展示、历史记录、详情失败提示 |

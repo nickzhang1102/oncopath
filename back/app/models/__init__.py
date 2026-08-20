@@ -29,6 +29,10 @@ from app.models.medication_log import MedicationLog
 from app.models.share_token import ShareToken
 from app.models.admin import LLMConfig, AgentTeamsIntegrationConfig
 from app.models.record_summary import RecordSummary
+from app.models.agentteams_launch_intent import (
+    AgentTeamsLaunchIntent,
+    AgentTeamsLaunchIntentAudit,
+)
 
 __all__ = [
     "Base",
@@ -82,4 +86,6 @@ __all__ = [
     "AgentTeamsIntegrationConfig",
     # 记录概要
     "RecordSummary",
+    "AgentTeamsLaunchIntent",
+    "AgentTeamsLaunchIntentAudit",
 ]

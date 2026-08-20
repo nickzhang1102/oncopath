@@ -1,6 +1,6 @@
 # AgentTeams 集成部署说明
 
-本文说明 OncoPath 如何接入外部 AgentTeams 项目来执行虚拟会诊。OncoPath 只负责患者资料整理、会诊 prompt、启动代理、历史壳和 iframe 展示；会诊执行、额度、扣费和使用记录由 AgentTeams 的 OncoPath 集成服务账户负责。
+本文说明 OncoPath 如何接入外部 AgentTeams 项目来执行虚拟会诊。OncoPath 只负责患者资料整理、会诊 prompt、启动代理、历史壳和 iframe 展示；会诊执行、额度、扣费和使用记录由 AgentTeams 的 OncoPath 集成服务账户负责。启动请求会先落到 OncoPath 的持久化 launch intent，再由 `agentteams-launch-worker` 派发或查询状态：超时/断连返回 `202` 并进入确认态，后续只查询状态，不重复发送 launch，也不会重复扣费；超过有限重试窗口后进入人工复核。
 
 ## 前置条件
 
@@ -78,6 +78,10 @@ server {
 ```
 
 使用仓库自带 `docker-compose.yml` 时，frontend nginx 已内置 `/agentteams/` 反代，默认转发到宿主机 `8080` 端口；backend 容器通过 `AGENTTEAMS_INTERNAL_ORIGIN` 访问这个同站反代入口，默认值为 `http://frontend`。如果 AgentTeams 不在宿主机 `8080`，需要同步调整 `front/nginx.conf` 的 `/agentteams/` upstream，或改用一个 backend 容器可直接访问的完整 HTTPS URL。
+
+Compose 启动时只有 `backend` 执行 Alembic 迁移和种子初始化；`agentteams-launch-worker` 依赖 backend 健康检查后启动，并设置 `RUN_DB_MIGRATIONS=false`。如果手工升级数据库，先停止 worker，确认 `/api/v1/health` 返回 200 后再启动 worker。
+
+在启动结果仍未确认或已进入人工复核时，OncoPath 会阻止删除相关会诊记录或患者（返回 409），以免把可能已经扣费的远端会诊变成无主数据。已接受的会诊仍可按产品契约删除 OncoPath 本地壳；这不会删除 AgentTeams 远端会话，删除前应确认远端数据保留策略。
 
 ## 验证步骤
 

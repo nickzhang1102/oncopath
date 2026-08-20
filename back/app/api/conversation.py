@@ -11,7 +11,7 @@ Current endpoints:
 - GET  /consultation/session/share/{token} — 分享链接访问
 - GET  /consultation/share/{token} — 分享链接访问（短路径）
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rate_limit import limiter
@@ -27,11 +27,13 @@ from app.schemas.conversation import (
 from app.schemas.agentteams import (
     AgentTeamsAvailabilityResponse,
     AgentTeamsExternalSessionResponse,
+    AgentTeamsLaunchIntentResponse,
     AgentTeamsStatusUpdate,
 )
 from app.schemas.agentteams import AgentTeamsStartRequest, AgentTeamsStartResponse
 from app.services.agentteams_config_service import AgentTeamsConfigService
 from app.services.agentteams_start_service import AgentTeamsStartService
+from app.services.agentteams_launch_intent_service import AgentTeamsLaunchIntentService
 from app.services.conversation_service import ConversationService
 from app.services.patient_service import PatientService
 
@@ -58,15 +60,36 @@ async def get_agentteams_availability(
     return await service.get_availability()
 
 
-@router.post("/agentteams/start", response_model=AgentTeamsStartResponse)
+@router.post("/agentteams/start", response_model=AgentTeamsLaunchIntentResponse)
 async def start_agentteams_consultation(
     data: AgentTeamsStartRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user),
 ):
     """启动 AgentTeams 外部会诊并返回嵌入地址。"""
-    service = AgentTeamsStartService(db)
-    return await service.start(data, current_user.account_id)
+    result = await AgentTeamsLaunchIntentService(db).start(
+        data, current_user.account_id
+    )
+    if result.launch_status != "accepted":
+        response.status_code = 202
+    return result
+
+
+@router.get(
+    "/agentteams/launch-intents/active",
+    response_model=AgentTeamsLaunchIntentResponse | None,
+)
+async def get_active_agentteams_launch_intent(
+    patient_id: int = Query(ge=1),
+    db: AsyncSession = Depends(get_db),
+    current_user: LoginAccount = Depends(get_current_user),
+):
+    """Restore a server-owned launch intent after navigation or tab loss."""
+    return await AgentTeamsLaunchIntentService(db).get_active(
+        current_user.account_id,
+        patient_id,
+    )
 
 
 @router.get("/agentteams/sessions/{conversation_id}", response_model=AgentTeamsExternalSessionResponse)

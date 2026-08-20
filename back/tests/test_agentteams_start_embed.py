@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -7,15 +7,21 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy import delete, select
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_admin_user, get_current_user
 from app.main import app
 from app.models.admin import AgentTeamsIntegrationConfig
 from app.models.conversation import ConsultationExternalSession, Conversation, LeaderSession
+from app.models.agentteams_launch_intent import (
+    AgentTeamsLaunchIntent,
+    AgentTeamsLaunchIntentAudit,
+)
 from app.models.patient import Patient
 from app.models.prompt import PromptConfig
 from app.models.user import LoginAccount
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
 from app.services.agentteams_start_service import AgentTeamsStartService
+from app.services.agentteams_launch_intent_service import AgentTeamsLaunchIntentService
+from app.utils.time_utils import get_utc_now
 from conftest import TestSessionLocal
 
 
@@ -118,6 +124,7 @@ async def clean_agentteams_start_data(db_session, monkeypatch):
     import app.services.agentteams_config_service as config_service
 
     monkeypatch.setattr(config_service, "encryption_service", FakeEncryptionService())
+    await db_session.execute(delete(AgentTeamsLaunchIntentAudit))
     await db_session.execute(delete(ConsultationExternalSession))
     await db_session.execute(delete(LeaderSession))
     await db_session.execute(delete(Conversation))
@@ -125,6 +132,8 @@ async def clean_agentteams_start_data(db_session, monkeypatch):
     await db_session.execute(delete(AgentTeamsIntegrationConfig))
     await db_session.commit()
     yield
+    await db_session.rollback()
+    await db_session.execute(delete(AgentTeamsLaunchIntentAudit))
     await db_session.execute(delete(ConsultationExternalSession))
     await db_session.execute(delete(LeaderSession))
     await db_session.execute(delete(Conversation))
@@ -156,6 +165,16 @@ async def current_user_override(test_user):
     app.dependency_overrides[get_current_user] = _override
     yield
     app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest_asyncio.fixture
+async def admin_user_override(test_user):
+    async def _override():
+        return test_user
+
+    app.dependency_overrides[get_current_admin_user] = _override
+    yield
+    app.dependency_overrides.pop(get_current_admin_user, None)
 
 
 async def save_enabled_config(db_session, base_url="https://agentteams.example.com"):
@@ -245,6 +264,11 @@ async def test_agentteams_start_creates_mapping_and_returns_embed_url(
     assert mapping.conversation_id == data["conversation_id"]
     assert mapping.provider == "agentteams"
 
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    assert intent.status == "accepted"
+    assert intent.payload_ciphertext is None
+    assert intent.payload_purged_at is not None
+
     assert calls[0]["integration_secret"] == "secret-1234"
     assert calls[0]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
     assert mapping.launch_request_id == LAUNCH_REQUEST_ID
@@ -282,38 +306,120 @@ async def test_agentteams_start_reuses_request_id_after_lost_success_response(
 
     async def fake_launch(self, base_url, integration_secret, request_id, payload):
         launch_calls.append({"request_id": request_id, "payload": payload})
-        if len(launch_calls) == 1:
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "agentteams_unavailable", "message": "response lost"},
-            )
-        return remote_result
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "agentteams_unavailable", "message": "response lost"},
+        )
+
+    async def fake_status(self, base_url, integration_secret, request_id):
+        return {
+            "found": True,
+            "request_id": request_id,
+            "status": "created",
+            "agentteams_conversation_id": 1001,
+            "agentteams_session_id": 2001,
+            "source_conversation_id": "remote-shell",
+            "error_code": None,
+        }
 
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
+    renew_calls = []
+    patch_embed_renew_success(monkeypatch, renew_calls)
 
     payload = {"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID}
     first = await client.post("/api/v1/consultation/agentteams/start", json=payload)
-    assert first.status_code == 502
-    assert (await db_session.execute(select(Conversation))).scalars().all() == []
+    assert first.status_code == 202
+    assert first.json()["launch_status"] == "confirming"
+    assert len((await db_session.execute(select(Conversation))).scalars().all()) == 1
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    assert intent.status == "confirming"
 
     second = await client.post("/api/v1/consultation/agentteams/start", json=payload)
     assert second.status_code == 200
     assert [call["request_id"] for call in launch_calls] == [
-        f"oncopath-launch-{LAUNCH_REQUEST_ID}",
         f"oncopath-launch-{LAUNCH_REQUEST_ID}",
     ]
     assert len((await db_session.execute(select(Conversation))).scalars().all()) == 1
     mapping = (await db_session.execute(select(ConsultationExternalSession))).scalar_one()
     assert mapping.launch_request_id == LAUNCH_REQUEST_ID
 
-    renew_calls = []
-    patch_embed_renew_success(monkeypatch, renew_calls)
     renewed = await client.get(
         f"/api/v1/consultation/agentteams/sessions/{mapping.conversation_id}",
         params={"patient_id": patient.patient_id, "renew": True},
     )
     assert renewed.status_code == 200
     assert renew_calls[0]["payload"]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
+
+
+@pytest.mark.asyncio
+async def test_new_request_id_does_not_reuse_accepted_running_consultation(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    """Accepted launch state is terminal; a later launch gets its own intent."""
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    launch_calls = []
+    patch_launch_success(monkeypatch, launch_calls)
+
+    old_conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="旧 AgentTeams 会诊",
+        share_token="old-accepted-token",
+        status="analyzing",
+        category="medical",
+    )
+    db_session.add(old_conversation)
+    await db_session.flush()
+    db_session.add(
+        AgentTeamsLaunchIntent(
+            request_id=LAUNCH_REQUEST_ID,
+            conversation_id=old_conversation.id,
+            account_id=test_user.account_id,
+            patient_id=patient.patient_id,
+            status="accepted",
+            payload_ciphertext="enc:{}",
+            payload_hash="0" * 64,
+        )
+    )
+    db_session.add(
+        ConsultationExternalSession(
+            conversation_id=old_conversation.id,
+            provider="agentteams",
+            external_conversation_id="old-remote-conversation",
+            external_session_id="old-remote-session",
+            external_share_token="old-share-token",
+            embed_url="https://agentteams.example.com/embed/old-token",
+            status="running",
+        )
+    )
+    await db_session.commit()
+
+    new_request_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": new_request_id},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["launch_status"] == "accepted"
+    assert data["request_id"] == new_request_id
+    assert data["conversation_id"] != old_conversation.id
+    assert [call["request_id"] for call in launch_calls] == [
+        f"oncopath-launch-{new_request_id}",
+    ]
+
+    intents = (
+        await db_session.execute(
+            select(AgentTeamsLaunchIntent).order_by(AgentTeamsLaunchIntent.created_at.asc())
+        )
+    ).scalars().all()
+    assert {intent.request_id for intent in intents} == {
+        LAUNCH_REQUEST_ID,
+        new_request_id,
+    }
 
 
 @pytest.mark.asyncio
@@ -809,7 +915,7 @@ async def test_agentteams_start_unconfigured_does_not_create_conversation(
 
 
 @pytest.mark.asyncio
-async def test_agentteams_capacity_error_rolls_back_local_shell(
+async def test_agentteams_capacity_error_preserves_rejected_intent_without_mapping(
     client, db_session, current_user_override, patient, monkeypatch
 ):
     await save_enabled_config(db_session)
@@ -833,9 +939,480 @@ async def test_agentteams_capacity_error_rolls_back_local_shell(
 
     conversations = await db_session.execute(select(Conversation))
     mappings = await db_session.execute(select(ConsultationExternalSession))
-    assert conversations.scalars().all() == []
+    conversation = conversations.scalar_one()
+    assert conversation.status == "error"
+    assert mappings.scalars().all() == []
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    assert intent.status == "rejected"
+    assert intent.last_error_status == 402
+    assert intent.last_error_code == "agentteams_quota_exceeded"
+
+
+@pytest.mark.asyncio
+async def test_agentteams_worker_backoff_and_manual_review_never_reposts_launch(
+    client, db_session, current_user_override, patient, monkeypatch
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    launch_calls = []
+    status_calls = []
+
+    async def fake_launch(self, base_url, integration_secret, request_id, payload):
+        launch_calls.append(request_id)
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "agentteams_unavailable", "message": "response lost"},
+        )
+
+    async def fake_status(self, base_url, integration_secret, request_id):
+        status_calls.append(request_id)
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "agentteams_unavailable", "message": "still unavailable"},
+        )
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+    assert response.status_code == 202
+    assert launch_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    assert intent.status == "confirming"
+    assert intent.attempt_count == 1
+    # The worker must honor backoff and do no immediate status call.
+    assert await AgentTeamsLaunchIntentService(db_session).process_available() == 0
+    assert status_calls == []
+
+    intent.next_attempt_at = datetime(2000, 1, 1)
+    await db_session.commit()
+    assert await AgentTeamsLaunchIntentService(db_session).process_available() == 1
+    assert status_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+    assert launch_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+
+    intent = await db_session.get(AgentTeamsLaunchIntent, intent.id)
+    intent.attempt_count = AgentTeamsLaunchIntentService.MAX_RECONCILE_ATTEMPTS - 1
+    intent.next_attempt_at = datetime(2000, 1, 1)
+    await db_session.commit()
+    await AgentTeamsLaunchIntentService(db_session).process_available()
+    await db_session.refresh(intent)
+    assert intent.status == "manual_review"
+    assert intent.last_error_code == "agentteams_reconciliation_exhausted"
+    assert launch_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+
+    # A refreshed page or a new client-generated UUID must converge to the
+    # same manual-review intent instead of creating a second chargeable launch.
+    second = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={
+            "patient_id": patient.patient_id,
+            "request_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        },
+    )
+    assert second.status_code == 202
+    assert second.json()["launch_status"] == "manual_review"
+    assert launch_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+
+
+@pytest.mark.asyncio
+async def test_admin_manual_review_reconcile_is_read_only_and_audited(
+    client,
+    db_session,
+    admin_user_override,
+    patient,
+    test_user,
+    monkeypatch,
+):
+    await save_enabled_config(db_session)
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="待人工复核会诊",
+        share_token="manual-reconcile",
+        status="error",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    intent = AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="manual_review",
+        payload_ciphertext="enc:{\"message\":\"patient phi\"}",
+        payload_hash="0" * 64,
+        attempt_count=AgentTeamsLaunchIntentService.MAX_RECONCILE_ATTEMPTS,
+    )
+    db_session.add(intent)
+    await db_session.commit()
+    await db_session.refresh(intent)
+
+    launch_calls = []
+    status_calls = []
+
+    async def fail_if_launch_called(self, base_url, integration_secret, request_id, payload):
+        launch_calls.append(request_id)
+        raise AssertionError("manual review must never call launch POST")
+
+    async def fake_status(self, base_url, integration_secret, request_id):
+        status_calls.append(request_id)
+        return {
+            "found": True,
+            "request_id": request_id,
+            "status": "running",
+            "agentteams_conversation_id": 2001,
+            "agentteams_session_id": 3001,
+            "error_code": None,
+        }
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fail_if_launch_called)
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
+    renew_calls = []
+    patch_embed_renew_success(monkeypatch, renew_calls, status="running")
+
+    response = await client.post(
+        f"/api/v1/admin/agentteams-launch-intents/{intent.id}/reconcile"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["launch_status"] == "accepted"
+    assert data["payload_retained"] is False
+    assert data["audits"][0]["action"] == "read_only_reconcile"
+    assert data["audits"][0]["before_status"] == "manual_review"
+    assert data["audits"][0]["after_status"] == "accepted"
+    assert launch_calls == []
+    assert status_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+    assert len(renew_calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_confirmed_not_created_unlocks_new_launch_and_is_audited(
+    client,
+    db_session,
+    current_user_override,
+    admin_user_override,
+    patient,
+    test_user,
+    monkeypatch,
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="确认未创建会诊",
+        share_token="manual-not-created",
+        status="error",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    intent = AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="manual_review",
+        payload_ciphertext="enc:{\"message\":\"patient phi\"}",
+        payload_hash="0" * 64,
+    )
+    db_session.add(intent)
+    await db_session.commit()
+    await db_session.refresh(intent)
+
+    reason = "已在 AgentTeams 管理端按 request ID 核验，无对应 launch 或计费记录"
+    resolved = await client.post(
+        f"/api/v1/admin/agentteams-launch-intents/{intent.id}/resolve",
+        json={"decision": "confirmed_not_created", "reason": reason},
+    )
+
+    assert resolved.status_code == 200
+    resolved_data = resolved.json()
+    assert resolved_data["launch_status"] == "rejected"
+    assert resolved_data["payload_retained"] is False
+    assert resolved_data["audits"][0]["action"] == "confirmed_not_created"
+    assert resolved_data["audits"][0]["reason"] == reason
+
+    repeated = await client.post(
+        f"/api/v1/admin/agentteams-launch-intents/{intent.id}/resolve",
+        json={"decision": "confirmed_not_created", "reason": reason},
+    )
+    assert repeated.status_code == 409
+    audits = await db_session.execute(select(AgentTeamsLaunchIntentAudit))
+    assert len(audits.scalars().all()) == 1
+
+    launch_calls = []
+    patch_launch_success(monkeypatch, launch_calls)
+    new_request_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    started = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": new_request_id},
+    )
+
+    assert started.status_code == 200
+    assert started.json()["request_id"] == new_request_id
+    assert [call["request_id"] for call in launch_calls] == [
+        f"oncopath-launch-{new_request_id}",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_resolve_manual_review_during_active_reconciliation(
+    client,
+    db_session,
+    admin_user_override,
+    patient,
+    test_user,
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="正在对账的会诊",
+        share_token="active-reconcile",
+        status="error",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    intent = AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="manual_review",
+        payload_ciphertext="enc:{\"message\":\"patient phi\"}",
+        payload_hash="0" * 64,
+        lease_owner="manual-review-reconciler",
+        lease_expires_at=get_utc_now() + timedelta(minutes=1),
+    )
+    db_session.add(intent)
+    await db_session.commit()
+
+    response = await client.post(
+        f"/api/v1/admin/agentteams-launch-intents/{intent.id}/resolve",
+        json={
+            "decision": "confirmed_not_created",
+            "reason": "已完成外部核验，但等待当前只读对账结束后再确认",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "agentteams_reconcile_in_progress"
+    await db_session.refresh(intent)
+    assert intent.status == "manual_review"
+    assert intent.payload_ciphertext is not None
+    audits = await db_session.execute(select(AgentTeamsLaunchIntentAudit))
+    assert audits.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_admin_resolution_rejects_blank_audit_reason(
+    client,
+    db_session,
+    admin_user_override,
+    patient,
+    test_user,
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="缺少复核理由的会诊",
+        share_token="blank-review-reason",
+        status="error",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    intent = AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="manual_review",
+        payload_ciphertext="enc:{\"message\":\"patient phi\"}",
+        payload_hash="0" * 64,
+    )
+    db_session.add(intent)
+    await db_session.commit()
+
+    response = await client.post(
+        f"/api/v1/admin/agentteams-launch-intents/{intent.id}/resolve",
+        json={"decision": "confirmed_not_created", "reason": "            "},
+    )
+
+    assert response.status_code == 422
+    await db_session.refresh(intent)
+    assert intent.status == "manual_review"
+    assert intent.payload_ciphertext is not None
+    audits = await db_session.execute(select(AgentTeamsLaunchIntentAudit))
+    assert audits.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_stale_reconcile_result_cannot_overwrite_manual_resolution(
+    client,
+    db_session,
+    admin_user_override,
+    patient,
+    test_user,
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="已人工处置的会诊",
+        share_token="stale-reconcile",
+        status="error",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    stale_owner = "expired-reconcile-worker"
+    intent = AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="manual_review",
+        payload_ciphertext="enc:{\"message\":\"patient phi\"}",
+        payload_hash="0" * 64,
+        lease_owner=stale_owner,
+        lease_expires_at=get_utc_now() - timedelta(minutes=1),
+    )
+    db_session.add(intent)
+    await db_session.commit()
+
+    resolved = await client.post(
+        f"/api/v1/admin/agentteams-launch-intents/{intent.id}/resolve",
+        json={
+            "decision": "confirmed_not_created",
+            "reason": "已在 AgentTeams 管理端核验该 request ID 确实没有创建记录",
+        },
+    )
+    assert resolved.status_code == 200
+
+    await AgentTeamsLaunchIntentService(db_session)._accept(
+        intent,
+        {
+            "agentteams_conversation_id": "late-remote-conversation",
+            "agentteams_session_id": "late-remote-session",
+            "agentteams_share_token": "late-share-token",
+            "embed_path": "/embed/late-token",
+            "status": "running",
+        },
+        "https://agentteams.example.com",
+        lease_owner=stale_owner,
+    )
+
+    await db_session.refresh(intent)
+    assert intent.status == "rejected"
+    assert intent.last_error_code == "agentteams_manually_confirmed_not_created"
+    mappings = await db_session.execute(select(ConsultationExternalSession))
     assert mappings.scalars().all() == []
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("remote_status", "expected_code"),
+    [("failed", "agentteams_launch_failed"), ("stopped", "agentteams_launch_stopped")],
+)
+async def test_agentteams_reconcile_persists_remote_terminal_failure(
+    client, db_session, current_user_override, patient, monkeypatch, remote_status, expected_code
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+
+    async def fake_launch(self, base_url, integration_secret, request_id, payload):
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "agentteams_unavailable", "message": "response lost"},
+        )
+
+    async def fake_status(self, base_url, integration_secret, request_id):
+        return {
+            "found": True,
+            "request_id": request_id,
+            "status": remote_status,
+            "agentteams_conversation_id": 1001,
+            "agentteams_session_id": 2001,
+            "error_code": expected_code,
+        }
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+    assert response.status_code == 202
+
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    intent.next_attempt_at = datetime(2000, 1, 1)
+    await db_session.commit()
+    assert await AgentTeamsLaunchIntentService(db_session).process_available() == 1
+    await db_session.refresh(intent)
+
+    assert intent.status == "rejected"
+    assert intent.last_error_status == 409
+    assert intent.last_error_code == expected_code
+    conversation = await db_session.get(Conversation, intent.conversation_id)
+    assert conversation.status == "error"
+
+
+@pytest.mark.asyncio
+async def test_agentteams_reconcile_not_found_stays_ambiguous_and_never_reposts(
+    client, db_session, current_user_override, patient, monkeypatch
+):
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+    launch_calls = []
+    status_calls = []
+
+    async def fake_launch(self, base_url, integration_secret, request_id, payload):
+        launch_calls.append(request_id)
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "agentteams_unavailable", "message": "response lost"},
+        )
+
+    async def fake_status(self, base_url, integration_secret, request_id):
+        status_calls.append(request_id)
+        return {"found": False, "request_id": request_id, "status": "not_found"}
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
+
+    response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+    assert response.status_code == 202
+
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    intent.next_attempt_at = datetime(2000, 1, 1)
+    await db_session.commit()
+    assert await AgentTeamsLaunchIntentService(db_session).process_available() == 1
+    await db_session.refresh(intent)
+
+    assert intent.status == "confirming"
+    assert intent.last_error_code == "agentteams_launch_not_found"
+    assert launch_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+    assert status_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
+
+    intent.attempt_count = AgentTeamsLaunchIntentService.MAX_RECONCILE_ATTEMPTS - 1
+    intent.next_attempt_at = datetime(2000, 1, 1)
+    await db_session.commit()
+    await AgentTeamsLaunchIntentService(db_session).process_available()
+    await db_session.refresh(intent)
+
+    assert intent.status == "manual_review"
+    assert launch_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
 
 @pytest.mark.asyncio
 async def test_conversation_history_only_returns_agentteams_mapped_records(
@@ -1070,3 +1647,67 @@ async def test_delete_patient_cleans_agentteams_mapping_and_ignores_legacy_runni
     assert conversations.scalars().all() == []
     assert sessions.scalars().all() == []
     assert deleted_patient.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_delete_patient_is_blocked_while_launch_result_is_unresolved(
+    client, db_session, current_user_override, patient, test_user
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="待确认会诊",
+        share_token="pending-patient",
+        status="analyzing",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    db_session.add(AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="confirming",
+        payload_ciphertext="enc:{}",
+        payload_hash="0" * 64,
+    ))
+    await db_session.commit()
+
+    response = await client.delete(f"/api/v1/patients/{patient.patient_id}")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "agentteams_launch_pending"
+    assert await db_session.get(Patient, patient.patient_id) is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_conversation_is_blocked_while_launch_result_is_unresolved(
+    client, db_session, current_user_override, patient, test_user
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="待确认会诊",
+        share_token="pending-conv",
+        status="analyzing",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    db_session.add(AgentTeamsLaunchIntent(
+        request_id=LAUNCH_REQUEST_ID,
+        conversation_id=conversation.id,
+        account_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        status="manual_review",
+        payload_ciphertext="enc:{}",
+        payload_hash="0" * 64,
+    ))
+    await db_session.commit()
+
+    response = await client.delete(f"/api/v1/consultation/conversations/{conversation.id}")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "agentteams_launch_pending"
+    assert await db_session.get(Conversation, conversation.id) is not None

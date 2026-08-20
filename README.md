@@ -232,7 +232,7 @@ docker compose ps
 
 ### 3. 初始化数据库
 
-backend 容器启动时会自动执行 `alembic upgrade head` 建立/升级表结构，再运行幂等种子脚本创建默认管理员、指标分类和标准指标。默认管理员账号为 `admin`，密码取自 `ADMIN_INITIAL_PASSWORD` 环境变量，未设置则使用默认密码 `admin123`（**生产环境务必设置 `ADMIN_INITIAL_PASSWORD` 并登录后立即修改**）。
+backend 容器启动时会自动执行 `alembic upgrade head` 建立/升级表结构，再运行幂等种子脚本创建默认管理员、指标分类和标准指标。`agentteams-launch-worker` 等待 backend 健康后启动，不参与迁移。默认管理员账号为 `admin`，密码取自 `ADMIN_INITIAL_PASSWORD` 环境变量，未设置则使用默认密码 `admin123`（**生产环境务必设置 `ADMIN_INITIAL_PASSWORD` 并登录后立即修改**）。
 
 ### 4. 访问
 

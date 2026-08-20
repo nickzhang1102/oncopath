@@ -82,5 +82,19 @@ export const adminApi = {
   },
   updateAgentTeamsConfig(data) {
     return request.put('/admin/agentteams-config', data)
+  },
+
+  // AgentTeams 启动意图人工复核
+  getAgentTeamsLaunchIntents(params = { status: 'manual_review' }) {
+    return request.get('/admin/agentteams-launch-intents', { params })
+  },
+  getAgentTeamsLaunchIntent(id) {
+    return request.get(`/admin/agentteams-launch-intents/${id}`)
+  },
+  reconcileAgentTeamsLaunchIntent(id) {
+    return request.post(`/admin/agentteams-launch-intents/${id}/reconcile`)
+  },
+  resolveAgentTeamsLaunchIntent(id, data) {
+    return request.post(`/admin/agentteams-launch-intents/${id}/resolve`, data)
   }
 }
