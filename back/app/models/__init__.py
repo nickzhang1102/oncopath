@@ -49,7 +49,7 @@ __all__ = [
     "PathologyReport",
     "UserFavoriteIndex",
     "MedicalRecord",
-    # 会诊（对齐 claudechat）
+    # 会诊
     "Conversation",
     "ConsultationExternalSession",
     "Message",

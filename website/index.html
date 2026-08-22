@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="OncoPath 是面向家庭自部署的智能健康信息整理与医疗报告管理工具。">
+  <meta name="description" content="OncoPath 是面向家庭自部署的智能健康信息整理与医疗报告管理工具：OCR 指标识别、治疗时间线聚合、AI 辅助解读，并通过 AgentTeams 集成承接虚拟会诊。">
+  <meta name="theme-color" content="#0a93b4">
+  <meta property="og:title" content="OncoPath | 智能健康信息整理">
+  <meta property="og:description" content="把检验、检查、病理与随访资料，整理为一条可追溯、可理解的治疗时间线工作台。开源（Apache-2.0），支持家庭自部署。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://nickzhang1102.github.io/oncopath/screenshots/desktop-home-indicators-list.png">
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%232fb5d3"/><stop offset="1" stop-color="%23087f9e"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(%23g)"/><text x="32" y="44" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="white" text-anchor="middle">O</text></svg>'>
   <title>OncoPath | 智能健康信息整理</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -17,59 +23,124 @@
       <a href="#capabilities">能力</a>
       <a href="#showcase">界面</a>
       <a href="#deploy">部署</a>
+      <a href="#sponsor">赞助</a>
     </div>
-    <a class="github-link" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">GitHub</a>
+    <a class="github-link" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.78 0c2.21-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.67.41.35.77 1.04.77 2.1 0 1.51-.01 2.73-.01 3.1 0 .3.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+      GitHub
+    </a>
   </nav>
 
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow">开源 · 家庭自部署</p>
-        <h1 id="hero-title">OncoPath</h1>
-        <p class="hero-lede">把检验、检查、病理与随访资料整理为可追溯、可理解的健康信息工作台。</p>
-        <div class="hero-actions">
-          <a class="button primary" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">查看源码</a>
-          <a class="button secondary" href="#showcase">浏览界面</a>
-        </div>
-        <p class="hero-note">仅作健康信息整理与辅助分析，不构成医疗诊断或治疗建议。</p>
+      <div class="hero-bg" aria-hidden="true">
+        <i class="glow glow-one"></i>
+        <i class="glow glow-two"></i>
+        <i class="dot-grid"></i>
       </div>
-      <a class="hero-screen" href="#showcase" aria-label="查看 OncoPath 界面预览">
-        <img src="screenshots/desktop-home-indicators-list.png" alt="OncoPath 仪表盘展示脱敏的重要指标和待办事项" fetchpriority="high">
-      </a>
-      <a class="hero-next" href="#capabilities">向下浏览 <span aria-hidden="true">↓</span></a>
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <p class="hero-chips">
+            <span class="chip chip-solid">开源 · Apache-2.0</span>
+            <span class="chip">家庭自部署</span>
+            <span class="chip">演示数据已脱敏</span>
+          </p>
+          <h1 id="hero-title">OncoPath</h1>
+          <p class="hero-lede">把检验、检查、病理与随访资料，整理为一条<em>可追溯、可理解</em>的治疗时间线工作台。</p>
+          <p class="hero-sub">OCR 指标识别 · 组合指标趋势 · AI 辅助解读 · AgentTeams 虚拟会诊集成</p>
+          <div class="hero-actions">
+            <a class="button primary" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">
+              查看 GitHub 源码
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="button secondary" href="#showcase">浏览界面预览</a>
+          </div>
+          <p class="hero-note">仅作健康信息整理与辅助分析，不构成医疗诊断或治疗建议。</p>
+        </div>
+        <div class="hero-visual" aria-hidden="false">
+          <div class="hero-window window">
+            <span class="window-bar" aria-hidden="true">
+              <i></i><i></i><i></i>
+              <span class="window-title">OncoPath · 工作台预览</span>
+            </span>
+            <picture>
+              <source media="(max-width: 860px)" srcset="screenshots/mobile-home.png">
+              <img src="screenshots/desktop-home-indicators-list.png" alt="OncoPath 仪表盘展示脱敏的重要指标和待办事项" width="1600" height="1000" fetchpriority="high">
+            </picture>
+          </div>
+          <span class="float-chip float-chip-one" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l1.6 3.9L17.5 9.5l-3.9 1.6L12 15l-1.6-3.9L6.5 9.5l3.9-1.6z"/><path d="M18.5 15.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg>
+            AI 检验解读
+          </span>
+          <span class="float-chip float-chip-two" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 12h8"/></svg>
+            OCR 指标提取
+          </span>
+        </div>
+      </div>
+      <a class="hero-next" href="#capabilities">向下浏览 <span class="hero-next-arrow" aria-hidden="true">↓</span></a>
     </section>
 
     <section class="intro" id="capabilities" aria-labelledby="capability-title">
-      <div class="section-heading">
+      <div class="section-heading" data-reveal>
         <p class="eyebrow">从资料到脉络</p>
-        <h2 id="capability-title">围绕持续随访的核心能力</h2>
+        <h2 id="capability-title">围绕持续随访的<em class="grad">核心能力</em></h2>
+        <p class="section-sub">六个模块覆盖「归集 — 理解 — 协作 — 沉淀」的完整闭环。</p>
       </div>
       <div class="capability-grid">
-        <article>
+        <article data-reveal>
+          <span class="capability-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></svg>
+          </span>
           <span class="capability-index">01</span>
           <h3>报告归集</h3>
-          <p>检验、检查和病理报告统一管理；OCR 识别结果可人工审查和修正。</p>
+          <p>检验、检查与病理报告统一管理，图片报告经 OCR 识别后仍可人工审查修正。</p>
         </article>
-        <article>
+        <article data-reveal>
+          <span class="capability-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M12 7l1.4 3.4L16.8 12l-3.4 1.4L12 16.8l-1.4-3.4L7.2 12l3.4-1.6z"/></svg>
+          </span>
           <span class="capability-index">02</span>
-          <h3>趋势理解</h3>
-          <p>将重要指标和多项组合指标放入同一时间轴，结合参考范围查看连续变化。</p>
+          <h3>智能识别</h3>
+          <p>OCR 自动提取检验指标并匹配标准库，AI 解读把专业数值翻译成通俗结论与复查提醒。</p>
         </article>
-        <article>
+        <article data-reveal>
+          <span class="capability-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5.2-6 3.8 3L20 6"/><path d="M15 6h5v5"/></svg>
+          </span>
           <span class="capability-index">03</span>
-          <h3>会诊协作</h3>
-          <p>通过 AgentTeams 集成入口聚合患者资料、启动会诊并保留可追溯的历史壳。</p>
+          <h3>趋势理解</h3>
+          <p>重要指标与多项组合指标对齐同一时间轴，结合参考范围观察连续变化与里程碑。</p>
         </article>
-        <article>
+        <article data-reveal>
+          <span class="capability-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.7-3 2.8-4.6 5.5-4.6s4.8 1.6 5.5 4.6"/><circle cx="16.8" cy="9.5" r="2.4"/><path d="M16.4 14.6c2.2.4 3.7 1.7 4.2 4"/></svg>
+          </span>
           <span class="capability-index">04</span>
+          <h3>会诊协作</h3>
+          <p>聚合患者资料并承接 AgentTeams 多智能体会诊，全过程状态可跟踪、历史可回溯。</p>
+        </article>
+        <article data-reveal>
+          <span class="capability-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </span>
+          <span class="capability-index">05</span>
           <h3>资料沉淀</h3>
-          <p>用分类知识库整理随访计划、检查准备和用药资料，方便后续查阅。</p>
+          <p>分类知识库沉淀随访计划、检查准备与用药资料，支持搜索、摘要与预览。</p>
+        </article>
+        <article data-reveal>
+          <span class="capability-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.8v5.4c0 4.4-2.9 7.6-7 8.8-4.1-1.2-7-4.4-7-8.8V5.8z"/><path d="M9 11.6l2 2 4-4.4"/></svg>
+          </span>
+          <span class="capability-index">06</span>
+          <h3>数据自主</h3>
+          <p>全部数据留在自己的主机，敏感字段加密存储，报告分享支持限时限次访问。</p>
         </article>
       </div>
     </section>
 
     <section class="showcase" id="showcase" aria-labelledby="showcase-title">
-      <div class="showcase-heading">
+      <div class="showcase-heading" data-reveal>
         <p class="eyebrow">真实界面 · 脱敏演示数据</p>
         <h2 id="showcase-title">每一次滚动，看到一个完整工作环节</h2>
         <p>所有截图均由当前前端以固定虚构数据自动生成；身份字段已掩码处理。</p>
@@ -80,10 +151,14 @@
           <div class="showcase-copy">
             <p class="showcase-index">01 / 10</p>
             <h3>首页重要指标列表</h3>
-            <p>把报告数量、异常项、待办和分组指标收在同一处，先建立当前状态的全局视图。</p>
+            <p class="showcase-desc">把报告数量、异常项、待办和分组指标收在同一处，先建立当前状态的全局视图。</p>
+            <div class="showcase-dots" role="group" aria-label="切换预览步骤"></div>
           </div>
           <button class="showcase-image-button" type="button" aria-label="在新窗口查看首页重要指标列表原图">
-            <img src="screenshots/desktop-home-indicators-list.png" alt="首页重要指标列表" loading="eager">
+            <span class="window showcase-window">
+              <span class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="window-title">OncoPath · 演示数据</span></span>
+              <img src="screenshots/desktop-home-indicators-list.png" alt="首页重要指标列表" loading="eager">
+            </span>
           </button>
           <p class="showcase-progress" aria-hidden="true">01</p>
         </div>
@@ -104,10 +179,14 @@
           <div class="showcase-copy">
             <p class="showcase-index">01 / 05</p>
             <h3>移动端首页</h3>
-            <p>在手机上先看待办、异常项与重要指标，关键状态保持可扫读。</p>
+            <p class="showcase-desc">在手机上先看待办、异常项与重要指标，关键状态保持可扫读。</p>
+            <div class="showcase-dots" role="group" aria-label="切换预览步骤"></div>
           </div>
           <button class="showcase-image-button" type="button" aria-label="在新窗口查看移动端首页原图">
-            <img src="screenshots/mobile-home.png" alt="移动端首页" loading="lazy">
+            <span class="phone showcase-phone">
+              <span class="phone-notch" aria-hidden="true"></span>
+              <img src="screenshots/mobile-home.png" alt="移动端首页" loading="lazy">
+            </span>
           </button>
           <p class="showcase-progress" aria-hidden="true">01</p>
         </div>
@@ -135,68 +214,206 @@
     </section>
 
     <section class="deploy" id="deploy" aria-labelledby="deploy-title">
-      <div class="section-heading">
+      <div class="section-heading" data-reveal>
         <p class="eyebrow">本地掌握数据</p>
-        <h2 id="deploy-title">从自部署开始</h2>
+        <h2 id="deploy-title">三步，在自己的主机上运行</h2>
+        <p class="section-sub">默认提供 CPU Compose 配置；NVIDIA GPU 环境可用独立覆盖文件启用。</p>
       </div>
       <div class="deploy-grid">
-        <div>
-          <span>01</span>
+        <div class="deploy-card" data-reveal>
+          <span class="deploy-num">01</span>
           <h3>配置环境</h3>
-          <pre><code>git clone https://github.com/nickzhang1102/oncopath.git
+          <div class="term">
+            <div class="term-bar" aria-hidden="true">
+              <i></i><i></i><i></i>
+              <span class="term-title">terminal — clone &amp; init</span>
+              <button class="copy-btn" type="button" data-copy="git clone https://github.com/nickzhang1102/oncopath.git&#10;cd oncopath&#10;cp .env.example .env" aria-label="复制配置环境命令">
+                <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                <span class="copy-label">复制</span>
+              </button>
+            </div>
+            <pre><code>git clone https://github.com/nickzhang1102/oncopath.git
 cd oncopath
 cp .env.example .env</code></pre>
+          </div>
         </div>
-        <div>
-          <span>02</span>
+        <div class="deploy-card" data-reveal>
+          <span class="deploy-num">02</span>
           <h3>启动默认 CPU 环境</h3>
-          <pre><code>docker compose up -d --build</code></pre>
-          <p>NVIDIA GPU 环境以独立 Compose 覆盖文件启用，详见仓库部署文档。</p>
+          <div class="term">
+            <div class="term-bar" aria-hidden="true">
+              <i></i><i></i><i></i>
+              <span class="term-title">terminal — compose up</span>
+              <button class="copy-btn" type="button" data-copy="docker compose up -d --build" aria-label="复制启动命令">
+                <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                <span class="copy-label">复制</span>
+              </button>
+            </div>
+            <pre><code>docker compose up -d --build</code></pre>
+          </div>
+          <p class="deploy-note">NVIDIA GPU 环境以独立 Compose 覆盖文件启用，详见仓库部署文档。</p>
         </div>
-        <div>
-          <span>03</span>
-          <h3>阅读安全说明</h3>
-          <p>上线前必须配置真实密钥、限制 CORS、修改管理员初始密码，并完成适用的医疗数据合规评估。</p>
-          <a href="https://github.com/nickzhang1102/oncopath/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">安全说明</a>
+        <div class="deploy-card" data-reveal>
+          <span class="deploy-num">03</span>
+          <h3>安全上线</h3>
+          <p class="deploy-note">上线前必须配置真实密钥、限制 CORS、修改管理员初始密码，并完成适用的医疗数据合规评估。</p>
+          <a class="arrow-link" href="https://github.com/nickzhang1102/oncopath/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">阅读安全说明
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
         </div>
+      </div>
+    </section>
+
+    <section class="cta-band-wrap" aria-label="参与项目">
+      <div class="cta-band" data-reveal>
+        <div class="cta-copy">
+          <h2>在 GitHub 上参与 OncoPath</h2>
+          <p>查看源码、提交 Issue 或改进文档——面向家庭场景的医疗信息整理，值得一起打磨。</p>
+        </div>
+        <a class="button inverse" href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.78 0c2.21-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.67.41.35.77 1.04.77 2.1 0 1.51-.01 2.73-.01 3.1 0 .3.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+          nickzhang1102/oncopath
+        </a>
+      </div>
+    </section>
+
+    <section class="sponsor" id="sponsor" aria-labelledby="sponsor-title">
+      <div class="section-heading" data-reveal>
+        <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>支持作者</p>
+        <h2 id="sponsor-title">请作者喝一杯咖啡</h2>
+        <p class="section-sub">如果 OncoPath 对你有所帮助，欢迎请作者喝一杯咖啡——每一份支持都是持续维护的动力，真的很重要！</p>
+      </div>
+      <div class="sponsor-cards" data-reveal>
+        <figure class="sponsor-card">
+          <img src="screenshots/wechat.jpg" alt="微信赞赏码" loading="lazy">
+          <figcaption>💚 微信</figcaption>
+        </figure>
+        <figure class="sponsor-card">
+          <img src="screenshots/alipay.jpg" alt="支付宝收款码" loading="lazy">
+          <figcaption>💙 支付宝</figcaption>
+        </figure>
+        <p class="sponsor-star">⭐ 去 GitHub 点一个 Star，同样是对作者的支持。</p>
       </div>
     </section>
   </main>
 
   <footer>
-    <div>
-      <strong>OncoPath</strong>
-      <p>智能健康信息整理与医疗报告管理工具。</p>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand brand-invert" href="#top">
+          <span class="brand-mark" aria-hidden="true">O</span>
+          <span>OncoPath</span>
+        </a>
+        <p>智能健康信息整理与医疗报告管理工具。公开截图均为脱敏演示数据；不构成医疗诊断或治疗建议。</p>
+      </div>
+      <nav class="footer-col" aria-label="页脚页面导航">
+        <strong>页面</strong>
+        <a href="#capabilities">核心能力</a>
+        <a href="#showcase">界面预览</a>
+        <a href="#deploy">自部署</a>
+        <a href="#sponsor">赞助支持</a>
+      </nav>
+      <nav class="footer-col" aria-label="页脚资源链接">
+        <strong>资源</strong>
+        <a href="https://github.com/nickzhang1102/oncopath" target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
+        <a href="https://github.com/nickzhang1102/oncopath/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">安全说明</a>
+        <a href="https://github.com/nickzhang1102/oncopath/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">参与贡献</a>
+        <a href="https://github.com/nickzhang1102/oncopath/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">免责声明</a>
+      </nav>
     </div>
-    <p>公开截图均为脱敏演示数据。<a href="https://github.com/nickzhang1102/oncopath/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">免责声明</a></p>
+    <div class="footer-bottom">
+      <p>© 2026 OncoPath · 以 Apache-2.0 许可开源</p>
+      <p>演示数据 · 已脱敏</p>
+    </div>
   </footer>
 
   <dialog class="image-dialog" aria-label="截图原图预览">
-    <button class="dialog-close" type="button" aria-label="关闭原图预览">×</button>
-    <img src="screenshots/desktop-home-indicators-list.png" alt="">
+    <div class="dialog-body">
+      <button class="dialog-close" type="button" aria-label="关闭原图预览">×</button>
+      <img src="screenshots/desktop-home-indicators-list.png" alt="">
+    </div>
   </dialog>
 
   <script>
+    document.documentElement.classList.add('js');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
     const nav = document.querySelector('.site-nav');
+    const navLinks = [...document.querySelectorAll('.nav-links a')];
     const dialog = document.querySelector('.image-dialog');
     const dialogImage = dialog.querySelector('img');
     const closeDialog = dialog.querySelector('.dialog-close');
 
     window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 18), { passive: true });
 
+    /* 导航高亮当前章节 */
+    if ('IntersectionObserver' in window) {
+      const sectionLinks = new Map();
+      navLinks.forEach((link) => {
+        const hash = link.getAttribute('href');
+        const section = hash && document.querySelector(hash);
+        if (section) sectionLinks.set(section, link);
+      });
+      const activeNav = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const link = sectionLinks.get(entry.target);
+          if (link) link.classList.toggle('active', entry.isIntersecting);
+        });
+      }, { rootMargin: '-40% 0px -52% 0px' });
+      sectionLinks.forEach((_link, section) => activeNav.observe(section));
+    }
+
+    /* 进入视口时轻量浮现 */
+    const revealTargets = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window && !reduceMotion.matches) {
+      const revealer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            revealer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+      revealTargets.forEach((el, i) => {
+        el.style.transitionDelay = `${Math.min((i % 6) * 60, 300)}ms`;
+        revealer.observe(el);
+      });
+    } else {
+      revealTargets.forEach((el) => el.classList.add('in-view'));
+    }
+
+    /* 逐屏叙事 */
     document.querySelectorAll('.showcase-story').forEach((story) => {
       const stage = story.querySelector('.showcase-stage');
       const index = stage.querySelector('.showcase-index');
       const title = stage.querySelector('h3');
-      const description = stage.querySelector('.showcase-copy > p:last-child');
+      const description = stage.querySelector('.showcase-desc');
       const image = stage.querySelector('img');
       const imageButton = stage.querySelector('.showcase-image-button');
       const progress = stage.querySelector('.showcase-progress');
+      const dotsBox = stage.querySelector('.showcase-dots');
       const steps = [...story.querySelectorAll('.showcase-step')];
+
+      const dots = steps.map((step, i) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'showcase-dot';
+        dot.setAttribute('aria-label', `查看第 ${i + 1} 屏：${step.dataset.title}`);
+        dot.addEventListener('click', () => {
+          step.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'center' });
+        });
+        dotsBox.appendChild(dot);
+        return dot;
+      });
 
       function activate(step) {
         if (step.classList.contains('active')) return;
-        steps.forEach((item) => item.classList.toggle('active', item === step));
+        steps.forEach((item, i) => {
+          item.classList.toggle('active', item === step);
+          dots[i].classList.toggle('active', item === step);
+          if (item === step) dots[i].setAttribute('aria-current', 'true');
+          else dots[i].removeAttribute('aria-current');
+        });
         stage.classList.add('is-changing');
         window.setTimeout(() => {
           index.textContent = `${step.dataset.index} / ${String(steps.length).padStart(2, '0')}`;
@@ -207,8 +424,11 @@ cp .env.example .env</code></pre>
           imageButton.setAttribute('aria-label', `在新窗口查看${step.dataset.title}原图`);
           progress.textContent = step.dataset.index;
           stage.classList.remove('is-changing');
-        }, 120);
+        }, 140);
       }
+
+      dots[0].classList.add('active');
+      dots[0].setAttribute('aria-current', 'true');
 
       const observer = new IntersectionObserver((entries) => {
         const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -217,6 +437,7 @@ cp .env.example .env</code></pre>
       steps.forEach((step) => observer.observe(step));
     });
 
+    /* 原图预览 */
     document.querySelectorAll('.showcase-image-button').forEach((button) => {
       button.addEventListener('click', () => {
         const source = button.querySelector('img');
@@ -226,7 +447,36 @@ cp .env.example .env</code></pre>
       });
     });
     closeDialog.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener('click', (event) => { if (event.target === dialog || event.target.classList.contains('dialog-body')) dialog.close(); });
+
+    /* 复制部署命令 */
+    document.querySelectorAll('.copy-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const text = button.dataset.copy || '';
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        } catch (_) {
+          const area = document.createElement('textarea');
+          area.value = text;
+          area.setAttribute('readonly', '');
+          area.style.position = 'fixed';
+          area.style.opacity = '0';
+          document.body.appendChild(area);
+          area.select();
+          try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+          area.remove();
+        }
+        button.classList.add('copied');
+        const label = button.querySelector('.copy-label');
+        if (label) label.textContent = copied ? '已复制' : '请手动复制';
+        window.setTimeout(() => {
+          button.classList.remove('copied');
+          if (label) label.textContent = '复制';
+        }, 1800);
+      });
+    });
   </script>
 </body>
 </html>

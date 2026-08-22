@@ -8,19 +8,22 @@
       <!-- 新用户引导 -->
       <OnboardingGuide />
 
+      <!-- LLM 未配置提醒 -->
+      <LLMConfigPrompt />
+
       <!-- 桌面端患者切换器 -->
       <PatientSwitcher v-if="isDesktop" />
 
       <!-- 桌面端仪表盘布局 -->
       <template v-if="isDesktop">
         <!-- 桌面端搜索入口 -->
-        <div class="desktop-search-entry" @click="router.push('/home/search')">
+        <div class="desktop-search-entry" data-tour="search" @click="router.push('/home/search')">
           <van-icon name="search" size="20" />
           <span>搜索指标、药品、报告...</span>
         </div>
         <div v-if="dashboardData" class="dashboard-grid">
           <DashboardPatientOverview :data="dashboardData" />
-          <DashboardStatsGrid :data="dashboardData" @go="handleGo" />
+          <DashboardStatsGrid :data="dashboardData" data-tour="stats" @go="handleGo" />
           <DashboardAbnormalSummary :data="dashboardData" @go-abnormal="handleGoAbnormal" />
           <DashboardTodoList
             :data="dashboardData"
@@ -29,15 +32,15 @@
             @go-reminders="handleGoReminders"
           />
         </div>
-        <IndicatorSection />
+        <IndicatorSection data-tour="indicators" />
       </template>
 
       <!-- 移动端布局 -->
       <template v-if="!isDesktop">
-        <QuickActionBar @action="handleAction" />
+        <QuickActionBar data-tour="quick-actions" @action="handleAction" />
         <template v-if="dashboardData">
           <MobilePatientBanner :data="dashboardData" />
-          <MobileStatsRow :data="dashboardData" @go="handleGo" />
+          <MobileStatsRow :data="dashboardData" data-tour="stats" @go="handleGo" />
           <MobileTodoBanner
             :data="dashboardData"
             @go-pending-review="handleGoPendingReview"
@@ -46,8 +49,8 @@
           />
           <MobileAbnormalPreview :data="dashboardData" @go-abnormal="handleGoAbnormal" />
         </template>
-        <IndicatorSection />
-        <FeatureGrid title="医疗管理" :items="medicalItems" />
+        <IndicatorSection data-tour="indicators" />
+        <FeatureGrid title="医疗管理" :items="medicalItems" data-tour="features" />
         <FeatureGrid title="智能工具" :items="toolItems" />
       </template>
     </div>
@@ -79,6 +82,7 @@ import DashboardStatsGrid from '@/components/dashboard/DashboardStatsGrid.vue'
 import DashboardAbnormalSummary from '@/components/dashboard/DashboardAbnormalSummary.vue'
 import DashboardTodoList from '@/components/dashboard/DashboardTodoList.vue'
 import OnboardingGuide from '@/components/home/OnboardingGuide.vue'
+import LLMConfigPrompt from '@/components/home/LLMConfigPrompt.vue'
 
 const router = useRouter()
 const patientStore = usePatientStore()

@@ -5,6 +5,9 @@
 import logging
 from typing import List
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.models.admin import LLMConfig
 from app.services.encryption_service import encryption_service
@@ -144,6 +147,26 @@ class LLMConfigService:
                     logger.info("已销毁 OpenAILLMService 单例")
             except Exception as e:
                 logger.error(f"销毁 {module_path} 单例失败: {e}")
+
+    @staticmethod
+    async def load_and_apply(db: AsyncSession) -> int:
+        """启动时从数据库加载活跃配置并应用到运行时
+
+        返回应用的配置组数量；查询失败由调用方捕获处理。
+        """
+        result = await db.execute(
+            select(LLMConfig).where(LLMConfig.is_active == True)  # noqa: E712
+        )
+        active_configs = result.scalars().all()
+        if not active_configs:
+            return 0
+        LLMConfigService().apply_configs(active_configs)
+        return len(set(c.config_group for c in active_configs))
+
+    @staticmethod
+    def is_configured() -> bool:
+        """会诊组 LLM 是否已配置（API Key 非空），供首启弹窗判定"""
+        return bool(settings.LLM_API_KEY)
 
     @staticmethod
     async def test_group(group: str) -> dict:

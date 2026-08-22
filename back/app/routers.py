@@ -6,7 +6,7 @@ from app.api import (
     timeline, upload, prompt,
     image_report, knowledge, knowledge_preview, conversation, medication, dashboard,
     export, follow_up, files, medication_log,
-    indicator_history, share, search, admin, admin_agentteams,
+    indicator_history, share, search, admin, admin_agentteams, llm_config,
 )
 
 api_router = APIRouter()
@@ -41,3 +41,4 @@ api_router.include_router(share.router, tags=["报告分享"])
 api_router.include_router(search.router, tags=["全局搜索"])
 api_router.include_router(admin.router, prefix="/admin", tags=["管理后台"])
 api_router.include_router(admin_agentteams.router, prefix="/admin", tags=["管理后台"])
+api_router.include_router(llm_config.router, tags=["LLM配置"])

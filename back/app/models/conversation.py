@@ -1,6 +1,6 @@
 """会诊对话数据模型
 
-对齐 claudechat 项目的 ConversationDisplay 架构，包含：
+采用对话式流式会诊架构（ConversationDisplay），包含：
 - Conversation: 会诊对话主表
 - Message: 对话消息
 - LeaderSession: Leader 状态机

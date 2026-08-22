@@ -25,6 +25,11 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  build: {
+    // echarts(620kB) 与 export(html2canvas+jsPDF, 588kB) 均为按需加载的异步路由 chunk，
+    // 不影响首屏；仅因超过默认 500kB 告警线而提示，放宽到 700kB。
+    chunkSizeWarningLimit: 700,
+  },
   optimizeDeps: {
     include: [
       'vue',

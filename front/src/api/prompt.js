@@ -21,7 +21,6 @@ export function getPromptConfig(patientId) {
  * 保存提示词配置
  * @param {Object} config - 配置数据
  * @param {number} config.patient_id - 患者ID
- * @param {string} config.system_prompt - 系统提示词
  * @param {number} config.time_range_days - 数据时间范围（天）
  * @param {Array} config.user_content_config - 用户内容配置
  * @returns {Promise} 保存结果
@@ -49,7 +48,6 @@ export function getDefaultPromptConfig() {
  * 预览提示词
  * @param {Object} config - 配置数据
  * @param {number} config.patient_id - 患者ID
- * @param {string} config.system_prompt - 系统提示词
  * @param {number} config.time_range_days - 数据时间范围（天）
  * @param {Array} config.user_content_config - 用户内容配置
  * @returns {Promise} 预览结果

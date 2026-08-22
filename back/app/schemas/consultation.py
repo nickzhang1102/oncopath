@@ -133,6 +133,5 @@ class UserContentConfigPreviewItem(BaseModel):
 class PromptPreviewRequest(BaseModel):
     """提示词预览请求"""
     patient_id: int
-    system_prompt: str = "你是一名肿瘤科专家"
     time_range_days: int = 60
     user_content_config: List[UserContentConfigPreviewItem]

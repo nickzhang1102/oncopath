@@ -46,7 +46,6 @@ class UserContentConfigItem(BaseModel):
 class PromptConfigRequest(BaseModel):
     """提示词配置请求"""
     patient_id: int
-    system_prompt: str
     time_range_days: int = 60
     user_content_config: List[UserContentConfigItem]
 
@@ -60,7 +59,6 @@ class PromptConfigResponse(BaseModel):
 
 # 默认提示词配置
 DEFAULT_PROMPT_CONFIG = {
-    "system_prompt": "你是一名经验丰富的肿瘤科专家",
     "time_range_days": 60,
     "user_content_config": [
         {"id": 1, "name": "自定义内容", "description": "添加自定义的医疗信息", "type": "custom", "enabled": False, "customText": ""},
@@ -194,7 +192,6 @@ async def save_prompt_config(
             # 配置的业务归属是患者；同步修复历史遗留的旧账号外键，
             # 使预览与 AgentTeams 启动读取保持一致。
             existing_config.account_id = current_user.account_id
-            existing_config.system_prompt = config.system_prompt
             existing_config.time_range_days = config.time_range_days
             existing_config.user_content_config = user_content_json
         else:
@@ -202,7 +199,6 @@ async def save_prompt_config(
             new_config = PromptConfig(
                 account_id=current_user.account_id,
                 patient_id=config.patient_id,
-                system_prompt=config.system_prompt,
                 time_range_days=config.time_range_days,
                 user_content_config=user_content_json
             )
@@ -269,7 +265,6 @@ async def preview_prompt(
 
         # 构建配置 dict
         config = {
-            "system_prompt": request.system_prompt,
             "time_range_days": request.time_range_days,
             "user_content_config": [item.model_dump() for item in request.user_content_config],
         }

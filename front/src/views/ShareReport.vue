@@ -19,7 +19,7 @@
           <van-icon name="shield-o" class="share-icon" />
           <div class="header-info">
             <span class="share-label">{{ contentTypeLabel }}</span>
-            <span class="share-date">{{ reportData.medical_date || reportData.report_date }}</span>
+            <span class="share-date">{{ formatReportDate(reportData.medical_date || reportData.report_date) }}</span>
           </div>
         </div>
       </header>
@@ -34,7 +34,7 @@
             </span>
             <span class="meta-item">
               <van-icon name="calendar-o" />
-              {{ reportData.report.medical_date }}
+              {{ formatReportDate(reportData.report.medical_date) }}
             </span>
           </div>
 
@@ -99,7 +99,7 @@
             </span>
             <span class="meta-item">
               <van-icon name="calendar-o" />
-              {{ reportData.report.report_date }}
+              {{ formatReportDate(reportData.report.report_date) }}
             </span>
           </div>
 
@@ -203,6 +203,12 @@ const contentTypeLabel = computed(() => {
   }
   return labels[reportData.value?.content_type] || '医疗报告'
 })
+
+function formatReportDate(value) {
+  if (!value) return ''
+  const dateOnly = String(value).match(/^\d{4}-\d{2}-\d{2}/)
+  return dateOnly ? dateOnly[0] : String(value)
+}
 
 const hasPathologyFields = computed(() => {
   const r = reportData.value?.report

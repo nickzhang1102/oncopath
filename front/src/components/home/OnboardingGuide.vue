@@ -100,49 +100,23 @@
         </div>
       </template>
 
-      <!-- 步骤3: 功能介绍 -->
+      <!-- 步骤3: 锚点式功能导览入口 -->
       <template v-if="step === 3">
         <div class="step-content">
           <div class="step-icon">
-            <van-icon name="star-o" size="48" color="var(--primary-color)" />
+            <van-icon name="guide-o" size="48" color="var(--primary-color)" />
           </div>
-          <h2 class="step-title">开始使用</h2>
-          <p class="step-desc">以下功能等您探索：</p>
-
-          <div class="feature-list">
-            <div class="feature-item" @click="goFeature('/home/medication')">
-              <van-icon name="gem-o" size="24" color="var(--primary-color)" />
-              <div>
-                <div class="feature-name">用药管理</div>
-                <div class="feature-desc">记录用药方案，服药打卡</div>
-              </div>
-            </div>
-            <div class="feature-item" @click="goFeature('/home/timeline')">
-              <van-icon name="clock-o" size="24" color="var(--success-color)" />
-              <div>
-                <div class="feature-name">治疗时间线</div>
-                <div class="feature-desc">可视化治疗历程</div>
-              </div>
-            </div>
-            <div class="feature-item" @click="goFeature('/home/consultation')">
-              <van-icon name="friends-o" size="24" color="var(--warning-color)" />
-              <div>
-                <div class="feature-name">AI 专家会诊</div>
-                <div class="feature-desc">多专家分析病情，给出建议</div>
-              </div>
-            </div>
-            <div class="feature-item" @click="goFeature('/home/abnormal-indicators')">
-              <van-icon name="warning-o" size="24" color="var(--danger-color)" />
-              <div>
-                <div class="feature-name">异常指标</div>
-                <div class="feature-desc">追踪异常检验指标</div>
-              </div>
-            </div>
-          </div>
+          <h2 class="step-title">快速了解</h2>
+          <p class="step-desc">
+            花 30 秒跟随导览了解主页各模块的用途，帮您快速上手。
+          </p>
 
           <div class="step-actions">
-            <van-button round block type="primary" @click="complete">
-              开始使用
+            <van-button round block type="primary" @click="startTour">
+              开始导览
+            </van-button>
+            <van-button round block plain style="margin-top: 8px" @click="markCompleted">
+              跳过引导
             </van-button>
           </div>
         </div>
@@ -160,6 +134,9 @@
       />
     </van-popup>
   </van-popup>
+
+  <!-- 锚点式功能导览 -->
+  <GuideTour v-if="tourActive" :steps="tourSteps" @finish="onTourFinish" />
 </template>
 
 <script setup>
@@ -168,6 +145,7 @@ import { useRouter } from 'vue-router'
 import { showToast, showSuccessToast } from 'vant'
 import { usePatientStore } from '@/stores/patient'
 import { useResponsive } from '@/composables/useResponsive'
+import GuideTour from '@/components/home/GuideTour.vue'
 
 const { isDesktop } = useResponsive()
 const router = useRouter()
@@ -177,6 +155,8 @@ const step = ref(1)
 const creating = ref(false)
 const showDatePicker = ref(false)
 const completed = ref(!!localStorage.getItem('onboarding_completed'))
+const tourActive = ref(false)
+const guideHidden = ref(false)
 
 const patientName = ref('')
 const gender = ref('male')
@@ -187,8 +167,27 @@ const minDate = new Date(1900, 0, 1)
 const maxDate = new Date()
 
 const visible = computed({
-  get: () => !completed.value && patientStore.loaded && (patientStore.patientCount === 0 || step.value > 1),
+  get: () => !completed.value && !guideHidden.value && patientStore.loaded && (patientStore.patientCount === 0 || step.value > 1),
   set: () => {},
+})
+
+// 锚点导览步骤（按端型区分；目标元素不存在时 GuideTour 自动跳过）
+const tourSteps = computed(() => {
+  if (isDesktop.value) {
+    return [
+      { selector: '.desktop-sidebar', title: '功能导航', desc: '所有功能模块的入口都在左侧导航中，包括报告、时间线、会诊等。' },
+      { selector: '[data-tour="search"]', title: '全局搜索', desc: '一键搜索指标、药品和各类报告。' },
+      { selector: '[data-tour="stats"]', title: '健康概览', desc: '汇总各类报告数量与异常指标，健康状态一目了然。' },
+      { selector: '[data-tour="indicators"]', title: '指标关注', desc: '这里展示您收藏指标的最新结果与历史趋势。' },
+    ]
+  }
+  return [
+    { selector: '[data-tour="quick-actions"]', title: '快捷操作', desc: '上传报告图片、发起 AI 会诊等常用功能都在这里。' },
+    { selector: '[data-tour="stats"]', title: '健康概览', desc: '汇总各类报告数量与异常指标，点击可查看详情。' },
+    { selector: '[data-tour="indicators"]', title: '指标关注', desc: '这里展示您收藏指标的最新结果与历史趋势。' },
+    { selector: '[data-tour="features"]', title: '全部功能', desc: '用药管理、知识库、随访提醒等更多功能入口。' },
+    { selector: '.tabbar-wrapper', title: '底部导航', desc: '在主页、时间线、报告等主要页面之间快速切换。' },
+  ]
 })
 
 watch(visible, (isVisible) => {
@@ -235,18 +234,21 @@ function goUpload() {
   router.push('/home/image-report')
 }
 
-function goFeature(path) {
+function startTour() {
+  guideHidden.value = true
+  tourActive.value = true
+}
+
+function onTourFinish() {
+  tourActive.value = false
   markCompleted()
-  router.push(path)
 }
 
 function markCompleted() {
   completed.value = true
   localStorage.setItem('onboarding_completed', '1')
-}
-
-function complete() {
-  markCompleted()
+  // 广播引导完成事件，供 LLM 配置提醒弹窗衔接
+  window.dispatchEvent(new CustomEvent('onboarding-completed'))
 }
 </script>
 
@@ -331,38 +333,6 @@ function complete() {
 
 .upload-preview:active {
   border-color: var(--primary-color);
-}
-
-.feature-list {
-  text-align: left;
-  margin: 16px 0;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--bg-surface);
-  border-radius: 10px;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
-
-.feature-item:active {
-  background: var(--bg-elevated);
-}
-
-.feature-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.feature-desc {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
 }
 
 :global(body.onboarding-active .drawer-trigger-btn),

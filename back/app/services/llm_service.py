@@ -1,7 +1,6 @@
 """LLM 服务模块
 
 使用 OpenAI 兼容 API 的异步服务模块，支持流式输出。
-参照 claudechat 项目的 llm_service.py，适配 FastAPI 异步架构。
 """
 
 import asyncio

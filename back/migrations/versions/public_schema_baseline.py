@@ -425,7 +425,6 @@ def upgrade() -> None:
     sa.Column('config_id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('account_id', sa.Integer(), nullable=False),
     sa.Column('patient_id', sa.Integer(), nullable=False),
-    sa.Column('system_prompt', sa.Text(), nullable=False),
     sa.Column('user_content_config', sa.Text(), nullable=False),
     sa.Column('time_range_days', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),

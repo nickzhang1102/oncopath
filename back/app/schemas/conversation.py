@@ -1,6 +1,6 @@
 """会诊对话 Schema
 
-对齐 claudechat 项目，包含：
+包含：
 - Conversation CRUD
 - Leader Session 管理
 """
@@ -346,44 +346,3 @@ class IndexCategoryItem(BaseModel):
     report_type: Optional[str] = None
     index_count: int
     model_config = ConfigDict(from_attributes=True)
-
-
-# ===== Admin LLM 配置管理 Schema =====
-
-class LLMConfigItem(BaseModel):
-    """LLM 配置项响应"""
-    id: int
-    config_key: str
-    config_value: str
-    config_group: str
-    display_name: str
-    description: Optional[str] = None
-    is_secret: bool
-    is_active: bool
-    updated_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class LLMConfigUpdate(BaseModel):
-    """LLM 配置更新请求"""
-    config_value: str = Field(..., min_length=1, description="配置值，is_secret 字段传入 **** 开头表示未修改")
-
-
-class LLMConfigReloadResponse(BaseModel):
-    """LLM 配置重载响应"""
-    success: bool
-    message: str
-    reloaded_groups: List[str] = []
-
-
-class LLMConfigTestRequest(BaseModel):
-    """LLM 配置测试请求"""
-    group: str = Field(..., pattern=r'^(consultation|interpretation|ocr)$', description="配置组")
-
-
-class LLMConfigTestResponse(BaseModel):
-    """LLM 配置测试响应"""
-    success: bool
-    message: str
-    latency_ms: Optional[int] = None

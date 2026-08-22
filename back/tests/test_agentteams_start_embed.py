@@ -612,7 +612,6 @@ async def test_agentteams_start_uses_saved_prompt_config_without_truncation(
     db_session.add(PromptConfig(
         account_id=test_user.account_id,
         patient_id=patient.patient_id,
-        system_prompt="肿瘤多学科会诊",
         time_range_days=365,
         user_content_config=json.dumps([
             {
@@ -664,7 +663,6 @@ async def test_agentteams_start_uses_patient_config_with_legacy_stale_account_id
     db_session.add(PromptConfig(
         account_id=legacy_owner.account_id,
         patient_id=patient.patient_id,
-        system_prompt="肿瘤多学科会诊",
         time_range_days=365,
         user_content_config=json.dumps([{
             "id": 1,

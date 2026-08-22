@@ -19,23 +19,6 @@
 
     <template v-else>
       <div class="config-content">
-        <!-- System 角色编辑 -->
-        <div class="config-card">
-          <div class="card-header">
-            <div class="card-indicator"></div>
-            <span class="card-title">System 角色</span>
-          </div>
-          <van-field
-            v-model="systemPrompt"
-            type="textarea"
-            rows="3"
-            maxlength="500"
-            show-word-limit
-            placeholder="设定AI角色，如：你是一名肿瘤科专家"
-            class="config-textarea"
-          />
-        </div>
-
         <!-- 时间范围 -->
         <div class="config-card compact">
           <div class="card-header">
@@ -230,7 +213,6 @@ const patientStore = usePatientStore()
 const { isDesktop } = useResponsive()
 
 const patientId = computed(() => patientStore.currentPatient?.patient_id || patientStore.currentPatient?.id || 0)
-const systemPrompt = ref('你是一名肿瘤科专家')
 const timeRangeDays = ref(60)
 const configItems = ref([])
 const saving = ref(false)
@@ -282,7 +264,6 @@ async function loadConfig() {
   try {
     const res = await getPromptConfig(patientId.value)
     if (res.status === 'success' && res.data) {
-      systemPrompt.value = res.data.system_prompt || '你是一名肿瘤科专家'
       timeRangeDays.value = res.data.time_range_days || 60
       configItems.value = (res.data.user_content_config || []).map(item => ({
         ...item,
@@ -300,7 +281,6 @@ async function handleSave() {
   try {
     const res = await savePromptConfig({
       patient_id: patientId.value,
-      system_prompt: systemPrompt.value,
       time_range_days: timeRangeDays.value,
       user_content_config: configItems.value,
     })
@@ -322,7 +302,6 @@ async function handlePreview() {
   try {
     const res = await previewPromptConfig({
       patient_id: patientId.value,
-      system_prompt: systemPrompt.value,
       time_range_days: timeRangeDays.value,
       user_content_config: configItems.value.filter(item => item.enabled),
     })

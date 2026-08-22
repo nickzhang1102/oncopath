@@ -64,9 +64,36 @@
             <van-cell :title="`外观模式 · ${themeLabel}`" icon="brush-o" is-link @click="showThemePicker = true" />
             <van-cell title="消息通知" icon="bell" is-link to="/home/profile/notifications" />
             <van-cell title="隐私设置" icon="shield-o" is-link to="/home/profile/privacy" />
+            <van-cell title="AI 模型配置" icon="setting-o" is-link to="/home/profile/ai-config" />
             <van-cell title="帮助中心" icon="question-o" is-link to="/home/profile/help" />
             <van-cell title="关于我们" icon="info-o" is-link to="/home/profile/about" />
+            <van-cell title="支持作者" icon="gift-o" is-link @click="showSponsor = true" />
           </van-cell-group>
+
+          <!-- 支持作者弹窗 -->
+          <van-popup
+            v-model:show="showSponsor"
+            :position="isDesktop ? 'center' : 'bottom'"
+            :round="!isDesktop"
+            :style="isDesktop ? 'width: 420px; border-radius: var(--radius-lg);' : ''"
+          >
+            <div class="sponsor-panel">
+              <span class="sponsor-close" @click="showSponsor = false">✕</span>
+              <p class="sponsor-title">如果 OncoPath 对你有帮助，欢迎<em>请作者喝一杯咖啡</em></p>
+              <p class="sponsor-subtitle">每一份支持都是持续维护的动力，真的很重要！</p>
+              <div class="sponsor-qr-row">
+                <figure class="sponsor-qr">
+                  <img :src="wechatQr" alt="微信赞赏码">
+                  <figcaption>💚 微信</figcaption>
+                </figure>
+                <figure class="sponsor-qr">
+                  <img :src="alipayQr" alt="支付宝收款码">
+                  <figcaption>💙 支付宝</figcaption>
+                </figure>
+              </div>
+              <p class="sponsor-star-tip">⭐ 去 GitHub 点个 Star，同样是对作者的支持</p>
+            </div>
+          </van-popup>
 
           <!-- 主题选择器 -->
           <van-popup
@@ -120,6 +147,8 @@ import { useUserStore } from '@/stores/user'
 import { usePatientStore } from '@/stores/patient'
 import { useTheme } from '@/composables/useTheme'
 import { useResponsive } from '@/composables/useResponsive'
+import wechatQr from '@/assets/sponsor/wechat.jpg'
+import alipayQr from '@/assets/sponsor/alipay.jpg'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -130,6 +159,9 @@ const { isDesktop } = useResponsive()
 
 // 主题选择
 const showThemePicker = ref(false)
+
+// 支持作者弹窗
+const showSponsor = ref(false)
 
 const themeLabel = computed(() => ({
   light: '浅色',
@@ -340,6 +372,77 @@ async function handleLogout() {
 
 .active-icon {
   color: var(--primary-color);
+}
+
+/* 支持作者弹窗 */
+.sponsor-panel {
+  position: relative;
+  padding: 24px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+}
+
+.sponsor-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 15px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.sponsor-title {
+  margin: 0 12px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.sponsor-title em {
+  font-style: normal;
+  color: var(--primary-color);
+}
+
+.sponsor-subtitle {
+  margin: 6px 0 16px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.sponsor-qr-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.sponsor-qr {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--primary-alpha-15);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.sponsor-qr img {
+  display: block;
+  width: 132px;
+  height: 132px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.sponsor-qr figcaption {
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sponsor-star-tip {
+  margin: 14px 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .version-info {

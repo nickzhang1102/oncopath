@@ -83,6 +83,79 @@ Compose 启动时只有 `backend` 执行 Alembic 迁移和种子初始化；`age
 
 在启动结果仍未确认或已进入人工复核时，OncoPath 会阻止删除相关会诊记录或患者（返回 409），以免把可能已经扣费的远端会诊变成无主数据。已接受的会诊仍可按产品契约删除 OncoPath 本地壳；这不会删除 AgentTeams 远端会话，删除前应确认远端数据保留策略。
 
+## launch worker 生产演练与升级顺序
+
+以下命令应在目标环境或与生产配置等价的演练环境执行。演练记录只保留 request ID、状态、计数和错误摘要，不复制患者资料、prompt、密钥或完整响应体。
+
+### 首启前置检查
+
+```bash
+# 检查 Compose 合并后的最终配置；确认 backend/worker 使用同一代码版本
+docker compose -p oncopath config
+docker compose -p oncopath build backend agentteams-launch-worker
+
+# 先启动数据库、Redis 和 backend；worker 暂不启动
+docker compose -p oncopath up -d postgres redis backend
+docker compose -p oncopath ps
+docker compose -p oncopath exec backend python -c \
+  "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+
+# backend healthy 后核对迁移 head，再启动 worker
+docker compose -p oncopath exec backend alembic current
+docker compose -p oncopath up -d agentteams-launch-worker
+docker compose -p oncopath logs --tail=100 agentteams-launch-worker
+```
+
+预期：只有 backend 的环境包含 `RUN_DB_MIGRATIONS=true`；worker 包含 `RUN_DB_MIGRATIONS=false`，且日志没有执行迁移或 seed 的记录。迁移 head 必须为 `agentteams_launch_manual_review_audit`。
+
+### 崩溃恢复演练
+
+每个场景都要在 AgentTeams 管理端或其只读审计接口核对同一 request ID 的远端 launch/计费计数。数据库只读检查示例：
+
+```bash
+docker compose -p oncopath exec -T postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "select request_id,status,attempt_count,remote_status from agentteams_launch_intents order by id desc limit 20;"'
+```
+
+1. **POST 前停止 worker**：确认未决 intent 在 worker 恢复后只派发一次。
+2. **POST 已提交但响应丢失**：在远端已接受请求后停止 backend 或 worker，恢复服务，确认 OncoPath 继续使用原 request ID 并只做 status 查询；远端 launch/计费计数必须为 1。
+3. **status/renew 中断**：在对账或续签等待期间重启 worker，确认 lease 过期后由新 worker 接管，迟到响应不能覆盖较新的状态。
+4. **人工复核**：让 intent 进入 `manual_review`，分别演练“只读对账找到远端会诊”和“外部确认未创建”。前者只能补映射并收敛为 `accepted`，后者只能收敛为 `rejected` 并解除锁；两条路径都不得再次调用 launch POST。
+
+每次演练至少保存：Compose config、容器状态、backend health 响应、迁移 head、worker 日志、request ID、远端 launch/计费计数、intent 前后状态和人工审计摘要。
+
+### 人工复核与 PHI 快照检查
+
+管理员只能在 `/admin` 的 AgentTeams 启动复核页操作 `manual_review` 记录。页面和 API 只展示 request ID、引用 ID、错误摘要、payload hash、保留状态和审计历史；不会解密或返回医疗 prompt、`payload_ciphertext` 或 integration secret。
+
+只读对账使用 `POST /api/v1/admin/agentteams-launch-intents/{id}/reconcile`，只查询既有 request ID；确认远端存在后补写映射并接受。确认未创建使用 `.../{id}/resolve`，必须先在 AgentTeams 外部完成无创建/无计费核验并填写至少 10 个非空白字符的理由；该动作只拒绝旧 intent、清理终态快照和解除旧锁，不替用户发起下一次 launch。
+
+目标 PostgreSQL 和备份副本验收时只做聚合抽样，不读取 ciphertext 内容：
+
+```bash
+docker compose -p oncopath exec -T postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "select status,count(*) as intents,count(payload_ciphertext) as retained_payloads,count(payload_purged_at) as purged_payloads from agentteams_launch_intents group by status order by status;"'
+```
+
+预期是未决状态可保留快照，`accepted/rejected` 的 `payload_ciphertext` 为空且 `payload_purged_at` 有值。备份、数据库副本和应用存储必须按部署方的保留策略管理；OncoPath 清理本地快照不会自动删除 AgentTeams 远端会诊内容。
+
+### 升级与回滚边界
+
+升级必须先停止旧 worker，再替换或迁移 backend；确认 backend healthy 和迁移 head 后，才启动新 worker，最后恢复 frontend。不要让旧 worker 在 schema 迁移期间继续轮询 launch intent。
+
+```bash
+docker compose -p oncopath stop agentteams-launch-worker
+docker compose -p oncopath up -d --build backend
+docker compose -p oncopath exec backend python -c \
+  "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+docker compose -p oncopath exec backend alembic current
+docker compose -p oncopath up -d agentteams-launch-worker frontend
+```
+
+回滚前必须保留数据库和 `/app/storage` 备份，并确认新版本没有写入旧版本无法理解的表或字段；不能只回退镜像后盲目执行 `alembic downgrade`。无法证明兼容时，保持 worker 停止，先恢复与备份匹配的应用版本，再按迁移链处理数据库。
+
 ## 验证步骤
 
 1. 在 OncoPath 后台保存 AgentTeams 配置并启用。

@@ -14,6 +14,7 @@ from app.api.knowledge import (
     ALLOWED_MIME_MAP,
     ALLOWED_EXTENSIONS,
 )
+from app.api.knowledge_preview import _build_direct_preview_url
 from app.models.user import LoginAccount
 from app.models.knowledge import KnowledgeDocument
 from app.services.storage_service import LocalStorageBackend
@@ -55,6 +56,19 @@ class TestMimeValidation:
     def test_mime_map_covers_all_extensions(self):
         """ALLOWED_MIME_MAP 覆盖所有 ALLOWED_EXTENSIONS"""
         assert ALLOWED_EXTENSIONS == set(ALLOWED_MIME_MAP.keys())
+
+
+class TestPreviewUrl:
+    """预览器内层请求必须保持同源并正确编码 token。"""
+
+    def test_direct_url_without_token_is_relative(self):
+        assert _build_direct_preview_url(None) == "?direct=true"
+
+    def test_direct_url_encodes_token_without_host(self):
+        token = "header+payload/signature=="
+        assert _build_direct_preview_url(token) == (
+            "?direct=true&token=header%2Bpayload%2Fsignature%3D%3D"
+        )
 
 
 class TestDuplicateCheck:

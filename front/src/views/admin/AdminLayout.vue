@@ -85,7 +85,6 @@ const menuItems = [
   { path: '/admin/users', icon: 'friends-o', label: '用户管理' },
   { path: '/admin/indices', icon: 'search', label: '指标库管理' },
   { path: '/admin/categories', icon: 'apps-o', label: '分类管理' },
-  { path: '/admin/llm-configs', icon: 'setting-o', label: 'LLM配置' },
   { path: '/admin/agentteams-config', icon: 'cluster-o', label: 'AgentTeams配置' },
   { path: '/admin/agentteams-launch-reviews', icon: 'warning-o', label: '会诊启动复核' },
 ]

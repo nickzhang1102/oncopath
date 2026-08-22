@@ -11,7 +11,7 @@
       <div class="detail-card">
         <div class="card-header">
           <div class="card-header-top">
-            <h2 class="card-title">{{ record.title || record.exam_type || '检查报告' }}</h2>
+            <h2 class="card-title">{{ record.title || examTypeLabel || '检查报告' }}</h2>
             <van-button
               class="export-btn"
               size="small"
@@ -37,7 +37,7 @@
           <div class="card-meta">
             <span v-if="record.medical_date">{{ formatDate(record.medical_date) }}</span>
             <span v-if="record.hospital">{{ record.hospital }}</span>
-            <van-tag v-if="record.exam_type" type="primary">{{ record.exam_type }}</van-tag>
+            <van-tag v-if="record.exam_type" type="primary">{{ examTypeLabel }}</van-tag>
           </div>
         </div>
 
@@ -124,10 +124,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { medicalApi } from '@/api/medical'
+import { EXAM_TYPE_LABELS } from '@/styles/constants'
 import { getImageData } from '@/api/imageReport'
 import { shareApi } from '@/api/share'
 import { exportApi } from '@/api/export'
@@ -143,6 +144,13 @@ const loading = ref(false)
 const interpreting = ref(false)
 const exporting = ref(false)
 const record = ref(null)
+
+// 检查类型中文标签（与列表页/分享页口径一致：exam_type_name -> 映射表 -> 原始值）
+const examTypeLabel = computed(() => {
+  const r = record.value
+  if (!r?.exam_type) return ''
+  return r.exam_type_name || EXAM_TYPE_LABELS[r.exam_type] || r.exam_type
+})
 const interpretation = ref(null)
 const showImagePreview = ref(false)
 const previewImageUrl = ref('')
@@ -193,8 +201,9 @@ async function handleExport() {
   if (!reportId) return
   exporting.value = true
   try {
-    const res = await exportApi.exportExamReport(reportId)
-    const url = window.URL.createObjectURL(new Blob([res.data]))
+    // 响应拦截器已解包 response.data，这里拿到的直接就是 Blob
+    const blob = await exportApi.exportExamReport(reportId)
+    const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = url
     a.download = `检查报告_${reportId}.pdf`

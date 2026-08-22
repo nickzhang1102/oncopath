@@ -1,124 +1,143 @@
-# 医疗报告系统 v2.0 (OncoPath)
+<div align="center">
 
-> 基于 FastAPI + Vue 3 的智能健康信息整理与医疗报告管理工具：检验指标 OCR 自动识别匹配、治疗时间线聚合、AI 检验解读，并通过 AgentTeams 集成承接虚拟会诊入口。
+# 🧬 OncoPath
+
+**把散落各处的医疗报告，整理成一条看得懂的治疗之路**
+
+检验指标 OCR 自动识别 · 治疗时间线聚合 · AI 辅助解读 · 多智能体虚拟会诊入口
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-早期公开版-yellow.svg)](#状态说明)
 [![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#技术栈)
 [![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#技术栈)
+[![Docker](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](#快速开始docker)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-181717.svg?logo=github)](https://nickzhang1102.github.io/oncopath/)
 
-🌐 **项目网站**：[nickzhang1102.github.io/oncopath](https://nickzhang1102.github.io/oncopath/)
+**[简体中文](./README.md)** | [English](./README.en.md)
+
+![OncoPath 首页指标图表](docs/screenshots/desktop-home-indicators-chart.png)
+
+[项目网站](https://nickzhang1102.github.io/oncopath/) · [快速开始](#-快速开始docker) · [界面预览](#-界面预览) · [参与贡献](#-参与贡献) · [☕ 请作者喝咖啡](#-赞助支持)
+
+</div>
 
 > **状态说明**：本项目已公开，当前处于早期版本阶段。欢迎试用与反馈；生产环境部署前必须完成本文档【安全说明】中的全部必改项，并自行评估当地医疗数据合规要求。
 
 ---
 
-## 项目愿景
+## 🎯 为什么做 OncoPath
 
-OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗报告整理、OCR 指标提取、治疗时间线聚合与 AI 辅助解读能力。系统将散落在各处的检验、检查、病理、用药、随访数据汇聚成一条可追溯的治疗时间线，并通过 AgentTeams 集成入口承接虚拟会诊分析，帮助用户更好地整理资料、理解信息并与医生沟通。
+肿瘤治疗是一场以年计的持久战。作为患者家属，你大概率遇到过这些问题：
 
----
+| 现实困境 | OncoPath 的回答 |
+|---------|----------------|
+| 📋 检验报告一摞摞，指标和参考值看不懂 | 手机拍照上传，**OCR 自动识别 + LLM 匹配标准指标库**，专业指标翻译成通俗语言 |
+| 📁 报告散落在微信、纸质袋、各家医院系统里 | 检验 / 检查 / 病理 / 用药 / 随访**五源聚合成一条治疗时间线**，可追溯、可筛选、可导出 PDF |
+| 📉 关键指标的变化趋势只能靠手抄对比 | 异常指标自动追踪，任意指标**趋势图表 + 组合横向对比** |
+| 🏥 见医生前想不好该问什么 | 一键聚合病历资料生成会诊提示词，通过 **AgentTeams 集成发起多智能体虚拟会诊** |
 
-## 界面预览
-
-> 以下截图均由当前前端以固定的虚构演示数据自动生成。姓名、联系方式、证件号等身份字段已掩码，并带有“演示数据 · 已脱敏”标记；不含真实患者资料。生成与审查规则见 [截图维护说明](docs/screenshots/README.md)。
-
-### 首页与重要指标
-
-**首页重要指标列表** — 在一个工作台查看报告数量、异常项、待办和分组指标。
-
-<p align="center"><img src="docs/screenshots/desktop-home-indicators-list.png" alt="桌面端首页重要指标列表，使用脱敏演示数据" /></p>
-
-**首页重要指标图表** — 结合参考范围与连续时间点查看关键指标的变化。
-
-<p align="center"><img src="docs/screenshots/desktop-home-indicators-chart.png" alt="桌面端首页重要指标图表，使用脱敏演示数据" /></p>
-
-### 报告归集
-
-**检验报告** — 原始指标、异常状态、参考范围与 AI 辅助解读在同一详情页呈现。
-
-<p align="center"><img src="docs/screenshots/desktop-lab-report.png" alt="桌面端检验报告详情，使用脱敏演示数据" /></p>
-
-**检查报告** — 统一呈现检查所见、诊断意见和随访提示。
-
-<p align="center"><img src="docs/screenshots/desktop-exam-report.png" alt="桌面端检查报告详情，使用脱敏演示数据" /></p>
-
-**病理报告** — 按报告结构归集病理诊断、组织学、免疫组化与基因检测信息。
-
-<p align="center"><img src="docs/screenshots/desktop-pathology-report.png" alt="桌面端病理报告详情，使用脱敏演示数据" /></p>
-
-### 组合指标查询
-
-**组合指标表格** — 将多项相关指标按日期对齐，便于横向比较。
-
-<p align="center"><img src="docs/screenshots/desktop-indicator-comparison-table.png" alt="桌面端组合指标查询表格，使用脱敏演示数据" /></p>
-
-**组合指标趋势** — 选择一到两项指标进入趋势图，减少跨页面切换。
-
-<p align="center"><img src="docs/screenshots/desktop-indicator-comparison-chart.png" alt="桌面端组合指标趋势图，使用脱敏演示数据" /></p>
-
-### 虚拟会诊与知识库
-
-**虚拟会诊历史** — 查看会诊状态、摘要与继续跟进入口。
-
-<p align="center"><img src="docs/screenshots/desktop-consultation-list.png" alt="桌面端虚拟会诊历史，使用脱敏演示数据" /></p>
-
-**虚拟会诊工作台** — OncoPath 聚合资料并承接 AgentTeams 的多智能体会诊过程。
-
-<p align="center"><img src="docs/screenshots/desktop-consultation-room.png" alt="桌面端虚拟会诊工作台，使用脱敏演示数据" /></p>
-
-**知识库** — 用分类、搜索、摘要与预览沉淀随访和护理资料。
-
-<p align="center"><img src="docs/screenshots/desktop-knowledge-base.png" alt="桌面端知识库，使用脱敏演示数据" /></p>
-
-### 移动端
-
-移动端继续使用相同的脱敏演示数据，重点覆盖首页、报告、组合指标、虚拟会诊与知识库的窄屏操作路径。
-
-<p align="center"><img src="docs/screenshots/mobile-home.png" width="320" alt="移动端首页，使用脱敏演示数据" /></p>
-
-<p align="center"><img src="docs/screenshots/mobile-lab-report.png" width="320" alt="移动端检验报告，使用脱敏演示数据" /></p>
-
-<p align="center"><img src="docs/screenshots/mobile-indicator-comparison.png" width="320" alt="移动端组合指标趋势，使用脱敏演示数据" /></p>
-
-<p align="center"><img src="docs/screenshots/mobile-consultation.png" width="320" alt="移动端虚拟会诊，使用脱敏演示数据" /></p>
-
-<p align="center"><img src="docs/screenshots/mobile-knowledge-base.png" width="320" alt="移动端知识库，使用脱敏演示数据" /></p>
+OncoPath 面向懂技术的患者家属和家庭自部署场景：数据存在你自己的服务器上，敏感字段全程加密，AI 只做信息整理与辅助理解——最终判断永远属于你和医生。
 
 ---
 
-## 核心功能
+## ✨ 核心功能
 
-### 患者与医疗数据
-- **患者管理**：多患者账号支持；患者敏感字段（姓名/电话/身份证）Fernet 静态加密存储；身份证号单向哈希索引用于查重；主患者标识与切换；患者编辑 PHI 审计日志。
-- **医疗数据管理**：检验报告（MedicalCheck）、检查报告（MedicalExam）、病理报告（PathologyReport）、病情记录（MedicalRecord）的完整 CRUD；指标标准库与用户收藏；异常指标追踪。
+### 📊 数据采集与理解
+| 功能 | 说明 |
+|------|------|
+| 🔍 **OCR 指标提取** | PaddleOCR 识别 → LLM 解析表格 → LLM 匹配标准库自动落库；检验类 / 检查类 / 病理类三种处理流程自动分流；识别结果支持人工审查修正 |
+| 📷 **图片报告管理** | 27 种报告分类、上传去重校验、SSE 实时处理进度、缩略图时间线 |
+| 🤖 **AI 检验解读** | 整体评估 + 异常指标解读 + 趋势变化 + 建议提醒；自动从解读中提取复查建议并创建随访提醒 |
 
-### OCR 与 AI 能力
-- **OCR 指标提取系统**：PaddleOCR 图片文本识别 → LLM 智能解析表格结构（OpenAI 兼容接口）→ LLM 直接匹配标准库 → 结果落库；按报告分类自动分流为检验类/检查类/病理类三种处理流程；OCR 结果人工审查与修正。
-- **AI 检验解读**：LLM 将专业指标翻译成通俗语言，输出整体评估、异常指标解读、趋势变化、建议与提醒；自动从解读结果中提取复查建议并创建随访提醒。
-- **虚拟会诊（AgentTeams 集成）**：OncoPath 负责患者资料聚合、会诊 prompt 生成、启动入口、历史壳和 iframe 展示；会诊执行、Agent 团队编排、额度与使用记录由外部 AgentTeams 项目承担。
+### 🗂️ 全景健康档案
+| 功能 | 说明 |
+|------|------|
+| 🧑‍⚕️ **患者管理** | 多患者支持；姓名 / 电话 / 身份证 Fernet 加密存储 + 单向哈希索引查重；PHI 编辑审计日志 |
+| 📈 **治疗时间线** | 5 张表统一聚合，里程碑标记、多维筛选、日期范围统计 |
+| 💊 **用药与打卡** | 用药记录 CRUD（含停药）、服药打卡（taken/skipped/missed）、依从性统计（7–365 天） |
+| ⏰ **随访提醒** | 手动 / AI 解读 / 会诊三种来源，pending → sent → confirmed 闭环 |
+| 🧪 **组合指标查询** | 多项相关指标按日期对齐横向比较，一键切入趋势图 |
+| 🔎 **全局搜索** | 跨检验 / 检查 / 病理 / 用药 / 时间线模糊搜索 |
 
-### 治疗全景
-- **治疗时间线**：统一聚合服务从 5 张表（timeline_events / medical_check / medical_exam / pathology_report / medication）聚合时间线，支持里程碑标记、多维度筛选与日期范围统计。
-- **用药管理与服药打卡**：用药记录 CRUD（含停药操作）、服药打卡（taken/skipped/missed）、今日服药任务列表、依从性统计（7–365 天范围）。
-- **随访提醒**：手动 / AI 解读 / 会诊三种来源；状态流转 pending → sent → confirmed/expired；确认复查闭环。
+### 🤝 会诊与知识沉淀
+| 功能 | 说明 |
+|------|------|
+| 🏛️ **虚拟会诊（AgentTeams）** | 聚合病历资料生成会诊提示词，外部 AgentTeams 项目执行多智能体会诊，iframe 内嵌展示，历史与会话分享完整保留 |
+| 📚 **知识库** | 分类树、文档上传下载预览搜索、访问日志，支持 txt/pdf/office/图片 |
+| 📤 **导出与分享** | 检验报告 / 时间线 / 完整病历 PDF 导出（内置中文字体）；ShareToken 限时限次分享 |
 
-### 平台支撑
-- **仪表盘**：聚合首页数据（当前用药、异常指标、各类报告计数、待审 OCR、进行中会诊、待处理随访、近期事件），并行查询 + 超时保护。
-- **知识库**：分类树管理、文档上传/下载/预览/搜索、访问日志记录；支持 txt/pdf/office/图片等多种文件类型。
-- **数据导出**：基于 Jinja2 模板和 Playwright/Chromium 导出检验报告 PDF、时间线 PDF、完整病历 PDF，内置中文字体支持。
-- **文件存储服务**：StorageService 抽象层，支持本地文件系统（含路径遍历防护）并预留 MinIO 扩展。
-- **报告分享**：ShareToken 限时限次访问，支持会诊对话分享与检验/检查/病理报告分享。
-- **全局搜索**：跨模块搜索（检验指标/检查报告/病理/用药/时间线），ILIKE 模糊匹配 + 按日期排序。
-- **管理后台**：用户管理、指标库 CRUD / 拖拽排序 / 批量导入、指标分类管理。
-
-### 安全增强
-- SECRET_KEY 启动校验（拒绝默认值）、PHI 字段 Fernet 对称加密、SSO 单点登录（会话管理 + Token 黑名单）、登录失败锁定（Redis Lua 原子操作）、SlowAPI 限流、DOMPurify XSS 防护、路径遍历防护、患者编辑 PHI 审计日志。
+### ⚙️ 平台支撑
+| 功能 | 说明 |
+|------|------|
+| 📱 **响应式双端** | Vant 4 移动端优先，桌面端自适应布局 |
+| 🛡️ **仪表盘** | 当前用药 / 异常指标 / 待审 OCR / 进行中会诊 / 待办随访一站式总览 |
+| 👨‍💼 **管理后台** | 用户管理、指标标准库 CRUD / 拖拽排序 / 批量导入、指标分类管理 |
+| 🔐 **安全体系** | JWT + SSO 单点登录、登录失败锁定（Redis Lua）、SlowAPI 限流、DOMPurify XSS 防护、路径遍历防护 |
 
 ---
 
-## 技术栈
+## 📸 界面预览
+
+> 以下截图均由当前前端以固定的虚构演示数据自动生成。姓名、联系方式、证件号等身份字段已掩码，并带有"演示数据 · 已脱敏"标记；不含真实患者资料。生成与审查规则见 [截图维护说明](docs/screenshots/README.md)。
+
+<div align="center">
+
+**首页重要指标** — 报告数量、异常项、待办与分组指标一个工作台搞定
+
+![首页重要指标列表](docs/screenshots/desktop-home-indicators-list.png)
+
+**检验报告详情** — 原始指标、异常状态、参考范围与 AI 解读同页呈现
+
+![检验报告详情](docs/screenshots/desktop-lab-report.png)
+
+</div>
+
+<details>
+<summary><b>📁 展开查看更多截图（检查 / 病理 / 组合指标 / 会诊 / 知识库 / 移动端）</b></summary>
+
+<div align="center">
+
+**检查报告** — 检查所见、诊断意见与随访提示统一呈现
+
+![检查报告](docs/screenshots/desktop-exam-report.png)
+
+**病理报告** — 病理诊断、组织学、免疫组化与基因检测按结构归集
+
+![病理报告](docs/screenshots/desktop-pathology-report.png)
+
+**组合指标表格** — 多项指标按日期对齐，便于横向比较
+
+![组合指标表格](docs/screenshots/desktop-indicator-comparison-table.png)
+
+**组合指标趋势** — 选择一到两项指标直接进入趋势图
+
+![组合指标趋势](docs/screenshots/desktop-indicator-comparison-chart.png)
+
+**虚拟会诊工作台** — 聚合资料并承接 AgentTeams 多智能体会诊过程
+
+![虚拟会诊工作台](docs/screenshots/desktop-consultation-room.png)
+
+**知识库** — 分类、搜索、摘要与预览沉淀随访护理资料
+
+![知识库](docs/screenshots/desktop-knowledge-base.png)
+
+**移动端**
+
+<p>
+<img src="docs/screenshots/mobile-home.png" width="19%" alt="移动端首页" />
+<img src="docs/screenshots/mobile-lab-report.png" width="19%" alt="移动端检验报告" />
+<img src="docs/screenshots/mobile-indicator-comparison.png" width="19%" alt="移动端组合指标" />
+<img src="docs/screenshots/mobile-consultation.png" width="19%" alt="移动端虚拟会诊" />
+<img src="docs/screenshots/mobile-knowledge-base.png" width="19%" alt="移动端知识库" />
+</p>
+
+</div>
+
+</details>
+
+---
+
+## 🏗️ 技术栈与架构
 
 ### 后端
 | 类别 | 选型 |
@@ -147,57 +166,47 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景，提供医疗�
 | 安全 | DOMPurify（v-html 渲染前 XSS 防护） |
 | 导出 | html2canvas + jsPDF + html2pdf.js |
 | Markdown | marked + highlight.js |
-| HTTP | axios |
 
-### 部署
-| 类别 | 选型 |
-|------|------|
-| 容器化 | Docker + Docker Compose |
-| 反向代理 | Nginx |
-| 存储 | 本地文件系统（抽象层支持 MinIO 扩展） |
-
----
-
-## 系统架构
+### 架构总览
 
 ```
-+-----------------------------------------------------------------+
-|                        前端层 (Vue 3 + Vant)                     |
-|  登录 / 主页(仪表盘) / 时间线 / 会诊(AgentTeams) / AI解读 / 知识库 |
-|  图片报告(OCR) / 指标查询 / 用药打卡 / 随访 / 全局搜索 ...        |
-+-----------------------------------------------------------------+
-                              | HTTP/REST + 通知/上传 SSE
-+-----------------------------------------------------------------+
-|                  API 网关层 (FastAPI, 30 路由模块)               |
-|  认证 / 用户 / 患者 / 医疗 / 会诊 / 时间线 / 用药 / 服药记录     |
-|  随访 / 仪表盘 / 导出 / 分享 / 搜索 / 文件                       |
-|  图片报告 / 知识库 / 提示词 / 上传 / 指标历史 / 管理后台         |
-+-----------------------------------------------------------------+
-                              |
-+-----------------------------------------------------------------+
-|                服务层 (Business Logic)                           |
-|  AgentTeamsStartService / AgentTeamsConfigService                |
-|  MedicalPromptBuilder / LLMService / InterpretationService       |
-|  OCR 集成服务(7子服务) / TimelineAggregator / ExportService      |
-|  StorageService / EncryptionService / SessionService            |
-|  Desensitization / LockService                                   |
-+-----------------------------------------------------------------+
-                              |
-+-----------------------------------------------------------------+
-|                        数据层                                    |
-|  PostgreSQL 17 (主存储) | Redis 7 (缓存/锁/会话)                |
-|  OpenAI 兼容 LLM API (解读+OCR) | AgentTeams (外部会诊执行)   |
-|  本地文件存储 | Playwright/Chromium (PDF 渲染)                  |
-+-----------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────┐
+│                     前端层 (Vue 3 + Vant)                        │
+│  登录 / 主页(仪表盘) / 时间线 / 会诊(AgentTeams) / AI解读 / 知识库 │
+│  图片报告(OCR) / 指标查询 / 用药打卡 / 随访 / 全局搜索 ...        │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │ HTTP/REST + SSE
+┌───────────────────────────────▼─────────────────────────────────┐
+│                API 网关层 (FastAPI, 30 路由模块)                  │
+│  认证 / 用户 / 患者 / 医疗 / 会诊 / 时间线 / 用药 / 服药记录      │
+│  随访 / 仪表盘 / 导出 / 分享 / 搜索 / 文件                        │
+│  图片报告 / 知识库 / 提示词 / 上传 / 指标历史 / 管理后台          │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────┐
+│                   服务层 (Business Logic)                        │
+│  AgentTeamsStartService / AgentTeamsConfigService               │
+│  MedicalPromptBuilder / LLMService / InterpretationService      │
+│  OCR 集成服务(7子服务) / TimelineAggregator / ExportService      │
+│  StorageService / EncryptionService / SessionService            │
+│  Desensitization / LockService                                  │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────┐
+│                            数据层                                │
+│  PostgreSQL 17 (主存储)   │  Redis 7 (缓存/锁/会话)              │
+│  OpenAI 兼容 LLM API      │  AgentTeams (外部会诊执行)           │
+│  本地文件存储             │  Playwright/Chromium (PDF 渲染)      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 快速开始（Docker）
+## 🚀 快速开始（Docker）
 
 最快的方式是用 Docker Compose 一键拉起完整环境。
 
-### 1. 克隆与配置
+### 1️⃣ 克隆与配置
 
 ```bash
 git clone https://github.com/nickzhang1102/oncopath.git
@@ -217,7 +226,7 @@ cp .env.example .env
 
 > 其余 LLM 配置（`LLM_API_BASE` / `LLM_MODEL_NAME` / `OCR_LLM_API_KEY` / `OCR_LLM_API_BASE` / `OCR_LLM_MODEL_NAME`）按你使用的 OpenAI 兼容服务填写。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。
 
-### 2. 启动服务
+### 2️⃣ 启动服务
 
 ```bash
 docker compose up -d
@@ -230,18 +239,18 @@ docker compose ps
 
 如需局域网直接访问前端，可显式设置 `FRONTEND_BIND_ADDRESS=0.0.0.0`；生产环境建议保持 loopback，由宿主机反向代理提供 HTTPS。
 
-### 3. 初始化数据库
+### 3️⃣ 初始化数据库
 
 backend 容器启动时会自动执行 `alembic upgrade head` 建立/升级表结构，再运行幂等种子脚本创建默认管理员、指标分类和标准指标。`agentteams-launch-worker` 等待 backend 健康后启动，不参与迁移。默认管理员账号为 `admin`，密码取自 `ADMIN_INITIAL_PASSWORD` 环境变量，未设置则使用默认密码 `admin123`（**生产环境务必设置 `ADMIN_INITIAL_PASSWORD` 并登录后立即修改**）。
 
-### 4. 访问
+### 4️⃣ 访问
 
 - 前端：http://localhost:3000
 - API 健康检查：http://localhost:3000/api/v1/health
 
 ---
 
-## 本地开发
+## 💻 本地开发
 
 ### 前置依赖
 
@@ -272,21 +281,17 @@ cp ../.env.example .env
 #   - REDIS_HOST=localhost / REDIS_PORT=6379
 #   - SECRET_KEY / ENCRYPTION_KEY / LLM_API_KEY 等按上文生成
 
-# 2. 激活 conda 环境
-conda activate oncopath
-
-# 3. 建立/升级 schema，再初始化幂等种子数据
+# 2. 建立/升级 schema，再初始化幂等种子数据
 alembic upgrade head
 python scripts/init_fresh_db.py
 
-# 4. 启动开发服务器
+# 3. 启动开发服务器
 uvicorn app.main:app --reload --port 8000
 ```
 
 > 如需随访提醒定时任务，另起终端运行 Celery worker 和 beat：
 > ```bash
 > cd back
-> conda activate oncopath
 > celery -A app.core.celery_app worker --loglevel=info
 > celery -A app.core.celery_app beat --loglevel=info
 > ```
@@ -304,58 +309,19 @@ npm run dev
 
 ---
 
-## 项目结构
-
-```
-oncopath/
-├── back/                          # 后端（FastAPI）
-│   ├── app/
-│   │   ├── api/                   # 30 个路由模块（auth/patient/medical/consultation/...）
-│   │   ├── core/                  # config / database / security / redis / rate_limit / celery_app
-│   │   ├── models/                # SQLAlchemy 数据模型（patient/medical/conversation/...）
-│   │   ├── schemas/               # Pydantic v2 响应/请求模型
-│   │   ├── services/              # 业务逻辑（AgentTeams 集成/OCR/LLM/...）
-│   │   │   ├── consultation/      # AgentTeams 启动所需的患者上下文与摘要服务
-│   │   │   └── ocr/               # 7 个 OCR 子服务
-│   │   ├── utils/                 # llm_parser / time_utils / thumbnail
-│   │   └── tasks/                 # 知识库摘要与 Celery 随访提醒任务模块
-│   ├── scripts/                   # init_fresh_db.py 等运维脚本
-│   ├── alembic.ini                # Alembic 配置（公开基线及后续迁移位于 migrations/versions/）
-│   ├── tests/                     # pytest 单元与集成测试
-│   ├── requirements.txt
-│   └── Dockerfile
-├── front/                         # 前端（Vue 3 + Vant）
-│   ├── src/
-│   │   ├── views/                 # 页面（30+ 视图组件）
-│   │   ├── components/            # 组件（consultation/knowledge/image-report/timeline/...）
-│   │   ├── stores/                # Pinia 状态（user/patient/conversations/...）
-│   │   ├── api/                   # axios 封装的 API 模块（20 个）
-│   │   ├── composables/           # useSSEStream / useResponsive / useTheme / useOCRReview
-│   │   ├── utils/                 # sanitize / echarts / export / errorHandler / ...
-│   │   └── styles/                # theme-colors / constants / vant-theme / index.css
-│   ├── vite.config.js
-│   ├── package.json
-│   └── Dockerfile
-├── docker-compose.yml             # 容器编排（数据库/API 内网，前端默认 loopback:3000）
-├── .env.example                   # 环境变量模板
-├── LICENSE
-├── CONTRIBUTING.md
-├── DISCLAIMER.md
-└── README.md
-```
-
----
-
-## API 概览
+## 🔌 API 概览
 
 后端共 30 个路由模块，统一注册于 `app/routers.py`。本地直接启动后端时，可访问 [Swagger UI](http://localhost:8000/docs) 查看完整端点定义；Docker 生产部署不向宿主机发布 backend 端口。
+
+<details>
+<summary><b>📋 展开路由模块清单</b></summary>
 
 | 路由模块 | 路径前缀 | 说明 |
 |----------|----------|------|
 | 认证 | `/api/v1/auth` | 注册、登录（单会话管理）、刷新令牌、登出 |
 | 用户 | `/api/v1/accounts` | 个人信息、修改密码、隐私设置、通知 CRUD |
 | 患者 | `/api/v1/patients` | 患者 CRUD、加密+哈希查重、脱敏详情、PHI 编辑审计、主患者切换、患者时间线/统计/会诊 |
-| 会诊 | `/api/v1/consultation` | AgentTeams 可用性查询、外部会诊启动、外部会话映射、历史详情；旧本地会诊运行时入口已下线 |
+| 会诊 | `/api/v1/consultation` | AgentTeams 可用性查询、外部会诊启动、外部会话映射、历史详情 |
 | 医疗 | `/api/v1/medical` | 检验/检查/病理/病情记录 CRUD、指标标准库查询、收藏、异常指标 |
 | 时间线 | `/api/v1/timeline` | 时间线事件 CRUD、统计 |
 | 用药 | `/api/v1/medications` | 用药记录 CRUD、停药 |
@@ -373,11 +339,13 @@ oncopath/
 | 指标历史 | `/api/v1/indicator-history` | 指标历史趋势（含 up/down/stable 计算） |
 | 管理后台 | `/api/v1/admin` | 用户管理、指标库 CRUD/排序/批量导入、指标分类管理（需 admin 鉴权） |
 
+</details>
+
 > 所有接口默认需要认证（除登录/注册/分享链接等显式标注的端点）。会诊接口限流 5/min，登录 5/min，上传 10/min，默认 100/min。
 
 ---
 
-## 测试
+## 🧪 测试
 
 后端使用 pytest + pytest-asyncio，测试覆盖单元、接口、数据库 baseline 和集成场景。
 
@@ -402,7 +370,7 @@ pytest tests/integration/ -v
 
 ---
 
-## 部署
+## 🛳️ 生产部署
 
 生产部署以 `docker-compose.yml` 为准。部署前请逐项确认【安全说明】中的必改项：
 
@@ -424,7 +392,9 @@ docker compose --env-file .env up -d
 # backend entrypoint 会自动迁移 schema 并初始化幂等种子数据
 ```
 
-## 安全说明
+---
+
+## 🔒 安全说明
 
 ### 数据安全
 - **PHI 字段加密**：患者姓名、电话、身份证等敏感字段使用 Fernet 对称加密静态存储；身份证号单向 SHA-256 哈希索引用于查重。
@@ -444,6 +414,7 @@ docker compose --env-file .env up -d
 - **路径遍历防护**：StorageService 解析路径时校验，禁止越界访问。
 
 ### 生产环境必改项
+
 | 项 | 说明 |
 |----|------|
 | `SECRET_KEY` | 使用 `openssl rand -hex 32` 生成强随机值，启动时校验拒绝默认值 |
@@ -455,13 +426,23 @@ docker compose --env-file .env up -d
 
 ---
 
+## 🗺️ Roadmap
+
+- [ ] 微信 OAuth 登录
+- [ ] Token 迁移到 httpOnly cookie + CSRF 防护
+- [ ] 知识库 PDF / Office 在线预览完善
+- [ ] 前端单元测试与 E2E 测试补全
+- [ ] 英文界面 i18n 支持
+
+---
+
 ## ⚠️ 医疗免责声明
 
 **本系统的 AgentTeams 虚拟会诊入口、检验指标解读、OCR 识别等功能仅作健康信息整理、辅助理解和辅助分析，不构成医疗诊断或治疗建议，也不属于医疗器械用途，不能替代执业医师的专业判断。** 本系统不适用于紧急医疗情况；使用者应自行核实系统输出并咨询合格执业医师。使用本系统造成的任何后果由使用者自行承担。详见 [DISCLAIMER.md](./DISCLAIMER.md)。
 
 ---
 
-## License
+## 📄 License
 
 本项目基于 [Apache License 2.0](./LICENSE) 开源。第三方依赖和镜像资产保留各自许可证，详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
 
@@ -469,6 +450,31 @@ docker compose --env-file .env up -d
 
 ---
 
-## 贡献指南
+## 🤝 参与贡献
 
 欢迎参与贡献！请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解 Fork → 分支 → 提交 → PR 的完整流程与代码规范。
+
+---
+
+## ☕ 赞助支持
+
+<div align="center">
+
+如果 OncoPath 对你有所帮助，欢迎请作者喝一杯咖啡 ☕
+
+**每一份支持都是作者持续维护的动力，真的很重要！**
+
+<table>
+<tr>
+<td align="center"><b>💚 微信</b></td>
+<td align="center"><b>💙 支付宝</b></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/wechat.jpg" width="260" alt="微信赞赏码" /></td>
+<td><img src="docs/screenshots/alipay.jpg" width="260" alt="支付宝收款码" /></td>
+</tr>
+</table>
+
+也欢迎点一个 ⭐ Star，让更多有需要的人看到这个项目。
+
+</div>

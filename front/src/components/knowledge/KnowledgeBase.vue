@@ -159,6 +159,7 @@ import BackButton from '@/components/index-detail/BackButton.vue'
 
 // 导入状态管理
 import { useKnowledgeStore } from '@/stores/knowledge'
+import { generateSummary } from '@/api/knowledge'
 import { storeToRefs } from 'pinia'
 
 // 使用状态管理（关键：使用 storeToRefs 保持响应式）
@@ -257,7 +258,6 @@ const handleGenerateSummary = async (doc) => {
 
   try {
     showToast({ type: 'loading', message: '提交中...', forbidClick: true, duration: 0 })
-    const { generateSummary } = await import('@/api/knowledge')
     await generateSummary(doc.doc_id)
     showToast({ type: 'success', message: '摘要生成任务已提交' })
     // 刷新列表以更新状态

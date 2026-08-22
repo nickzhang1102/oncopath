@@ -9,6 +9,7 @@ from sqlalchemy import select
 import logging
 import os
 from typing import Optional
+from urllib.parse import quote
 
 from app.core.database import get_db
 from app.api.auth import get_current_user
@@ -39,6 +40,13 @@ def _html_with_frame_header(content: str) -> HTMLResponse:
         media_type="text/html",
         headers={"X-Frame-Options": "SAMEORIGIN"},
     )
+
+
+def _build_direct_preview_url(token: Optional[str]) -> str:
+    """构建同源直读 URL，供图片/PDF 预览器的内层请求使用。"""
+    if token:
+        return f"?direct=true&token={quote(token, safe='')}"
+    return "?direct=true"
 
 
 async def get_current_user_for_preview(
@@ -231,17 +239,8 @@ async def handle_image_preview(request: Request, document, file_path: str, db: A
         elif token_param:
             token = token_param
 
-        # 构建图片 URL（通过前端代理）
-        frontend_host = request.headers.get('Host', 'localhost:3000')
-        scheme = 'https' if request.url.scheme == 'https' else 'http'
-
-        # 智能构建后端 URL
-        base_url = f"{scheme}://{frontend_host}/api/v1"
-
-        if token:
-            image_url = f"{base_url}/knowledge/documents/{document.doc_id}/preview?direct=true&token={token}"
-        else:
-            image_url = f"{base_url}/knowledge/documents/{document.doc_id}/preview?direct=true"
+        # 使用相对 URL 让浏览器基于 iframe 当前来源解析，规避代理改写 Host 导致的跨域/地址错误（黑屏）
+        image_url = _build_direct_preview_url(token)
 
         logger.info(f"构建图片预览URL: doc_id={document.doc_id}, token_in_query={bool(token)}")
 
@@ -316,15 +315,8 @@ async def handle_pdf_preview(request: Request, document, file_path: str, db: Asy
         elif token_param:
             token = token_param
 
-        # 构建 PDF URL
-        frontend_host = request.headers.get('Host', 'localhost:3000')
-        scheme = 'https' if request.url.scheme == 'https' else 'http'
-        base_url = f"{scheme}://{frontend_host}/api/v1"
-
-        if token:
-            pdf_url = f"{base_url}/knowledge/documents/{document.doc_id}/preview?direct=true&token={token}"
-        else:
-            pdf_url = f"{base_url}/knowledge/documents/{document.doc_id}/preview?direct=true"
+        # 使用相对 URL 让浏览器基于 iframe 当前来源解析，规避代理改写 Host 导致的跨域/地址错误（黑屏）
+        pdf_url = _build_direct_preview_url(token)
 
         logger.info(f"构建PDF预览URL: doc_id={document.doc_id}, token_in_query={bool(token)}")
 

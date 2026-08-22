@@ -56,6 +56,7 @@ __pycache__/
 !/docs/testing/agentteams-consultation.md
 !/docs/screenshots/
 !/docs/screenshots/*.png
+!/docs/screenshots/*.jpg
 /back/migrations/sql/
 /back/migrations/private_versions/
 /.pytest_cache/
@@ -66,3 +67,4 @@ __pycache__/
 # AI 协作文档与工具配置（保留本地，不上传 git）
 CLAUDE.md
 /back/.zcf/
+/.jspace

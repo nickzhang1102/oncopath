@@ -215,8 +215,9 @@ async function handleExport() {
   if (!reportId) return
   exporting.value = true
   try {
-    const res = await exportApi.exportPathologyReport(reportId)
-    const url = window.URL.createObjectURL(new Blob([res.data]))
+    // 响应拦截器已解包 response.data，这里拿到的直接就是 Blob
+    const blob = await exportApi.exportPathologyReport(reportId)
+    const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = url
     a.download = `病理报告_${reportId}.pdf`

@@ -7,7 +7,7 @@
 """
 
 from datetime import datetime, date, timezone
-from typing import Optional
+from typing import Optional, Union
 
 
 def get_utc_now() -> datetime:
@@ -22,16 +22,19 @@ def get_utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def utc_isoformat(dt: Optional[datetime]) -> Optional[str]:
-    """将 datetime 序列化为带 Z 后缀的 ISO 8601 字符串
+def utc_isoformat(dt: Optional[Union[datetime, date]]) -> Optional[str]:
+    """将 datetime/date 序列化为带 Z 后缀的 ISO 8601 字符串
 
     项目约定：所有 DateTime 字段在数据库中均以 UTC naive datetime 存储。
     在 API 响应序列化时，必须显式带上时区标识（Z 或 +00:00），
     否则前端 dayjs / new Date() 会将无时区字符串按本地时区（UTC+8）解析，
     导致显示时间与实际时间相差 8 小时。
 
+    Date 字段（如 medical_date/report_date）没有时间分量，
+    统一按当日 00:00:00 UTC 处理；UTC+8 前端解析后仍为同一天，不会偏移。
+
     Args:
-        dt: 任意 datetime 对象（naive 或 aware）
+        dt: datetime 或 date 对象（naive 或 aware）
 
     Returns:
         ISO 8601 字符串（带 Z 后缀），如 "2026-06-03T12:43:00.123456Z"
@@ -39,6 +42,10 @@ def utc_isoformat(dt: Optional[datetime]) -> Optional[str]:
     """
     if dt is None:
         return None
+    if not isinstance(dt, datetime):
+        # date 对象无 tzinfo，转换为当日 00:00:00（注意：datetime 是 date 的子类，
+        # 必须先排除 datetime 再处理纯 date）
+        dt = datetime(dt.year, dt.month, dt.day)
     if dt.tzinfo is None:
         # 数据库中存的是 UTC naive datetime，序列化为 UTC
         dt = dt.replace(tzinfo=timezone.utc)

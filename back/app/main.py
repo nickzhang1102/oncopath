@@ -42,6 +42,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"✗ Redis连接失败: {e}")
 
+    # 启动时加载数据库中的活跃 LLM 配置到运行时（失败不阻断启动）
+    try:
+        from app.core.database import async_session_factory
+        from app.services.llm_config_service import LLMConfigService
+        async with async_session_factory() as session:
+            group_count = await LLMConfigService.load_and_apply(session)
+        if group_count:
+            logger.info(f"✓ 已从数据库加载 LLM 配置（{group_count} 组）")
+    except Exception as e:
+        logger.warning(f"⚠ LLM 配置加载失败，使用环境变量默认值: {e}")
+
     # 预加载OCR标准库指标缓存
     async def load_indicator_cache():
         """后台加载标准库指标缓存"""

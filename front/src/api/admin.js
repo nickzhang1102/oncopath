@@ -62,20 +62,6 @@ export const adminApi = {
     return request.delete(`/admin/indices/categories/${key}`)
   },
 
-  // LLM 配置管理
-  getLLMConfigs() {
-    return request.get('/admin/llm-configs')
-  },
-  updateLLMConfig(configKey, data) {
-    return request.put(`/admin/llm-configs/${configKey}`, data)
-  },
-  reloadLLMConfigs() {
-    return request.post('/admin/llm-configs/reload')
-  },
-  testLLMConfig(group) {
-    return request.post('/admin/llm-configs/test', { group })
-  },
-
   // AgentTeams 集成配置
   getAgentTeamsConfig() {
     return request.get('/admin/agentteams-config')

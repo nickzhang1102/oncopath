@@ -1,5 +1,7 @@
 <template>
-  <div class="admin-llm-configs">
+  <div class="ai-config-view">
+    <BackButton title="AI 模型配置" />
+
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <van-loading size="32px" color="var(--primary-color)" vertical>加载中...</van-loading>
@@ -13,18 +15,10 @@
     </div>
 
     <template v-else>
-      <!-- 顶部操作栏 -->
-      <div class="action-bar">
-        <span class="action-hint">修改保存后需重载生效</span>
-        <van-button
-          type="primary"
-          size="small"
-          icon="replay"
-          :loading="reloading"
-          @click="handleReload"
-        >
-          重载配置
-        </van-button>
+      <!-- 说明 -->
+      <div class="config-tip">
+        <van-icon name="info-o" />
+        <span>为会诊、解读、OCR 配置 OpenAI 兼容模型，修改保存后立即生效；留空的配置项回退到会诊组或 .env 默认值。</span>
       </div>
 
       <!-- 三个 Tab -->
@@ -39,6 +33,7 @@
                   size="small"
                   :type="editingGroup === group.key ? 'primary' : 'default'"
                   :icon="editingGroup === group.key ? 'passed' : 'edit'"
+                  :loading="savingGroup === group.key"
                   @click="editingGroup === group.key ? saveGroup(group.key) : startEdit(group.key)"
                 >
                   {{ editingGroup === group.key ? '保存' : '编辑' }}
@@ -79,7 +74,7 @@
                   <van-field
                     v-model="editForm[cfg.config_key]"
                     :type="cfg.is_secret ? 'password' : 'text'"
-                    :placeholder="cfg.is_secret ? '留空则不修改' : cfg.display_name"
+                    placeholder="留空则不修改"
                     size="small"
                     class="field-input"
                   />
@@ -102,14 +97,15 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { showToast, showSuccessToast } from 'vant'
-import { adminApi } from '@/api/admin'
+import { llmConfigApi } from '@/api/llmConfig'
+import BackButton from '@/components/index-detail/BackButton.vue'
 
 const loading = ref(true)
 const error = ref(null)
 const configs = ref([])
 const activeTab = ref(0)
-const reloading = ref(false)
 const testingGroup = ref('')
+const savingGroup = ref(false)
 const editingGroup = ref('')
 const editForm = reactive({})
 const testResults = reactive({})
@@ -128,7 +124,7 @@ async function loadConfigs() {
   loading.value = true
   error.value = null
   try {
-    const res = await adminApi.getLLMConfigs()
+    const res = await llmConfigApi.getLLMConfigs()
     configs.value = res.items || []
   } catch (e) {
     error.value = e.response?.data?.detail || '加载配置失败'
@@ -148,21 +144,33 @@ function startEdit(groupKey) {
 
 async function saveGroup(groupKey) {
   const items = groupConfigs(groupKey)
+  // 留空（含未修改的敏感掩码）的项不提交，由后端单事务整组落库
+  const updates = []
+  for (const cfg of items) {
+    const newVal = (editForm[cfg.config_key] || '').trim()
+    if (!newVal) continue
+    if (cfg.is_secret && newVal.startsWith('****')) continue
+    updates.push({ config_key: cfg.config_key, config_value: newVal })
+  }
+  if (!updates.length) {
+    editingGroup.value = ''
+    return
+  }
+
+  savingGroup.value = true
   try {
-    for (const cfg of items) {
-      const newVal = editForm[cfg.config_key]
-      // 敏感字段空值 → 不修改，传回掩码值
-      const payload = {
-        config_value: (cfg.is_secret && !newVal) ? cfg.config_value : newVal,
-      }
-      const res = await adminApi.updateLLMConfig(cfg.config_key, payload)
-      const idx = configs.value.findIndex(c => c.config_key === cfg.config_key)
-      if (idx !== -1) configs.value[idx] = res
+    const res = await llmConfigApi.updateLLMConfigGroup(groupKey, updates)
+    // 后端返回整组最新配置，逐项合并回本地状态
+    for (const item of res.items || []) {
+      const idx = configs.value.findIndex(c => c.config_key === item.config_key)
+      if (idx !== -1) configs.value[idx] = item
     }
     editingGroup.value = ''
-    showSuccessToast('保存成功')
+    showSuccessToast('保存成功，已生效')
   } catch (e) {
     showToast(e.response?.data?.detail || '保存失败')
+  } finally {
+    savingGroup.value = false
   }
 }
 
@@ -170,28 +178,12 @@ async function testGroup(groupKey) {
   testingGroup.value = groupKey
   testResults[groupKey] = null
   try {
-    const res = await adminApi.testLLMConfig(groupKey)
+    const res = await llmConfigApi.testLLMConfig(groupKey)
     testResults[groupKey] = res
   } catch (e) {
     testResults[groupKey] = { success: false, message: e.response?.data?.detail || '测试失败' }
   } finally {
     testingGroup.value = ''
-  }
-}
-
-async function handleReload() {
-  reloading.value = true
-  try {
-    const res = await adminApi.reloadLLMConfigs()
-    if (res.reloaded_groups?.length) {
-      showSuccessToast(res.message)
-    } else {
-      showToast(res.message)
-    }
-  } catch (e) {
-    showToast(e.response?.data?.detail || '重载失败')
-  } finally {
-    reloading.value = false
   }
 }
 
@@ -201,8 +193,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-llm-configs {
-  max-width: 900px;
+.ai-config-view {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding-bottom: var(--safe-bottom);
 }
 
 .loading-state,
@@ -216,23 +210,35 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-.action-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+.error-state p {
+  font-size: 14px;
+  margin: 0;
 }
 
-.action-hint {
+.config-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  background: var(--primary-alpha-5, rgba(114, 50, 160, 0.05));
+  border-radius: 8px;
   font-size: 12px;
-  color: var(--text-tertiary, #999);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.config-tip .van-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary-color);
 }
 
 .group-card {
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 16px;
-  margin: 12px 0;
+  margin: 12px 16px;
 }
 
 .card-top {
@@ -286,7 +292,7 @@ onMounted(() => {
 }
 
 .field-value.masked {
-  color: var(--text-tertiary, #999);
+  color: var(--text-tertiary);
 }
 
 .field-input {
