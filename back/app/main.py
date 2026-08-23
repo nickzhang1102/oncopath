@@ -109,7 +109,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="医疗报告系统 API",
     description="Medical Report System API v2.0",
-    version="2.0.0",
+    version=settings.APP_VERSION,
     lifespan=lifespan,
     # 全局应用 UTCJSONResponse：所有 datetime 字段自动序列化为
     # 带 Z 后缀的 ISO 8601 字符串，避免前端按本地时区误读导致 8 小时偏差
@@ -207,14 +207,14 @@ async def health_check():
             status_code=503,
             content={
                 "status": "unavailable",
-                "version": "2.0.0",
+                "version": settings.APP_VERSION,
                 "database_ready": False,
             },
         )
 
     return {
         "status": "ok",
-        "version": "2.0.0",
+        "version": settings.APP_VERSION,
         "database_ready": True,
         "cache_loaded": getattr(app.state, 'cache_loaded', False),
         "cache_error": getattr(app.state, 'cache_error', None)

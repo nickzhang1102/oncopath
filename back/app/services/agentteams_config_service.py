@@ -17,11 +17,15 @@ from app.services.encryption_service import encryption_service
 
 
 DEFAULT_UPSELL = AgentTeamsUpsell(
-    title="需要配置 AgentTeams 项目",
-    message="部署 AgentTeams 后即可使用多 Agent 团队进行虚拟会诊分析。",
+    title="需要部署 AgentTeams 项目",
+    message=(
+        "虚拟会诊由开源的 AgentTeams 项目提供多 Agent 团队分析引擎。"
+        "部署 AgentTeams 并在管理后台完成集成配置后即可使用。"
+        "点击下方按钮获取 AgentTeams 源码与部署指引。"
+    ),
     demo_asset_url="",
-    cta_label="了解部署方案",
-    cta_url="https://github.com/nickzhang1102/oncopath",
+    cta_label="获取 AgentTeams（开源自部署）",
+    cta_url="https://github.com/nickzhang1102/agentTeams",
 )
 
 

@@ -1,5 +1,3 @@
-<div align="center">
-
 # 🧬 OncoPath
 
 **把散落各处的医疗报告，整理成一条看得懂的治疗之路**
@@ -8,8 +6,8 @@
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-早期公开版-yellow.svg)](#状态说明)
-[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#技术栈)
-[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#技术栈)
+[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#快速开始docker)
+[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#快速开始docker)
 [![Docker](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](#快速开始docker)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-181717.svg?logo=github)](https://nickzhang1102.github.io/oncopath/)
 
@@ -18,8 +16,6 @@
 ![OncoPath 首页指标图表](docs/screenshots/desktop-home-indicators-chart.png)
 
 [项目网站](https://nickzhang1102.github.io/oncopath/) · [快速开始](#-快速开始docker) · [界面预览](#-界面预览) · [参与贡献](#-参与贡献) · [☕ 请作者喝咖啡](#-赞助支持)
-
-</div>
 
 > **状态说明**：本项目已公开，当前处于早期版本阶段。欢迎试用与反馈；生产环境部署前必须完成本文档【安全说明】中的全部必改项，并自行评估当地医疗数据合规要求。
 
@@ -80,8 +76,6 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景：数据存在�
 
 > 以下截图均由当前前端以固定的虚构演示数据自动生成。姓名、联系方式、证件号等身份字段已掩码，并带有"演示数据 · 已脱敏"标记；不含真实患者资料。生成与审查规则见 [截图维护说明](docs/screenshots/README.md)。
 
-<div align="center">
-
 **首页重要指标** — 报告数量、异常项、待办与分组指标一个工作台搞定
 
 ![首页重要指标列表](docs/screenshots/desktop-home-indicators-list.png)
@@ -90,12 +84,7 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景：数据存在�
 
 ![检验报告详情](docs/screenshots/desktop-lab-report.png)
 
-</div>
-
-<details>
-<summary><b>📁 展开查看更多截图（检查 / 病理 / 组合指标 / 会诊 / 知识库 / 移动端）</b></summary>
-
-<div align="center">
+### 📁 更多截图（检查 / 病理 / 组合指标 / 会诊 / 知识库 / 移动端）
 
 **检查报告** — 检查所见、诊断意见与随访提示统一呈现
 
@@ -123,82 +112,8 @@ OncoPath 面向懂技术的患者家属和家庭自部署场景：数据存在�
 
 **移动端**
 
-<p>
-<img src="docs/screenshots/mobile-home.png" width="19%" alt="移动端首页" />
-<img src="docs/screenshots/mobile-lab-report.png" width="19%" alt="移动端检验报告" />
-<img src="docs/screenshots/mobile-indicator-comparison.png" width="19%" alt="移动端组合指标" />
-<img src="docs/screenshots/mobile-consultation.png" width="19%" alt="移动端虚拟会诊" />
-<img src="docs/screenshots/mobile-knowledge-base.png" width="19%" alt="移动端知识库" />
-</p>
-
-</div>
-
-</details>
-
----
-
-## 🏗️ 技术栈与架构
-
-### 后端
-| 类别 | 选型 |
-|------|------|
-| 框架 | FastAPI 0.109+ |
-| ORM | SQLAlchemy 2.0（Async） |
-| 数据库 | PostgreSQL 17 + pgvector 扩展 |
-| 缓存 / 锁 / 会话 | Redis 7 |
-| AI | OpenAI 兼容 LLM API（解读 / OCR 解析）；虚拟会诊执行由 AgentTeams 集成承接 |
-| OCR | PaddleOCR 3.x（默认 CPU，可选 NVIDIA GPU）+ LLM（OpenAI 兼容接口） |
-| 异步任务 | Celery + Redis（随访提醒定时任务） |
-| 安全 | Fernet 对称加密（PHI 字段静态加密）、bcrypt、JWT |
-| 限流 | SlowAPI |
-| PDF 导出 | Playwright/Chromium + Jinja2 模板 |
-| LLM JSON 解析 | 自研 `utils/llm_parser.py`（3 策略 + 中文标点归一化） |
-
-### 前端
-| 类别 | 选型 |
-|------|------|
-| 框架 | Vue 3.4（Composition API） |
-| UI 库 | Vant 4.9 |
-| 状态管理 | Pinia |
-| 路由 | Vue Router 4 |
-| 构建工具 | Vite 8 |
-| 图表 | ECharts 6（按需导入） |
-| 安全 | DOMPurify（v-html 渲染前 XSS 防护） |
-| 导出 | html2canvas + jsPDF + html2pdf.js |
-| Markdown | marked + highlight.js |
-
-### 架构总览
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     前端层 (Vue 3 + Vant)                        │
-│  登录 / 主页(仪表盘) / 时间线 / 会诊(AgentTeams) / AI解读 / 知识库 │
-│  图片报告(OCR) / 指标查询 / 用药打卡 / 随访 / 全局搜索 ...        │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ HTTP/REST + SSE
-┌───────────────────────────────▼─────────────────────────────────┐
-│                API 网关层 (FastAPI, 30 路由模块)                  │
-│  认证 / 用户 / 患者 / 医疗 / 会诊 / 时间线 / 用药 / 服药记录      │
-│  随访 / 仪表盘 / 导出 / 分享 / 搜索 / 文件                        │
-│  图片报告 / 知识库 / 提示词 / 上传 / 指标历史 / 管理后台          │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-┌───────────────────────────────▼─────────────────────────────────┐
-│                   服务层 (Business Logic)                        │
-│  AgentTeamsStartService / AgentTeamsConfigService               │
-│  MedicalPromptBuilder / LLMService / InterpretationService      │
-│  OCR 集成服务(7子服务) / TimelineAggregator / ExportService      │
-│  StorageService / EncryptionService / SessionService            │
-│  Desensitization / LockService                                  │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-┌───────────────────────────────▼─────────────────────────────────┐
-│                            数据层                                │
-│  PostgreSQL 17 (主存储)   │  Redis 7 (缓存/锁/会话)              │
-│  OpenAI 兼容 LLM API      │  AgentTeams (外部会诊执行)           │
-│  本地文件存储             │  Playwright/Chromium (PDF 渲染)      │
-└─────────────────────────────────────────────────────────────────┘
-```
+| ![移动端首页](docs/screenshots/mobile-home.png) | ![移动端检验报告](docs/screenshots/mobile-lab-report.png) | ![移动端组合指标](docs/screenshots/mobile-indicator-comparison.png) | ![移动端虚拟会诊](docs/screenshots/mobile-consultation.png) | ![移动端知识库](docs/screenshots/mobile-knowledge-base.png) |
+|---|---|---|---|---|
 
 ---
 
@@ -214,7 +129,7 @@ cd oncopath
 cp .env.example .env
 ```
 
-编辑 `.env`，**必须填写**以下 5 项（其余按需调整）：
+编辑 `.env`，**必须填写**以下 4 项（其余按需调整）：
 
 | 变量 | 说明 | 生成方式 |
 |------|------|----------|
@@ -222,9 +137,8 @@ cp .env.example .env
 | `DB_PASSWORD` | PostgreSQL 密码 | 自定义强密码 |
 | `REDIS_PASSWORD` | Redis 密码 | 自定义强密码 |
 | `ENCRYPTION_KEY` | PHI 字段 Fernet 加密密钥（生产必填） | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-| `LLM_API_KEY` | 本地 AI 解读与知识库摘要使用的 OpenAI 兼容 LLM API Key | 你的 LLM 服务商后台 |
 
-> 其余 LLM 配置（`LLM_API_BASE` / `LLM_MODEL_NAME` / `OCR_LLM_API_KEY` / `OCR_LLM_API_BASE` / `OCR_LLM_MODEL_NAME`）按你使用的 OpenAI 兼容服务填写。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。
+> **LLM 配置无需预填**：AI 解读、OCR 解析等 AI 功能使用的 OpenAI 兼容 LLM 配置，部署完成后登录系统，按首启引导进入「个人中心 → AI 配置」菜单填写并测试即可（配置加密存库、保存后热生效）。`.env` 中的 `LLM_*` 变量仅作为可选回退。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。
 
 ### 2️⃣ 启动服务
 
@@ -250,133 +164,14 @@ backend 容器启动时会自动执行 `alembic upgrade head` 建立/升级表�
 
 ---
 
-## 💻 本地开发
-
-### 前置依赖
-
-- Python 3.11（与后端镜像一致，推荐使用独立虚拟环境）
-- Node.js 20.19+ 或 22.12+
-- PostgreSQL 17（需安装 pgvector 扩展）
-- Redis 7+
-- Docker & Docker Compose（可选，用于拉起 PG / Redis）
-
-### 数据库准备
-
-1. 创建空数据库 `medical_report`：
-   ```sql
-   CREATE DATABASE medical_report;
-   ```
-2. 运行 Alembic public baseline 建表并记录 schema 版本。
-3. 运行 `init_fresh_db.py` 写入幂等种子数据（见下文后端启动步骤）。
-
-### 后端
-
-```bash
-cd back
-
-# 1. 准备环境变量（从根目录复制模板到 back/ 下，因为 config.py 的 env_file=".env" 相对工作目录）
-cp ../.env.example .env
-#   编辑 back/.env，填入本地 PostgreSQL / Redis / LLM 配置：
-#   - DB_HOST=localhost / DB_PORT=5432（本地开发直连）
-#   - REDIS_HOST=localhost / REDIS_PORT=6379
-#   - SECRET_KEY / ENCRYPTION_KEY / LLM_API_KEY 等按上文生成
-
-# 2. 建立/升级 schema，再初始化幂等种子数据
-alembic upgrade head
-python scripts/init_fresh_db.py
-
-# 3. 启动开发服务器
-uvicorn app.main:app --reload --port 8000
-```
-
-> 如需随访提醒定时任务，另起终端运行 Celery worker 和 beat：
-> ```bash
-> cd back
-> celery -A app.core.celery_app worker --loglevel=info
-> celery -A app.core.celery_app beat --loglevel=info
-> ```
-
-### 前端
-
-```bash
-cd front
-npm install
-npm run dev
-# 访问 http://localhost:3000
-```
-
-> 前端开发服务器默认监听 3000 端口，需在 `.env` 的 `CORS_ORIGINS` 中包含 `http://localhost:3000`（模板已默认包含）。
-
----
-
-## 🔌 API 概览
-
-后端共 30 个路由模块，统一注册于 `app/routers.py`。本地直接启动后端时，可访问 [Swagger UI](http://localhost:8000/docs) 查看完整端点定义；Docker 生产部署不向宿主机发布 backend 端口。
-
-<details>
-<summary><b>📋 展开路由模块清单</b></summary>
-
-| 路由模块 | 路径前缀 | 说明 |
-|----------|----------|------|
-| 认证 | `/api/v1/auth` | 注册、登录（单会话管理）、刷新令牌、登出 |
-| 用户 | `/api/v1/accounts` | 个人信息、修改密码、隐私设置、通知 CRUD |
-| 患者 | `/api/v1/patients` | 患者 CRUD、加密+哈希查重、脱敏详情、PHI 编辑审计、主患者切换、患者时间线/统计/会诊 |
-| 会诊 | `/api/v1/consultation` | AgentTeams 可用性查询、外部会诊启动、外部会话映射、历史详情 |
-| 医疗 | `/api/v1/medical` | 检验/检查/病理/病情记录 CRUD、指标标准库查询、收藏、异常指标 |
-| 时间线 | `/api/v1/timeline` | 时间线事件 CRUD、统计 |
-| 用药 | `/api/v1/medications` | 用药记录 CRUD、停药 |
-| 服药打卡 | `/api/v1/medication-logs` | 打卡记录、今日任务、依从性统计 |
-| 随访 | `/reminders` | 随访提醒 CRUD、确认复查 |
-| 仪表盘 | `/api/v1/dashboard` | 首页聚合数据 |
-| 导出 | `/export` | 检验报告 / 时间线 / 完整病历 PDF |
-| 分享 | `/share` | 报告分享令牌生成与访问 |
-| 搜索 | `/search` | 跨模块全局搜索 |
-| 文件 | `/files` | 本地文件服务（需认证） |
-| 图片报告 | `/api/v1/image_reports` | 图片报告 CRUD、上传（后台 OCR / SSE 进度）、去重校验 |
-| 知识库 | `/api/v1/knowledge` | 分类树、文档 CRUD、搜索 |
-| 提示词 | `/api/v1/prompt` | 按患者保存的 AI 提示词配置 |
-| 上传 | `/api/v1/upload` | 报告图片上传与状态查询 |
-| 指标历史 | `/api/v1/indicator-history` | 指标历史趋势（含 up/down/stable 计算） |
-| 管理后台 | `/api/v1/admin` | 用户管理、指标库 CRUD/排序/批量导入、指标分类管理（需 admin 鉴权） |
-
-</details>
-
-> 所有接口默认需要认证（除登录/注册/分享链接等显式标注的端点）。会诊接口限流 5/min，登录 5/min，上传 10/min，默认 100/min。
-
----
-
-## 🧪 测试
-
-后端使用 pytest + pytest-asyncio，测试覆盖单元、接口、数据库 baseline 和集成场景。
-
-```bash
-cd back
-conda activate oncopath
-
-# 运行全部测试
-pytest tests/ -v
-
-# 带覆盖率报告
-pytest tests/ -v --cov=app --cov-report=html
-
-# 仅单元测试
-pytest tests/ -v -k "not integration"
-
-# 仅集成测试
-pytest tests/integration/ -v
-```
-
-> 测试需要可用的测试数据库（PostgreSQL）与 Redis。AgentTeams 会诊集成测试可按 `docs/testing/agentteams-consultation.md` 中的命令运行。
-
----
-
 ## 🛳️ 生产部署
 
 生产部署以 `docker-compose.yml` 为准。部署前请逐项确认【安全说明】中的必改项：
 
 PaddleOCR 默认使用 CPU。NVIDIA GPU 环境需要同时叠加 `docker-compose.gpu.yml`，并预先安装 NVIDIA Container Toolkit；两套环境的硬件要求、完整命令、验证、切换和排障见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./docs/deployment/ocr-cpu-gpu.md)。
 
-- 修改 `.env` 中的 `SECRET_KEY`、`DB_PASSWORD`、`REDIS_PASSWORD`、`ENCRYPTION_KEY`、`LLM_API_KEY`
+- 修改 `.env` 中的 `SECRET_KEY`、`DB_PASSWORD`、`REDIS_PASSWORD`、`ENCRYPTION_KEY`
+- 部署后登录系统，在「个人中心 → AI 配置」完成 LLM 配置（或在 `.env` 预填 `LLM_*` 回退值）
 - 设置 `ADMIN_INITIAL_PASSWORD` 为强密码，并登录后立即修改 admin 密码
 - `CORS_ORIGINS` 限制为实际前端域名
 - `ALLOW_UNENCRYPTED_PHI` 保持 `false`（生产环境必须配置 `ENCRYPTION_KEY`）
@@ -458,23 +253,12 @@ docker compose --env-file .env up -d
 
 ## ☕ 赞助支持
 
-<div align="center">
-
 如果 OncoPath 对你有所帮助，欢迎请作者喝一杯咖啡 ☕
 
 **每一份支持都是作者持续维护的动力，真的很重要！**
 
-<table>
-<tr>
-<td align="center"><b>💚 微信</b></td>
-<td align="center"><b>💙 支付宝</b></td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/wechat.jpg" width="260" alt="微信赞赏码" /></td>
-<td><img src="docs/screenshots/alipay.jpg" width="260" alt="支付宝收款码" /></td>
-</tr>
-</table>
+| 💚 微信 | 💙 支付宝 |
+| :---: | :---: |
+| ![微信赞赏码](docs/screenshots/wechat.jpg) | ![支付宝收款码](docs/screenshots/alipay.jpg) |
 
 也欢迎点一个 ⭐ Star，让更多有需要的人看到这个项目。
-
-</div>

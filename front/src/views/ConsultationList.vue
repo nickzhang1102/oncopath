@@ -134,6 +134,9 @@
       </div>
     </div>
 
+    <!-- AgentTeams 引擎状态栏 -->
+    <AgentTeamsStatusBar :availability="agentTeamsAvailability" />
+
     <!-- 移动端浮动按钮 -->
     <van-button
       v-if="!isDesktop && conversations.length > 0"
@@ -176,6 +179,12 @@
       </div>
     </van-action-sheet>
 
+    <AgentTeamsOnboardingGuide
+      v-model:show="showAgentTeamsGuide"
+      :upsell="agentTeamsUpsell"
+      @cta="handleAgentTeamsUpsellCta"
+    />
+
     <AgentTeamsUpsellDialog
       v-model:show="showAgentTeamsUpsell"
       :upsell="agentTeamsUpsell"
@@ -200,6 +209,8 @@ import { useResponsive } from '@/composables/useResponsive'
 import { consultationApi } from '@/api/consultation'
 import AgentTeamsUpsellDialog from '@/components/consultation/AgentTeamsUpsellDialog.vue'
 import AgentTeamsErrorDialog from '@/components/consultation/AgentTeamsErrorDialog.vue'
+import AgentTeamsOnboardingGuide, { GUIDE_SEEN_KEY } from '@/components/consultation/AgentTeamsOnboardingGuide.vue'
+import AgentTeamsStatusBar from '@/components/consultation/AgentTeamsStatusBar.vue'
 import { getAgentTeamsErrorUx, isAgentTeamsError } from '@/utils/agentteamsErrorUx'
 import dayjs from 'dayjs'
 
@@ -214,9 +225,11 @@ const loadingMore = ref(false)
 const showPatientPicker = ref(false)
 const showAgentTeamsUpsell = ref(false)
 const showAgentTeamsError = ref(false)
+const showAgentTeamsGuide = ref(false)
 const agentTeamsUpsell = ref({})
 const agentTeamsError = ref({})
 const agentTeamsCtaUrl = ref('')
+const agentTeamsAvailability = ref(null)
 const agentTeamsAvailabilityLoading = ref(false)
 const agentTeamsStartLoading = ref(false)
 const activeLaunchIntent = ref(null)
@@ -395,6 +408,7 @@ async function handleStartConsultation() {
   agentTeamsAvailabilityLoading.value = true
   try {
     const availability = await consultationApi.getAgentTeamsAvailability()
+    agentTeamsAvailability.value = availability
     agentTeamsCtaUrl.value = availability.upsell?.cta_url || ''
     if (!availability.configured || !availability.enabled) {
       agentTeamsUpsell.value = availability.upsell || {}
@@ -503,10 +517,32 @@ async function waitForAgentTeamsLaunch(patientId) {
   return activeLaunchIntent.value
 }
 
+// 首次进入页面检查 AgentTeams 配置：未配置且未看过引导时展示引导动画，同时驱动底部状态栏
+async function checkAgentTeamsOnboarding() {
+  try {
+    const availability = await consultationApi.getAgentTeamsAvailability()
+    agentTeamsAvailability.value = availability
+    let seen = null
+    try {
+      seen = localStorage.getItem(GUIDE_SEEN_KEY)
+    } catch {
+      // localStorage 不可用时视为未看过
+    }
+    if (!availability.configured && !seen) {
+      agentTeamsUpsell.value = availability.upsell || {}
+      showAgentTeamsGuide.value = true
+    }
+  } catch {
+    // 可用性检查失败不阻塞页面，状态栏按未部署展示
+  }
+}
+
 onMounted(async () => {
   if (!patientStore.loaded) {
     await patientStore.fetchPatientList()
   }
+  // 引导与状态栏检查自带容错，前置执行避免被后续列表加载异常阻断
+  await checkAgentTeamsOnboarding()
   await loadFirstPage()
   await refreshActiveLaunchIntent(currentPatientId.value)
 })

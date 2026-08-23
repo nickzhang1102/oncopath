@@ -84,11 +84,11 @@ const visible = computed({
 })
 
 const displayUpsell = computed(() => ({
-  title: props.upsell?.title || '需要配置 AgentTeams 项目',
-  message: props.upsell?.message || '部署 AgentTeams 后即可使用多 Agent 团队进行虚拟会诊分析。',
+  title: props.upsell?.title || '需要部署 AgentTeams 项目',
+  message: props.upsell?.message || '虚拟会诊由开源的 AgentTeams 项目提供分析引擎，部署并完成集成配置后即可使用。',
   demo_asset_url: props.upsell?.demo_asset_url || '',
-  cta_label: props.upsell?.cta_label || '了解部署方案',
-  cta_url: props.upsell?.cta_url || '',
+  cta_label: props.upsell?.cta_label || '获取 AgentTeams（开源自部署）',
+  cta_url: props.upsell?.cta_url || 'https://github.com/nickzhang1102/agentTeams',
 }))
 
 const hasCta = computed(() => Boolean(displayUpsell.value.cta_url))

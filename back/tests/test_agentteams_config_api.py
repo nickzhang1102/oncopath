@@ -213,7 +213,7 @@ async def test_availability_returns_configured_enabled(client, db_session):
     assert data["enabled"] is True
     assert data["base_url"] == "https://agentteams.example.com"
     assert data["upsell"]["demo_asset_url"] == ""
-    assert data["upsell"]["cta_url"] == "https://github.com/nickzhang1102/oncopath"
+    assert data["upsell"]["cta_url"] == "https://github.com/nickzhang1102/agentTeams"
     assert data["capacity"] is None
     assert data["upsell"]["title"]
     assert "integration_secret" not in data

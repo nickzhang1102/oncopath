@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     # 应用配置
     APP_NAME: str = "Medical Report System"
-    APP_VERSION: str = "2.0.0"
+    APP_VERSION: str = "2.1.0"
     DEBUG: bool = False
     DEBUG_ENABLED: bool = False  # 调试端点开关，生产环境必须为 False
 

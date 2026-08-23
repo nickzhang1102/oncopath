@@ -6,6 +6,8 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
   await page.addInitScript(() => {
     localStorage.setItem('token', 'test-token')
     localStorage.setItem('refreshToken', 'test-refresh')
+    // 预置首次引导已读标记：本文件只验证嵌入/历史链路，引导动画单独覆盖
+    localStorage.setItem('oncopath_agentteams_guide_seen', '1')
   })
 
   await page.route('**/api/v1/accounts/notifications/stream', route => {

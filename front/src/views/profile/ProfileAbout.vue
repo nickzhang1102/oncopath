@@ -8,7 +8,7 @@
         <van-icon name="medical" size="60" color="var(--primary-color)" />
       </div>
       <h1 class="app-name">OncoPath</h1>
-      <p class="version">版本 2.0.0</p>
+      <p class="version">{{ version ? `版本 ${version}` : '' }}</p>
     </div>
 
     <!-- 产品介绍 -->
@@ -63,8 +63,16 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { showToast } from 'vant'
 import BackButton from '@/components/index-detail/BackButton.vue'
+import { useAppVersion } from '@/composables/useAppVersion'
+
+const { version, fetchVersion } = useAppVersion()
+
+onMounted(() => {
+  fetchVersion()
+})
 
 function handleAgreement() {
   showToast('用户协议页面开发中')

@@ -6,6 +6,8 @@ async function mockCommonApis(page, counters = {}) {
   await page.addInitScript(() => {
     localStorage.setItem('token', 'test-token')
     localStorage.setItem('refreshToken', 'test-refresh')
+    // 预置首次引导已读标记：本文件只验证 upsell/错误弹窗链路，引导动画单独覆盖
+    localStorage.setItem('oncopath_agentteams_guide_seen', '1')
   })
 
   await page.route('**/api/v1/accounts/notifications/stream', route => {
@@ -81,7 +83,8 @@ test('shows AgentTeams upsell and does not start local consultation when unavail
 
   await expect(page.getByText('需要配置 AgentTeams 项目')).toBeVisible()
   await expect(page.getByRole('button', { name: '了解部署方案' })).toBeVisible()
-  expect(counters.availability).toBe(1)
+  // 页面加载时状态栏/引导检查 1 次 + 点击开始会诊实时检查 1 次
+  expect(counters.availability).toBe(2)
   expect(counters.patients || 0).toBe(patientsBeforeClick)
   expect(counters.createConversation || 0).toBe(0)
   await expect(page.getByText('https://example.com/agentteams')).toHaveCount(0)
@@ -115,6 +118,7 @@ test('starts AgentTeams flow when AgentTeams is enabled', async ({ page }) => {
       contentType: 'application/json',
       body: JSON.stringify({
         conversation_id: 900,
+        launch_status: 'accepted',
         provider: 'agentteams',
         external_conversation_id: '1001',
         external_session_id: '2001',
@@ -153,7 +157,8 @@ test('starts AgentTeams flow when AgentTeams is enabled', async ({ page }) => {
   await expect(page).toHaveURL(/\/home\/consultation\/900\?patient_id=1$/)
   await expect(page.locator('iframe.embed-iframe')).toBeVisible()
   await expect(page.getByText('需要配置 AgentTeams 项目')).toHaveCount(0)
-  expect(counters.availability).toBe(1)
+  // 页面加载时状态栏/引导检查 1 次 + 点击开始会诊实时检查 1 次
+  expect(counters.availability).toBe(2)
   expect(counters.agentTeamsStart).toBe(1)
   expect(counters.createConversation || 0).toBe(0)
 })
