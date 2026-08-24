@@ -23,7 +23,7 @@ cryptography>=42.0.0
 python-multipart==0.0.32
 
 # 配置
-pydantic==2.12.5
+pydantic==2.13.4
 pydantic-settings==2.14.2
 
 # API限流
