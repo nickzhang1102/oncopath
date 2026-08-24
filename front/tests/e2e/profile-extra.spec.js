@@ -86,7 +86,7 @@ test.describe('关于我们 E2E', () => {
     await page.goto(`${BASE_URL}/home/profile/about`, { timeout: 15000, waitUntil: 'domcontentloaded' });
     await page.waitForURL(/\/home\/profile\/about/, { timeout: 15000 });
 
-    await expect(page.getByText('医疗报告系统')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(page.getByText('OncoPath')).toBeVisible({ timeout: 5000 }).catch(() => {});
   });
 });
 

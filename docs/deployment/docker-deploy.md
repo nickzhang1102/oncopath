@@ -71,7 +71,7 @@ cd oncopath
 SECRET_KEY=$(openssl rand -hex 32)
 ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 cp .env.example .env
-sed -i "s/your-super-secret-key-change-this-in-production-must-be-at-least-32-chars/${SECRET_KEY}/" .env
+sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" .env
 sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=${ENCRYPTION_KEY}|" .env
 # 手动编辑 .env，填写 DB_PASSWORD、REDIS_PASSWORD、LLM_API_KEY 等
 
@@ -135,7 +135,7 @@ OCR_LLM_API_KEY=your-ocr-api-key
 OCR_LLM_API_BASE=https://api.openai.com/v1
 OCR_LLM_MODEL_NAME=gpt-4o
 
-# CORS（填前端实际访问地址，多个用逗号分隔）
+# CORS（填前端实际访问地址，必须为 JSON 数组格式）
 CORS_ORIGINS=["http://your-domain.com","http://your-domain.com:3000"]
 
 # 前端端口（宿主机映射）
@@ -609,6 +609,8 @@ docker compose -p oncopath up -d --build
 | `REDIS_PASSWORD` | ✅ | — | Redis 密码 |
 | `SECRET_KEY` | ✅ | — | JWT 签名密钥 (≥32字符) |
 | `ENCRYPTION_KEY` | ✅ | — | Fernet 加密密钥 |
+| `ADMIN_INITIAL_PASSWORD` | ❌ | admin123 | 管理员初始密码（生产必改） |
+| `DB_BIND_ADDRESS` | ❌ | 127.0.0.1 | PostgreSQL 宿主机绑定地址 |
 | `DB_USER` | ❌ | postgres | 数据库用户 |
 | `DB_NAME` | ❌ | medical_report | 数据库名 |
 | `LLM_API_KEY` | ❌ | — | 本地 AI 解读与知识库摘要 LLM 密钥 |
@@ -620,6 +622,8 @@ docker compose -p oncopath up -d --build
 | `INTERPRETATION_LLM_*` | ❌ | 回退到 LLM_* | 解读专用 LLM |
 | `CORS_ORIGINS` | ❌ | localhost | 前端访问地址 |
 | `FRONTEND_PORT` | ❌ | 3000 | 前端映射端口 |
+| `FRONTEND_BIND_ADDRESS` | ❌ | 127.0.0.1 | 前端宿主机绑定地址 |
+| `AGENTTEAMS_INTERNAL_ORIGIN` | ❌ | http://frontend | AgentTeams 嵌入式会诊容器内访问地址 |
 | `STORAGE_TYPE` | ❌ | local | 存储类型 |
 | `STORAGE_PATH` | ❌ | /app/storage | 存储路径 |
 | `ALLOW_UNENCRYPTED_PHI` | ❌ | false | 允许明文 PHI |

@@ -36,6 +36,14 @@ fi
 # ============================================================
 # 2. 数据库初始化（等 PostgreSQL 就绪 → 自动建表/迁移/种子数据）
 # ============================================================
+# 先单独加载配置：SECRET_KEY / ENCRYPTION_KEY 等校验失败时立即报错退出，
+# 避免配置异常被下方重试循环掩盖为"数据库未就绪"，误导排障。
+if ! python -c "from app.core.config import settings" 2> /tmp/config_err; then
+    echo "[entrypoint] 配置校验失败，拒绝启动：" >&2
+    cat /tmp/config_err >&2
+    exit 1
+fi
+
 echo "[entrypoint] 等待数据库就绪..."
 
 DB_READY=false
@@ -63,6 +71,10 @@ if [ "$DB_READY" = false ]; then
     exit 1
 else
     if [ "$RUN_DB_MIGRATIONS" = true ]; then
+        if [ -z "${ADMIN_INITIAL_PASSWORD}" ]; then
+            echo "[entrypoint] ⚠️  未设置 ADMIN_INITIAL_PASSWORD，管理员初始密码将使用默认值 admin123" >&2
+            echo "[entrypoint] ⚠️  生产环境请在 .env 中设置强密码，或首次登录后立即修改！" >&2
+        fi
         echo "[entrypoint] 数据库已就绪，执行 schema 迁移..."
         alembic -c /app/alembic.ini upgrade head
         echo "[entrypoint] ✅ 数据库迁移完成"

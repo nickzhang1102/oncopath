@@ -77,10 +77,11 @@ services:
       - INTERPRETATION_LLM_API_KEY=${INTERPRETATION_LLM_API_KEY:-}
       - INTERPRETATION_LLM_API_BASE=${INTERPRETATION_LLM_API_BASE:-}
       - INTERPRETATION_LLM_MODEL_NAME=${INTERPRETATION_LLM_MODEL_NAME:-}
+      - INTERPRETATION_LLM_TIMEOUT=${INTERPRETATION_LLM_TIMEOUT:-}
       - AGENTTEAMS_INTERNAL_ORIGIN=${AGENTTEAMS_INTERNAL_ORIGIN:-http://frontend}
       - RUN_DB_MIGRATIONS=true
       - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-}
-      - DEBUG=false
+      - DEBUG=${DEBUG:-false}
       - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost","http://localhost:3000"]}
       - STORAGE_TYPE=${STORAGE_TYPE:-local}
       - STORAGE_PATH=${STORAGE_PATH:-/app/storage}
@@ -97,7 +98,7 @@ services:
         condition: service_started
     volumes:
       - app_storage:/app/storage
-      - huggingface_cache:/home/appuser/.cache/huggingface
+      - huggingface_cache:/app/.cache/huggingface
       - paddlex_models:/app/.paddlex
       - paddleocr_models:/app/.paddleocr
     networks:
@@ -136,7 +137,7 @@ services:
       - ALLOW_UNENCRYPTED_PHI=${ALLOW_UNENCRYPTED_PHI:-false}
       - AGENTTEAMS_INTERNAL_ORIGIN=${AGENTTEAMS_INTERNAL_ORIGIN:-http://frontend}
       - RUN_DB_MIGRATIONS=false
-      - DEBUG=false
+      - DEBUG=${DEBUG:-false}
     depends_on:
       backend:
         condition: service_healthy

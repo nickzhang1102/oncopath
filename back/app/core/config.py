@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     """应用配置"""
 
     # 应用配置
-    APP_NAME: str = "Medical Report System"
+    APP_NAME: str = "OncoPath"
     APP_VERSION: str = "2.1.0"
     DEBUG: bool = False
     DEBUG_ENABLED: bool = False  # 调试端点开关，生产环境必须为 False
@@ -71,7 +71,8 @@ class Settings(BaseSettings):
             "your-super-secret-key-change-this-in-production-must-be-at-least-32-chars",
             "",
         }
-        if v in forbidden:
+        # 占位符提示词拦截（覆盖 .env.example 各版本占位符及其变体）
+        if v in forbidden or "必须修改" in v:
             raise ValueError(
                 "SECRET_KEY 不能使用默认值或为空，请通过环境变量设置强随机密钥 "
                 "(使用 openssl rand -hex 32 生成)"

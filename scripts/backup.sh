@@ -12,7 +12,7 @@ DB_BACKUP_FILE="medical_database_${DATE}.dump"
 STORAGE_BACKUP_FILE="medical_storage_${DATE}.tar.gz"
 
 echo "=========================================="
-echo "  医疗报告系统 - 数据库备份"
+echo "  OncoPath - 数据库备份"
 echo "=========================================="
 
 # 创建备份目录

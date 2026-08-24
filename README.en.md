@@ -5,19 +5,19 @@
 OCR lab-index extraction · Unified treatment timeline · AI-assisted interpretation · Multi-agent virtual consultation
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Status](https://img.shields.io/badge/status-early%20release-yellow.svg)](#status)
-[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#quick-start-docker)
-[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#quick-start-docker)
-[![Docker](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](#quick-start-docker)
+[![Status](https://img.shields.io/badge/status-early%20release-yellow.svg)](#-why-oncopath)
+[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#-quick-start-docker)
+[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#-quick-start-docker)
+[![Docker](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](#-quick-start-docker)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-181717.svg?logo=github)](https://nickzhang1102.github.io/oncopath/)
 
 [简体中文](./README.md) | **[English](./README.en.md)**
 
 ![OncoPath home indicator charts](docs/screenshots/desktop-home-indicators-chart.png)
 
-[Project Website](https://nickzhang1102.github.io/oncopath/) · [Quick Start](#quick-start-docker) · [Screenshots](#screenshots) · [Contributing](#contributing) · [☕ Buy the author a coffee](#sponsorship)
+[Project Website](https://nickzhang1102.github.io/oncopath/) · [Quick Start](#-quick-start-docker) · [Screenshots](#-screenshots) · [Contributing](#-contributing) · [☕ Buy the author a coffee](#-sponsorship)
 
-> **Status**: This project is now public and in an early stage. Feedback is welcome. Before any production deployment, complete **every** mandatory item in the [Security](#security) section and evaluate medical-data compliance requirements in your jurisdiction.
+> **Status**: This project is now public and in an early stage. Feedback is welcome. Before any production deployment, complete **every** mandatory item in the [Security](#-security) section and evaluate medical-data compliance requirements in your jurisdiction.
 
 ---
 
@@ -138,7 +138,7 @@ Edit `.env` and **fill in these 4 required variables** (adjust the rest as neede
 | `REDIS_PASSWORD` | Redis password | Choose a strong password |
 | `ENCRYPTION_KEY` | Fernet key for PHI field encryption (required in production) | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 
-> **No LLM pre-configuration needed**: the OpenAI-compatible LLM settings used by AI features (lab interpretation, OCR parsing, etc.) are configured **after deployment** — sign in and follow the first-run guide to **Profile → AI Configuration**, where you can fill in and test the config (stored encrypted in the database, effective immediately after saving). The `LLM_*` variables in `.env` serve as an optional fallback. AgentTeams uses its own backend integration config — see [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md) (Chinese).
+> **No LLM pre-configuration needed**: the OpenAI-compatible LLM settings used by AI features (lab interpretation, OCR parsing, etc.) are configured **after deployment** — sign in and follow the first-run guide to **Profile → AI Model Config**, where you can fill in and test the config (stored encrypted in the database, effective immediately after saving). The `LLM_*` variables in `.env` serve as an optional fallback. AgentTeams uses its own backend integration config — see [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md) (Chinese).
 
 ### 2️⃣ Start services
 
@@ -172,7 +172,7 @@ Production deployment follows `docker-compose.yml`. Before deploying, verify eve
 PaddleOCR uses CPU by default. NVIDIA GPU environments additionally need `docker-compose.gpu.yml` and the NVIDIA Container Toolkit preinstalled; hardware requirements, full commands, verification, switching and troubleshooting are documented in the [PaddleOCR CPU / NVIDIA GPU deployment guide](./docs/deployment/ocr-cpu-gpu.md) (Chinese).
 
 - Change `SECRET_KEY`, `DB_PASSWORD`, `REDIS_PASSWORD`, `ENCRYPTION_KEY` in `.env`
-- After deployment, sign in and complete the LLM configuration under **Profile → AI Configuration** (or pre-fill `LLM_*` fallback values in `.env`)
+- After deployment, sign in and complete the LLM configuration under **Profile → AI Model Config** (or pre-fill `LLM_*` fallback values in `.env`)
 - Set `ADMIN_INITIAL_PASSWORD` to a strong password and change the admin password right after first login
 - Restrict `CORS_ORIGINS` to your actual frontend domains
 - Keep `ALLOW_UNENCRYPTED_PHI=false` (`ENCRYPTION_KEY` is mandatory in production)
@@ -187,6 +187,8 @@ docker compose --env-file .env up -d
 
 # The backend entrypoint migrates the schema and loads seed data automatically
 ```
+
+> **Known limitation**: automatic follow-up reminder delivery and expiry marking depend on a Celery worker/beat, which the current Compose setup does not include — reminders are still created, listed and can be confirmed manually, but no notifications are sent automatically. To enable automation, run `celery -A app.core.celery_app worker --loglevel=info` and the matching beat process yourself.
 
 ---
 

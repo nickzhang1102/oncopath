@@ -58,7 +58,7 @@ async def create_database():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Medical Report System - Database Initialization")
+    print("OncoPath - Database Initialization")
     print("=" * 60)
     asyncio.run(create_database())
     print("\nDatabase setup completed!")

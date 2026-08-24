@@ -24,7 +24,7 @@ case "${OCR_DEPLOYMENT}" in
 esac
 
 echo "=========================================="
-echo "  医疗报告系统 v2.0 部署脚本"
+echo "  OncoPath 部署脚本"
 echo "  环境: ${ENVIRONMENT}"
 echo "  PaddleOCR: ${OCR_DEPLOYMENT}"
 echo "=========================================="

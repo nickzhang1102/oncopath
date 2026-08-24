@@ -5,10 +5,10 @@
 检验指标 OCR 自动识别 · 治疗时间线聚合 · AI 辅助解读 · 多智能体虚拟会诊入口
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![Status](https://img.shields.io/badge/status-早期公开版-yellow.svg)](#状态说明)
-[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#快速开始docker)
-[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#快速开始docker)
-[![Docker](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](#快速开始docker)
+[![Status](https://img.shields.io/badge/status-早期公开版-yellow.svg)](#-为什么做-oncopath)
+[![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](#-快速开始docker)
+[![Frontend](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](#-快速开始docker)
+[![Docker](https://img.shields.io/badge/deploy-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](#-快速开始docker)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-181717.svg?logo=github)](https://nickzhang1102.github.io/oncopath/)
 
 **[简体中文](./README.md)** | [English](./README.en.md)
@@ -138,7 +138,7 @@ cp .env.example .env
 | `REDIS_PASSWORD` | Redis 密码 | 自定义强密码 |
 | `ENCRYPTION_KEY` | PHI 字段 Fernet 加密密钥（生产必填） | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 
-> **LLM 配置无需预填**：AI 解读、OCR 解析等 AI 功能使用的 OpenAI 兼容 LLM 配置，部署完成后登录系统，按首启引导进入「个人中心 → AI 配置」菜单填写并测试即可（配置加密存库、保存后热生效）。`.env` 中的 `LLM_*` 变量仅作为可选回退。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。
+> **LLM 配置无需预填**：AI 解读、OCR 解析等 AI 功能使用的 OpenAI 兼容 LLM 配置，部署完成后登录系统，按首启引导进入「个人中心 → AI 模型配置」菜单填写并测试即可（配置加密存库、保存后热生效）。`.env` 中的 `LLM_*` 变量仅作为可选回退。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。
 
 ### 2️⃣ 启动服务
 
@@ -172,7 +172,7 @@ backend 容器启动时会自动执行 `alembic upgrade head` 建立/升级表�
 PaddleOCR 默认使用 CPU。NVIDIA GPU 环境需要同时叠加 `docker-compose.gpu.yml`，并预先安装 NVIDIA Container Toolkit；两套环境的硬件要求、完整命令、验证、切换和排障见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./docs/deployment/ocr-cpu-gpu.md)。
 
 - 修改 `.env` 中的 `SECRET_KEY`、`DB_PASSWORD`、`REDIS_PASSWORD`、`ENCRYPTION_KEY`
-- 部署后登录系统，在「个人中心 → AI 配置」完成 LLM 配置（或在 `.env` 预填 `LLM_*` 回退值）
+- 部署后登录系统，在「个人中心 → AI 模型配置」完成 LLM 配置（或在 `.env` 预填 `LLM_*` 回退值）
 - 设置 `ADMIN_INITIAL_PASSWORD` 为强密码，并登录后立即修改 admin 密码
 - `CORS_ORIGINS` 限制为实际前端域名
 - `ALLOW_UNENCRYPTED_PHI` 保持 `false`（生产环境必须配置 `ENCRYPTION_KEY`）
@@ -187,6 +187,8 @@ docker compose --env-file .env up -d
 
 # backend entrypoint 会自动迁移 schema 并初始化幂等种子数据
 ```
+
+> **已知限制**：随访提醒的自动推送与超期标记依赖 Celery worker/beat，当前 Compose 编排未包含该服务——提醒记录仍会正常创建、可在列表查看并手动确认，但不会自动发送通知。如需启用自动化，请自行启动 `celery -A app.core.celery_app worker --loglevel=info` 与对应的 beat 进程。
 
 ---
 

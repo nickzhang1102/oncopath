@@ -106,7 +106,7 @@ docker compose -p oncopath up -d agentteams-launch-worker
 docker compose -p oncopath logs --tail=100 agentteams-launch-worker
 ```
 
-预期：只有 backend 的环境包含 `RUN_DB_MIGRATIONS=true`；worker 包含 `RUN_DB_MIGRATIONS=false`，且日志没有执行迁移或 seed 的记录。迁移 head 必须为 `agentteams_launch_manual_review_audit`。
+预期：只有 backend 的环境包含 `RUN_DB_MIGRATIONS=true`；worker 包含 `RUN_DB_MIGRATIONS=false`，且日志没有执行迁移或 seed 的记录。迁移 head 必须为 `drop_prompt_config_system_prompt`。
 
 ### 崩溃恢复演练
 

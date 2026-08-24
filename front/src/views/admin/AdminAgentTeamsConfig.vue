@@ -18,7 +18,7 @@
           </div>
           <div class="overview-copy">
             <h2>AgentTeams 集成</h2>
-            <p>连接外部多 Agent 会诊服务，OncoPath 负责资料整理、启动代理和嵌入展示。</p>
+            <p>连接开源的 AgentTeams 会诊引擎；OncoPath 负责资料整理、启动和嵌入展示。</p>
           </div>
         </div>
 
@@ -38,7 +38,7 @@
           <div class="card-heading">
             <div>
               <h3>基础配置</h3>
-              <p>保存后普通用户端会按启用状态开放会诊入口。</p>
+              <p>保存后，普通用户可从会诊入口打开 AgentTeams 分析。</p>
             </div>
             <van-switch v-model="form.enabled" size="24px" />
           </div>
@@ -71,7 +71,7 @@
         <section class="config-card deploy-card">
           <div class="card-heading compact">
             <div>
-              <h3>部署状态</h3>
+              <h3>连接状态</h3>
               <p>{{ updatedText }}</p>
             </div>
           </div>
@@ -93,7 +93,7 @@
 
           <div class="deploy-note">
             <van-icon name="info-o" />
-            <span>docker-compose 默认支持 `/agentteams` 同站反代；外部域名部署可填写完整 HTTPS 地址。</span>
+            <span>同站 Docker 部署可填写 `/agentteams`；外部部署填写完整 HTTPS 地址。服务账户和令牌有效期由 AgentTeams 部署默认值管理。</span>
           </div>
         </section>
       </div>

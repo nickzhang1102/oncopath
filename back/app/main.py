@@ -107,8 +107,8 @@ async def lifespan(app: FastAPI):
     await redis_client.close()
 
 app = FastAPI(
-    title="医疗报告系统 API",
-    description="Medical Report System API v2.0",
+    title="OncoPath API",
+    description="OncoPath — 智能医疗报告管理与 AI 多专家会诊平台",
     version=settings.APP_VERSION,
     lifespan=lifespan,
     # 全局应用 UTCJSONResponse：所有 datetime 字段自动序列化为
@@ -224,7 +224,7 @@ async def health_check():
 async def root():
     """根路径"""
     return {
-        "message": "医疗报告系统 API v2.0",
+        "message": "OncoPath API",
         "docs": "/docs",
         "redoc": "/redoc"
     }
