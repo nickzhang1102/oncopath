@@ -20,7 +20,7 @@
     "jspdf": "^4.2.1",
     "marked": "^18.0.2",
     "pinia": "^2.1.7",
-    "splitpanes": "^4.0.4",
+    "splitpanes": "^4.1.2",
     "vant": "^4.9.24",
     "vue": "^3.4.0",
     "vue-router": "^4.2.5",
