@@ -27,7 +27,7 @@ pydantic==2.12.5
 pydantic-settings==2.14.2
 
 # API限流
-slowapi==0.1.9
+slowapi==0.1.10
 
 # 工具
 python-dotenv==1.2.2
