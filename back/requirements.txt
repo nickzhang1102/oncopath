@@ -63,7 +63,7 @@ paddleocr==3.5.0
 paddlex[ocr]==3.5.2
 pillow==12.3.0
 numpy>=1.21,<2.0
-opencv-python-headless>=4.8.0
+opencv-python-headless>=5.0.0.93
 
 # 测试
 pytest==9.1.1
