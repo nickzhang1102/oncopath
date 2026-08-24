@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 医疗报告系统部署脚本
+# OncoPath 部署脚本
 # 用法: bash scripts/deploy.sh [environment] [ocr]
 # environment: development | production (默认: production)
 # ocr: cpu | gpu (默认: cpu)

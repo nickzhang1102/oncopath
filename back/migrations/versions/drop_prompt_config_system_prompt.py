@@ -8,7 +8,6 @@ Revises: agentteams_launch_manual_review_audit
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 
 revision = "drop_prompt_config_system_prompt"
@@ -18,11 +17,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_column("prompt_config", "system_prompt")
+    # 全新库由 public_schema_baseline 建表，本就无此列，必须条件删除
+    op.execute('ALTER TABLE prompt_config DROP COLUMN IF EXISTS system_prompt')
 
 
 def downgrade() -> None:
-    op.add_column(
-        "prompt_config",
-        sa.Column("system_prompt", sa.Text(), nullable=False, server_default="你是一名肿瘤科专家"),
+    op.execute(
+        'ALTER TABLE prompt_config ADD COLUMN IF NOT EXISTS system_prompt '
+        'TEXT NOT NULL DEFAULT \'你是一名肿瘤科专家\''
     )

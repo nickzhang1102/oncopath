@@ -7,9 +7,10 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
       POSTGRES_DB: ${DB_NAME:-medical_report}
     # 宿主机访问数据库的映射端口（容器内部仍为 5432）
-    # ${DB_PORT:-5432} 默认 5432；如需从宿主机用其他端口访问，在 .env 中设 DB_PORT
+    # 默认仅绑定 127.0.0.1（本机调试用），不对外网暴露；如需局域网访问，
+    # 在 .env 中设置 DB_BIND_ADDRESS=0.0.0.0 并确保 DB_PASSWORD 为强密码
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

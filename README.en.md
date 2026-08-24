@@ -149,7 +149,8 @@ docker compose ps
 
 Port mapping (matches `docker-compose.yml`):
 - **Frontend**: binds host `127.0.0.1:3000` → container `80` (Nginx) by default
-- **Backend API / PostgreSQL / Redis**: internal Docker network only, no host ports published
+- **Backend API / Redis**: internal Docker network only, no host ports published
+- **PostgreSQL**: bound to host `127.0.0.1:5432` by default for local debugging, not exposed externally
 
 To expose the frontend on your LAN, set `FRONTEND_BIND_ADDRESS=0.0.0.0` explicitly; in production keep loopback and terminate HTTPS on a host reverse proxy.
 

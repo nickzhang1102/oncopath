@@ -1,6 +1,6 @@
 # Docker 部署指南
 
-医疗报告系统 v2.0 —— 基于 Docker Compose 的完整部署文档。
+OncoPath —— 基于 Docker Compose 的完整部署文档。
 
 ## 目录
 
@@ -189,7 +189,7 @@ backend entrypoint 在每次启动时按固定顺序执行：
 1. `alembic upgrade head` 创建或升级 schema，并记录 Alembic revision
 2. `init_fresh_db.py` 幂等创建默认管理员账号（admin / admin123）
 3. 幂等初始化指标分类（36 种分类）
-4. 幂等初始化医疗标准指标库（血常规 / 生化 / 肿瘤标志物 / 凝血 / 尿常规，共 65 项）
+4. 幂等初始化医疗标准指标库（血常规 / 生化 / 肿瘤标志物 / 凝血 / 尿常规，共 79 项）
 
 `agentteams-launch-worker` 不执行上述初始化。它只负责持久化 AgentTeams 启动意图的派发和不确定结果的状态查询；Compose 通过 backend 的 `/api/v1/health` 健康检查保证迁移完成后才启动 worker。
 
@@ -445,7 +445,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 |------|------|------|
 | 3000 | 前端 | 生产环境通过 Nginx 反代 + HTTPS |
 | 8000 | 后端 API | 仅 Docker 内部网络，通过前端 Nginx 代理 |
-| 5432 | PostgreSQL | 不暴露（内部网络） |
+| 5432 | PostgreSQL | 默认仅绑定 `127.0.0.1` 供本机调试，不对外网暴露 |
 | 6379 | Redis | 不暴露（内部网络） |
 
 ### 5. HTTPS 配置
@@ -476,7 +476,6 @@ server {
 - ✅ 非 root 用户运行（`appuser`，通过 gosu 切换）
 - ✅ 最小化基础镜像（`python:3.11-slim`）
 - ✅ 资源限制（CPU / Memory）
-- ✅ 只读挂载（`.claude/agents:ro`）
 
 ---
 

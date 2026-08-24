@@ -149,7 +149,8 @@ docker compose ps
 
 容器端口映射（与 `docker-compose.yml` 一致）：
 - **前端**：默认仅绑定宿主机 `127.0.0.1:3000` → 容器 `80`（Nginx）
-- **后端 API / PostgreSQL / Redis**：仅通过 Docker 内部网络访问，不发布宿主端口
+- **后端 API / Redis**：仅通过 Docker 内部网络访问，不发布宿主端口
+- **PostgreSQL**：默认仅绑定宿主机 `127.0.0.1:5432` 供本机调试，不对外网暴露
 
 如需局域网直接访问前端，可显式设置 `FRONTEND_BIND_ADDRESS=0.0.0.0`；生产环境建议保持 loopback，由宿主机反向代理提供 HTTPS。
 

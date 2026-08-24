@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你对医疗报告系统 v2.0 (Oncopath) 的关注！欢迎以任何形式参与贡献：提交问题、修复 Bug、完善功能、改进文档。
+感谢你对 OncoPath 的关注！欢迎以任何形式参与贡献：提交问题、修复 Bug、完善功能、改进文档。
 
 ## 贡献流程
 
@@ -81,10 +81,14 @@
 - 运行测试：
   ```bash
   cd back
-  conda activate oncopath
+  python -m venv .venv
+  source .venv/bin/activate    # Windows: .venv\Scripts\activate
+  pip install -r requirements.txt
   pytest tests/ -v
   pytest tests/ -v -k "not integration"   # 仅单元测试
   ```
+
+  > 也可使用 conda 等你熟悉的虚拟环境方案，只需确保 Python 3.11+ 且依赖安装完整。
 
 ## 提交 Issue
 

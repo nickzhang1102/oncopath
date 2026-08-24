@@ -67,6 +67,8 @@ class Settings(BaseSettings):
         forbidden = {
             "your-secret-key-change-in-production",
             "your-secret-key-change-in-production-please",
+            # .env.example 历史示例值，防止被原样沿用为生产密钥
+            "your-super-secret-key-change-this-in-production-must-be-at-least-32-chars",
             "",
         }
         if v in forbidden:
