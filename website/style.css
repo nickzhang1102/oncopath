@@ -452,35 +452,37 @@ img { max-width: 100%; }
   position: relative;
   margin: 0 clamp(10px, 1.4vw, 22px);
   border-radius: clamp(24px, 3.5vw, 44px);
-  color: var(--paper);
+  color: var(--ink);
   background:
-    radial-gradient(1100px 560px at 88% -8%, rgba(47, 181, 211, .17), transparent 62%),
-    radial-gradient(900px 520px at -8% 108%, rgba(22, 163, 123, .13), transparent 60%),
-    linear-gradient(180deg, #0a2a37, #071f29);
+    radial-gradient(1100px 560px at 88% -8%, rgba(47, 181, 211, .14), transparent 62%),
+    radial-gradient(900px 520px at -8% 108%, rgba(22, 163, 123, .10), transparent 60%),
+    linear-gradient(180deg, #d9f1f8, #f6fbfd 42%, #ffffff);
   padding-bottom: 48px;
 }
 .showcase-heading { max-width: var(--content-width); margin: 0 auto; padding: 92px 24px 64px; }
-.showcase-heading .eyebrow { color: var(--sky); }
-.showcase-heading > p:last-child { max-width: 620px; margin: 18px 0 0; color: #b5d0d7; }
+.showcase-heading .eyebrow { color: var(--cyan); }
+.showcase-heading > p:last-child { max-width: 620px; margin: 18px 0 0; color: var(--muted); }
 
 .showcase-story { position: relative; }
 .mobile-story { display: none; }
 
-/* 全屏舞台：截图铺满视口，随滚动切换 */
+/* 全屏舞台：截图铺满视口，随滚动切换；底色为项目青色到白色渐变 */
 .showcase-stage {
   position: sticky;
   top: 0;
   height: 100svh;
   overflow: hidden;
+  background: linear-gradient(170deg, #cdeaf4 0%, #e9f7fb 40%, #ffffff 100%);
 }
-/* 背景层：同图模糊放大填充，避免竖版截图两侧留黑 */
+/* 背景层：同图模糊放大作纹理，半透明让青白渐变透出 */
 .showcase-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(26px) brightness(.42) saturate(.85);
+  opacity: .32;
+  filter: blur(26px) saturate(.9);
   transform: scale(1.18);
   transition: opacity .18s ease;
 }
@@ -493,21 +495,25 @@ img { max-width: 100%; }
   object-fit: contain;
   transition: opacity .18s ease, transform .18s ease;
 }
+/* 文案卡片：右下角玻璃拟态，减少对截图的遮挡 */
 .showcase-copy {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  right: calc(var(--gutter) + 8px);
+  bottom: 52px;
   z-index: 2;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 132px calc(var(--gutter) + 8px) 56px;
-  background: linear-gradient(180deg, transparent, rgba(10, 34, 44, .9) 46%);
+  width: min(430px, calc(100% - 2 * (var(--gutter) + 8px)));
+  padding: 26px 30px 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  background: rgba(255, 255, 255, .74);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: var(--shadow-md);
   transition: opacity .18s ease, transform .18s ease;
 }
 .showcase-index {
   margin: 0 0 16px;
-  color: var(--sky);
+  color: var(--cyan);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: .14em;
@@ -515,25 +521,25 @@ img { max-width: 100%; }
 }
 .showcase-copy h3 {
   margin: 0;
-  font-size: clamp(30px, 3.6vw, 52px);
-  line-height: 1.14;
+  font-size: clamp(26px, 2.6vw, 38px);
+  line-height: 1.18;
   letter-spacing: -.01em;
 }
-.showcase-desc { max-width: 380px; margin: 18px 0 0; color: #bed7dc; font-size: 16px; line-height: 1.7; }
+.showcase-desc { max-width: 380px; margin: 14px 0 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
 
-.showcase-dots { display: flex; gap: 9px; margin-top: 30px; }
+.showcase-dots { display: flex; gap: 9px; margin-top: 24px; }
 .showcase-dot {
   width: 9px;
   height: 9px;
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: rgba(142, 219, 236, .3);
+  background: rgba(13, 50, 66, .16);
   cursor: pointer;
   transition: width .3s ease, background .3s ease;
 }
-.showcase-dot:hover { background: rgba(142, 219, 236, .6); }
-.showcase-dot.active { width: 26px; background: var(--sky); }
+.showcase-dot:hover { background: rgba(10, 147, 180, .45); }
+.showcase-dot.active { width: 26px; background: var(--cyan); }
 
 /* 切换时的淡出过渡（背景层保持放大比例，避免模糊边露底） */
 .showcase-stage.is-changing .showcase-fg { opacity: .25; transform: translateY(12px) scale(.985); }
@@ -542,11 +548,12 @@ img { max-width: 100%; }
 
 .showcase-progress {
   position: absolute;
-  right: calc(var(--gutter) + 12px);
+  left: calc(var(--gutter) + 12px);
+  right: auto;
   bottom: 6px;
   z-index: 3;
   margin: 0;
-  color: rgba(142, 219, 236, .08);
+  color: rgba(10, 147, 180, .12);
   font-size: clamp(96px, 13vw, 176px);
   font-weight: 800;
   letter-spacing: .02em;
@@ -556,16 +563,16 @@ img { max-width: 100%; }
   user-select: none;
 }
 @supports (-webkit-text-stroke: 1px black) {
-  .showcase-progress { color: transparent; -webkit-text-stroke: 1.5px rgba(142, 219, 236, .22); }
+  .showcase-progress { color: transparent; -webkit-text-stroke: 1.5px rgba(10, 147, 180, .26); }
 }
 
 .showcase-step { min-height: 100svh; pointer-events: none; }
 
 /* 无脚本回退画廊 */
 .no-js-gallery { display: grid; gap: 56px; max-width: var(--content-width); margin: 0 auto; padding: 0 24px 96px; }
-.no-js-gallery figure { margin: 0; padding: 14px; border-radius: var(--r-md); background: #0c2e3c; }
+.no-js-gallery figure { margin: 0; padding: 14px; border-radius: var(--r-md); background: #ffffff; border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
 .no-js-gallery img { display: block; width: 100%; border-radius: 9px; }
-.no-js-gallery figcaption { margin-top: 12px; color: #bed7dc; font-weight: 700; }
+.no-js-gallery figcaption { margin-top: 12px; color: var(--ink); font-weight: 700; }
 
 /* ================= 部署 ================= */
 .deploy-grid {
@@ -785,13 +792,17 @@ html.js [data-reveal].in-view { opacity: 1; transform: translateY(0); }
   .mobile-story { display: block; }
   .showcase-heading { padding: 72px 20px 36px; }
   .showcase-copy {
+    left: 16px;
+    right: 16px;
+    bottom: 20px;
+    width: auto;
     text-align: center;
-    padding: 110px 20px 44px;
+    padding: 20px 18px 18px;
   }
-  .showcase-copy h3 { font-size: 30px; }
-  .showcase-desc { margin: 12px auto 0; font-size: 14px; }
-  .showcase-dots { justify-content: center; margin-top: 20px; }
-  .showcase-progress { font-size: 88px; right: 20px; }
+  .showcase-copy h3 { font-size: 24px; }
+  .showcase-desc { margin: 10px auto 0; font-size: 13.5px; }
+  .showcase-dots { justify-content: center; margin-top: 16px; }
+  .showcase-progress { font-size: 88px; left: 16px; }
 
   .no-js-gallery { padding-left: 20px; padding-right: 20px; }
   .cta-band { flex-direction: column; text-align: center; }
