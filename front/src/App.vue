@@ -13,6 +13,7 @@
 <script setup>
 import { onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { usePatientStore } from '@/stores/patient'
 import { useNotificationStore } from '@/stores/notification'
 import { useTheme } from '@/composables/useTheme'
 
@@ -38,7 +39,12 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
   if (loggedIn && userStore.token) {
     notificationStore.connectSSE?.()
   } else {
+    // 登出：终止所有会话级状态，防止跨账号数据残留（患者列表/通知/轮询/SSE）
     notificationStore.disconnectSSE?.()
+    notificationStore.stopPolling?.()
+    notificationStore.notifications = []
+    notificationStore.unreadCount = 0
+    usePatientStore().clearPatients()
   }
 })
 </script>

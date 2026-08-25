@@ -191,7 +191,8 @@ export const useNotificationStore = defineStore('notification', () => {
         eventSource.value.abortController.abort()
       }
       if (eventSource.value.reader) {
-        eventSource.value.reader.cancel()
+        // 流已被 abort 终止，cancel 会以 AbortError 拒绝（预期内的清理），静默即可
+        eventSource.value.reader.cancel().catch(() => {})
       }
       eventSource.value = null
     }

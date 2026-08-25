@@ -5,8 +5,6 @@ import { patientApi } from '@/api/patient'
 export const usePatientStore = defineStore('patient', () => {
   // State
   const patientList = ref([])
-  // 仅从 localStorage 恢复当前患者 ID，完整对象在 fetchPatientList 后匹配恢复
-  const savedPatientId = localStorage.getItem('currentPatientId')
   const currentPatient = ref(null)
   const loading = ref(false)
   const error = ref(null)
@@ -29,7 +27,8 @@ export const usePatientStore = defineStore('patient', () => {
       const data = await patientApi.getPatientList()
       patientList.value = data
       loaded.value = true
-      // 恢复之前选中的患者（通过 localStorage 中的 ID 匹配）
+      // 恢复之前选中的患者（实时读 localStorage，避免跨会话的过期闭包值）
+      const savedPatientId = localStorage.getItem('currentPatientId')
       if (!currentPatient.value && savedPatientId) {
         const saved = data.find(p => String(p.patient_id) === savedPatientId)
         if (saved) {
