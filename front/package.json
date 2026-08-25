@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:mock": "playwright test --project=chromium agentteams-embed.spec.js agentteams-onboarding.spec.js agentteams-upsell.spec.js login-interactions.spec.js share-pages.spec.js"
   },
   "dependencies": {
     "@vant/use": "^1.6.0",

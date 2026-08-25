@@ -30,3 +30,21 @@ jobs:
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
+
+  # 仅跑不依赖后端的 mock 型 e2e（API 由 page.route 拦截）。
+  # 其余 31 个 spec 需要完整后端栈（PG/Redis/PaddleOCR），仅本地运行。
+  e2e-mock:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+      - run: npm run test:e2e:mock

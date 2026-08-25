@@ -25,9 +25,9 @@ export function setupErrorHandlers(app) {
   }
 
   // 未捕获的 JS 异常
-  window.onerror = (message, source, lineno, colno, error) => {
-    console.error('[Window Error]', message, source, lineno, colno, error)
-    queueError(error || new Error(message), { source: 'window', source: source, lineno, colno })
+  window.onerror = (message, scriptUrl, lineno, colno, error) => {
+    console.error('[Window Error]', message, scriptUrl, lineno, colno, error)
+    queueError(error || new Error(message), { source: 'window', scriptUrl, lineno, colno })
   }
 
   // 未处理的 Promise rejection

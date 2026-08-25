@@ -1,7 +1,7 @@
 services:
   # PostgreSQL with pgvector
   postgres:
-    image: pgvector/pgvector:pg17
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}

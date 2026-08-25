@@ -56,7 +56,7 @@ GPU 部署另需 NVIDIA GPU（建议 8 GB 或以上显存）、支持 CUDA 12.6 
 | www.paddlepaddle.org.cn | 443 | PaddlePaddle 安装（已配置） |
 | cdn.playwright.dev | 443 | Playwright Chromium 官方下载源 |
 
-> Dockerfile 中已配置 Python/npm 国内镜像源。仍需确保 Docker Hub 和 Playwright 官方浏览器下载源可达（拉取 `node:22-alpine`、`redis:7-alpine`、`pgvector/pgvector:pg17`、`nginx:alpine` 等基础镜像和 Chromium）。
+> Dockerfile 中已配置 Python/npm 国内镜像源。仍需确保 Docker Hub 和 Playwright 官方浏览器下载源可达（拉取 `node:22-alpine`、`redis:7-alpine`、`postgres:17-alpine`、`nginx:alpine` 等基础镜像和 Chromium）。
 
 ---
 
@@ -595,8 +595,7 @@ docker compose -p oncopath up -d --build
               │             │           │
        ┌──────▼──────┐ ┌───▼────┐ ┌────▼─────┐
        │  PostgreSQL  │ │ Redis  │ │ LLM API  │
-       │  (pgvector)  │ │ (缓存) │ │ (宿主机) │
-       │  :5432 内部  │ │ :6379  │ │ :3456    │
+       │   :5432 内部 │ │ :6379  │ │ :3456    │
        └─────────────┘ └────────┘ └──────────┘
 ```
 

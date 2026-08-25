@@ -48,7 +48,8 @@ def test_public_baseline_is_a_static_schema_snapshot():
     source = baseline_path.read_text(encoding="utf-8")
 
     assert "down_revision: Union[str, None] = None" in source
-    assert "CREATE EXTENSION IF NOT EXISTS vector" in source
+    # 向量搜索已移除：基线迁移不得再依赖 pgvector 扩展（防回归守卫）
+    assert "CREATE EXTENSION" not in source
     assert "consultation_external_sessions" in source
     assert "Base.metadata" not in source
     assert "from app." not in source

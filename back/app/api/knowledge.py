@@ -2,7 +2,7 @@
 知识库API模块
 基于FastAPI重写的知识库接口，包含分类和文档管理功能
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_, and_, func
 from sqlalchemy.orm import selectinload
@@ -524,6 +524,7 @@ async def download_document(
 
 @router.post("/documents", response_model=KnowledgeDocumentUploadResponse)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     category_id: Optional[int] = Form(None),
     doc_name: Optional[str] = Form(None),
@@ -631,13 +632,16 @@ async def upload_document(
                 logger.error(f"文档HTML转换异常: doc_id={document.doc_id}, error={conv_e}")
 
         # 触发摘要生成（图片类不触发）
+        # 用 BackgroundTasks 在响应后执行，避免 LLM 调用阻塞上传请求
         if document.summary_status == 'pending':
             try:
-                from app.tasks.knowledge_tasks import generate_knowledge_summary
-                await generate_knowledge_summary(document.doc_id, full_path, file_ext)
-                logger.info(f"摘要生成完成: doc_id={document.doc_id}")
+                from app.services.knowledge_summary_service import generate_knowledge_summary
+                background_tasks.add_task(
+                    generate_knowledge_summary, document.doc_id, full_path, file_ext
+                )
+                logger.info(f"摘要生成已加入后台任务: doc_id={document.doc_id}")
             except Exception as task_e:
-                logger.warning(f"摘要生成失败（不影响上传）: doc_id={document.doc_id}, error={task_e}")
+                logger.warning(f"摘要任务入队失败（不影响上传）: doc_id={document.doc_id}, error={task_e}")
                 document.summary_status = 'failed'
                 await db.commit()
 
@@ -790,7 +794,7 @@ async def generate_summary(
 
         # 触发摘要生成
         try:
-            from app.tasks.knowledge_tasks import generate_knowledge_summary
+            from app.services.knowledge_summary_service import generate_knowledge_summary
             full_path = get_full_path(doc.file_path)
             await generate_knowledge_summary(doc.doc_id, full_path, doc.file_type)
             logger.info(f"手动生成摘要完成: doc_id={doc.doc_id}")

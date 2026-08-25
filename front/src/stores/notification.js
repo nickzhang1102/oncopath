@@ -83,6 +83,20 @@ export const useNotificationStore = defineStore('notification', () => {
     const base = '/api/v1/accounts/notifications/stream'
     retryCount.value = 0
 
+    // AbortController 必须在发请求前创建并绑定 signal，
+    // 否则 disconnectSSE 无法中断已挂起的连接（含 TCP 半开场景）
+    const abortController = new AbortController()
+    // 心跳超时：超过时限未收到任何数据即判定连接半开，主动断开走重试/降级
+    let heartbeatTimer = null
+    const HEARTBEAT_TIMEOUT = 90000
+    const resetHeartbeat = () => {
+      if (heartbeatTimer) clearTimeout(heartbeatTimer)
+      heartbeatTimer = setTimeout(() => {
+        console.warn('通知 SSE 心跳超时，主动断开')
+        abortController.abort(new Error('通知 SSE 心跳超时'))
+      }, HEARTBEAT_TIMEOUT)
+    }
+
     try {
       const response = await fetch(base, {
         method: 'GET',
@@ -90,6 +104,7 @@ export const useNotificationStore = defineStore('notification', () => {
           'Accept': 'text/event-stream',
           'Authorization': `Bearer ${userStore.token}`,
         },
+        signal: abortController.signal,
       })
 
       if (!response.ok) {
@@ -109,18 +124,21 @@ export const useNotificationStore = defineStore('notification', () => {
       const decoder = new TextDecoder()
       let buffer = ''
 
-      eventSource.value = { reader, abortController: new AbortController() }
+      eventSource.value = { reader, abortController }
 
+      resetHeartbeat()
       // 读取流
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
+        resetHeartbeat()
 
         buffer += decoder.decode(value, { stream: true })
 
         // 解析 SSE 格式：event: xxx\ndata: xxx\n\n
+        // 最后一段可能被 chunk 截断，必须留在 buffer 等下一个 chunk 拼全
         const lines = buffer.split('\n')
-        buffer = ''
+        buffer = lines.pop() || ''
 
         let currentEvent = ''
         let currentData = ''
@@ -137,14 +155,11 @@ export const useNotificationStore = defineStore('notification', () => {
             }
             currentEvent = ''
             currentData = ''
-          } else if (line !== '') {
-            // 不完整的行，放回 buffer
-            buffer += line + '\n'
           }
         }
       }
 
-      // 流结束，恢复轮询
+      // 流正常结束，恢复轮询
       sseConnected.value = false
       eventSource.value = null
       startPolling()
@@ -152,16 +167,21 @@ export const useNotificationStore = defineStore('notification', () => {
     } catch (err) {
       sseConnected.value = false
       eventSource.value = null
+
+      // 用户主动断开（无 reason 的 abort），静默退出不重试
+      if (err?.name === 'AbortError') return
+
       console.error('SSE 连接错误:', err)
 
-      // 重试
+      // 心跳超时或网络异常：有限重试，耗尽后恢复轮询
       if (retryCount.value < MAX_RETRY) {
         retryCount.value += 1
         setTimeout(connectSSE, RETRY_DELAY)
       } else {
-        // 重试耗尽，恢复轮询
         startPolling()
       }
+    } finally {
+      if (heartbeatTimer) clearTimeout(heartbeatTimer)
     }
   }
 

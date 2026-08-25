@@ -8,7 +8,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional
 import copy
 import json
@@ -21,11 +21,32 @@ from app.models.patient import Patient
 from app.models.prompt import PromptConfig
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
 from app.services.consultation.summary_service import SummaryService
-from app.schemas.consultation import PromptPreviewRequest
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class UserContentConfigPreviewItem(BaseModel):
+    """预览用的配置项"""
+    model_config = ConfigDict(extra='ignore')
+
+    name: str
+    type: str
+    enabled: bool = True
+    customText: Optional[str] = None
+    indicatorCount: Optional[int] = None
+    recentCount: Optional[int] = None
+    category: Optional[str] = None
+    contentLimit: Optional[int] = None
+    findingsLimit: Optional[int] = None
+
+
+class PromptPreviewRequest(BaseModel):
+    """提示词预览请求"""
+    patient_id: int
+    time_range_days: int = 60
+    user_content_config: List[UserContentConfigPreviewItem]
 
 
 class UserContentConfigItem(BaseModel):

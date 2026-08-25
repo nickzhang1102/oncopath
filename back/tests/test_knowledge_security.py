@@ -127,7 +127,7 @@ class TestUploadSecurityIntegration:
     """上传安全集成测试"""
 
     @pytest.mark.asyncio
-    @patch('app.tasks.knowledge_tasks.generate_knowledge_summary')
+    @patch('app.services.knowledge_summary_service.generate_knowledge_summary')
     async def test_upload_stores_sha256_hash(self, mock_task, client, test_user, auth_headers, db_session):
         """上传文件后 file_hash 存储 SHA-256 值"""
         content = b"Hello, knowledge base!"
@@ -152,7 +152,7 @@ class TestUploadSecurityIntegration:
         assert doc.file_hash == expected_hash
 
     @pytest.mark.asyncio
-    @patch('app.tasks.knowledge_tasks.generate_knowledge_summary')
+    @patch('app.services.knowledge_summary_service.generate_knowledge_summary')
     async def test_duplicate_upload_returns_409(self, mock_task, client, test_user, auth_headers):
         """重复文件上传返回 409"""
         content = b"Duplicate content test"
@@ -189,7 +189,7 @@ class TestUploadSecurityIntegration:
         assert "MIME" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    @patch('app.tasks.knowledge_tasks.generate_knowledge_summary')
+    @patch('app.services.knowledge_summary_service.generate_knowledge_summary')
     async def test_image_upload_null_summary_status(self, mock_task, client, test_user, auth_headers):
         """图片上传后 summary_status 为 null"""
         # 创建一个最小有效 PNG
@@ -207,7 +207,7 @@ class TestUploadSecurityIntegration:
         assert response.json()["summary_status"] is None
 
     @pytest.mark.asyncio
-    @patch('app.tasks.knowledge_tasks.generate_knowledge_summary')
+    @patch('app.services.knowledge_summary_service.generate_knowledge_summary')
     async def test_download_has_nosniff_header(self, mock_task, client, test_user, auth_headers, db_session):
         """下载响应含 X-Content-Type-Options: nosniff"""
         # 先上传一个文件
