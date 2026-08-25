@@ -1,3 +1,6 @@
+// AgentTeams 开源仓库地址（前端引导链接唯一来源，与后端 DEFAULT_UPSELL.cta_url 保持一致）
+export const AGENTTEAMS_REPO_URL = 'https://github.com/nickzhang1102/agentTeams'
+
 const ERROR_COPY = {
   agentteams_quota_exceeded: {
     title: 'AgentTeams 会诊服务不可用',

@@ -116,6 +116,7 @@ export const GUIDE_SEEN_KEY = 'oncopath_agentteams_guide_seen'
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { AGENTTEAMS_REPO_URL } from '@/utils/agentteamsErrorUx'
 
 const props = defineProps({
   show: {
@@ -153,7 +154,7 @@ const visible = computed({
 })
 
 const demoAsset = computed(() => props.upsell?.demo_asset_url || '')
-const ctaUrl = computed(() => props.upsell?.cta_url || 'https://github.com/nickzhang1102/agentTeams')
+const ctaUrl = computed(() => props.upsell?.cta_url || AGENTTEAMS_REPO_URL)
 
 watch(() => props.show, (show) => {
   if (show) {

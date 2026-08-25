@@ -62,6 +62,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { AGENTTEAMS_REPO_URL } from '@/utils/agentteamsErrorUx'
 
 const props = defineProps({
   show: {
@@ -88,7 +89,7 @@ const displayUpsell = computed(() => ({
   message: props.upsell?.message || '虚拟会诊由开源的 AgentTeams 项目提供分析引擎，部署并完成集成配置后即可使用。',
   demo_asset_url: props.upsell?.demo_asset_url || '',
   cta_label: props.upsell?.cta_label || '获取 AgentTeams（开源自部署）',
-  cta_url: props.upsell?.cta_url || 'https://github.com/nickzhang1102/agentTeams',
+  cta_url: props.upsell?.cta_url || AGENTTEAMS_REPO_URL,
 }))
 
 const hasCta = computed(() => Boolean(displayUpsell.value.cta_url))

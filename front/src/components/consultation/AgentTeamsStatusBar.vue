@@ -14,13 +14,14 @@
       @click.stop
     >
       <van-icon name="link-o" />
-      <span>github.com/nickzhang1102/agentTeams</span>
+      <span>{{ repoHost }}</span>
     </a>
   </footer>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { AGENTTEAMS_REPO_URL } from '@/utils/agentteamsErrorUx'
 
 const props = defineProps({
   availability: {
@@ -30,7 +31,8 @@ const props = defineProps({
 })
 
 // agentTeams 开源仓库地址（与后端 DEFAULT_UPSELL.cta_url 保持一致）
-const repoUrl = 'https://github.com/nickzhang1102/agentTeams'
+const repoUrl = AGENTTEAMS_REPO_URL
+const repoHost = repoUrl.replace(/^https?:\/\//, '')
 
 const online = computed(() => Boolean(
   props.availability?.configured && props.availability?.enabled,

@@ -167,7 +167,7 @@ On startup the backend container automatically runs `alembic upgrade head` to cr
 
 ## 🛳️ Production Deployment
 
-Production deployment follows `docker-compose.yml`. Before deploying, verify every mandatory item in the [Security](#security) section:
+Production deployment follows `docker-compose.yml`. Before deploying, verify every mandatory item in the [Security](#-security) section:
 
 PaddleOCR uses CPU by default. NVIDIA GPU environments additionally need `docker-compose.gpu.yml` and the NVIDIA Container Toolkit preinstalled; hardware requirements, full commands, verification, switching and troubleshooting are documented in the [PaddleOCR CPU / NVIDIA GPU deployment guide](./docs/deployment/ocr-cpu-gpu.md) (Chinese).
 

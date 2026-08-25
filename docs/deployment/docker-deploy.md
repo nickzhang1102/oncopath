@@ -64,7 +64,7 @@ GPU 部署另需 NVIDIA GPU（建议 8 GB 或以上显存）、支持 CUDA 12.6 
 
 ```bash
 # 1. 克隆项目
-git clone <repository-url>
+git clone https://github.com/nickzhang1102/oncopath.git
 cd oncopath
 
 # 2. 生成密钥并创建 .env
@@ -73,7 +73,8 @@ ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Ferne
 cp .env.example .env
 sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" .env
 sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=${ENCRYPTION_KEY}|" .env
-# 手动编辑 .env，填写 DB_PASSWORD、REDIS_PASSWORD、LLM_API_KEY 等
+# 手动编辑 .env，填写 DB_PASSWORD、REDIS_PASSWORD 等必填项
+# （LLM 可不填：登录后在「AI 模型配置」菜单配置即可，LLM_* 环境变量仅作回退）
 
 # 3. 构建并启动（默认 CPU 环境）
 docker compose -p oncopath up -d --build
@@ -94,7 +95,7 @@ curl http://localhost:3000/api/v1/health   # 通过前端反代检查后端
 ### 第 1 步：克隆项目
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/nickzhang1102/oncopath.git
 cd oncopath
 ```
 
