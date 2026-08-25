@@ -148,18 +148,16 @@
 
       <div class="showcase-story desktop-story" data-story="desktop">
         <div class="showcase-stage" aria-live="polite">
+          <!-- 背景层：同图模糊放大填充，避免竖版截图两侧留黑 -->
+          <img class="showcase-bg" src="screenshots/desktop-home-indicators-list.png" alt="" aria-hidden="true">
+          <!-- 前景层：完整显示截图主体 -->
+          <img class="showcase-fg" src="screenshots/desktop-home-indicators-list.png" alt="首页重要指标列表" loading="eager">
           <div class="showcase-copy">
-            <p class="showcase-index">01 / 10</p>
+            <p class="showcase-index">01 / 15</p>
             <h3>首页重要指标列表</h3>
             <p class="showcase-desc">把报告数量、异常项、待办和分组指标收在同一处，先建立当前状态的全局视图。</p>
             <div class="showcase-dots" role="group" aria-label="切换预览步骤"></div>
           </div>
-          <button class="showcase-image-button" type="button" aria-label="在新窗口查看首页重要指标列表原图">
-            <span class="window showcase-window">
-              <span class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="window-title">OncoPath · 演示数据</span></span>
-              <img src="screenshots/desktop-home-indicators-list.png" alt="首页重要指标列表" loading="eager">
-            </span>
-          </button>
           <p class="showcase-progress" aria-hidden="true">01</p>
         </div>
         <article class="showcase-step active" data-index="01" data-title="首页重要指标列表" data-description="把报告数量、异常项、待办和分组指标收在同一处，先建立当前状态的全局视图。" data-image="screenshots/desktop-home-indicators-list.png" data-alt="首页重要指标列表"></article>
@@ -172,22 +170,23 @@
         <article class="showcase-step" data-index="08" data-title="虚拟会诊历史" data-description="会诊卡片展示状态、摘要和进入入口，方便从历史记录继续跟进。" data-image="screenshots/desktop-consultation-list.png" data-alt="虚拟会诊历史"></article>
         <article class="showcase-step" data-index="09" data-title="虚拟会诊工作台" data-description="OncoPath 提供资料聚合和状态承接，AgentTeams 负责多智能体会诊过程。" data-image="screenshots/desktop-consultation-room.png" data-alt="嵌入式虚拟会诊工作台"></article>
         <article class="showcase-step" data-index="10" data-title="护理指南知识库" data-description="用分类、搜索、摘要和预览沉淀资料，让复查和用药准备更容易查找。" data-image="screenshots/desktop-knowledge-base.png" data-alt="护理指南知识库"></article>
+        <article class="showcase-step" data-index="11" data-title="移动端首页" data-description="手机上先看待办、异常项与重要指标，关键状态保持可扫读。" data-image="screenshots/mobile-home.png" data-alt="移动端首页"></article>
+        <article class="showcase-step" data-index="12" data-title="移动端检验报告" data-description="报告指标按卡片排列，异常状态和参考范围在窄屏上仍清楚可读。" data-image="screenshots/mobile-lab-report.png" data-alt="移动端检验报告"></article>
+        <article class="showcase-step" data-index="13" data-title="移动端组合指标趋势" data-description="触控友好的切换与勾选控件，随时查看组合指标的连续变化。" data-image="screenshots/mobile-indicator-comparison.png" data-alt="移动端组合指标趋势"></article>
+        <article class="showcase-step" data-index="14" data-title="移动端虚拟会诊" data-description="会诊历史、状态和发起入口适配小屏操作，随时跟进。" data-image="screenshots/mobile-consultation.png" data-alt="移动端虚拟会诊"></article>
+        <article class="showcase-step" data-index="15" data-title="移动端知识库" data-description="随访资料和护理文档可在移动端分类查找与阅读。" data-image="screenshots/mobile-knowledge-base.png" data-alt="移动端知识库"></article>
       </div>
 
       <div class="showcase-story mobile-story" data-story="mobile">
         <div class="showcase-stage" aria-live="polite">
+          <img class="showcase-bg" src="screenshots/mobile-home.png" alt="" aria-hidden="true">
+          <img class="showcase-fg" src="screenshots/mobile-home.png" alt="移动端首页" loading="lazy">
           <div class="showcase-copy">
             <p class="showcase-index">01 / 05</p>
             <h3>移动端首页</h3>
             <p class="showcase-desc">在手机上先看待办、异常项与重要指标，关键状态保持可扫读。</p>
             <div class="showcase-dots" role="group" aria-label="切换预览步骤"></div>
           </div>
-          <button class="showcase-image-button" type="button" aria-label="在新窗口查看移动端首页原图">
-            <span class="phone showcase-phone">
-              <span class="phone-notch" aria-hidden="true"></span>
-              <img src="screenshots/mobile-home.png" alt="移动端首页" loading="lazy">
-            </span>
-          </button>
           <p class="showcase-progress" aria-hidden="true">01</p>
         </div>
         <article class="showcase-step active" data-index="01" data-title="移动端首页" data-description="在手机上先看待办、异常项与重要指标，关键状态保持可扫读。" data-image="screenshots/mobile-home.png" data-alt="移动端首页"></article>
@@ -209,6 +208,11 @@
           <figure><img src="screenshots/desktop-consultation-list.png" alt="虚拟会诊历史"><figcaption>虚拟会诊历史</figcaption></figure>
           <figure><img src="screenshots/desktop-consultation-room.png" alt="虚拟会诊工作台"><figcaption>虚拟会诊工作台</figcaption></figure>
           <figure><img src="screenshots/desktop-knowledge-base.png" alt="护理指南知识库"><figcaption>护理指南知识库</figcaption></figure>
+          <figure><img src="screenshots/mobile-home.png" alt="移动端首页"><figcaption>移动端首页</figcaption></figure>
+          <figure><img src="screenshots/mobile-lab-report.png" alt="移动端检验报告"><figcaption>移动端检验报告</figcaption></figure>
+          <figure><img src="screenshots/mobile-indicator-comparison.png" alt="移动端组合指标趋势"><figcaption>移动端组合指标趋势</figcaption></figure>
+          <figure><img src="screenshots/mobile-consultation.png" alt="移动端虚拟会诊"><figcaption>移动端虚拟会诊</figcaption></figure>
+          <figure><img src="screenshots/mobile-knowledge-base.png" alt="移动端知识库"><figcaption>移动端知识库</figcaption></figure>
         </div>
       </noscript>
     </section>
@@ -328,22 +332,12 @@ cp .env.example .env
     </div>
   </footer>
 
-  <dialog class="image-dialog" aria-label="截图原图预览">
-    <div class="dialog-body">
-      <button class="dialog-close" type="button" aria-label="关闭原图预览">×</button>
-      <img src="screenshots/desktop-home-indicators-list.png" alt="">
-    </div>
-  </dialog>
-
   <script>
     document.documentElement.classList.add('js');
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     const nav = document.querySelector('.site-nav');
     const navLinks = [...document.querySelectorAll('.nav-links a')];
-    const dialog = document.querySelector('.image-dialog');
-    const dialogImage = dialog.querySelector('img');
-    const closeDialog = dialog.querySelector('.dialog-close');
 
     window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 18), { passive: true });
 
@@ -383,14 +377,14 @@ cp .env.example .env
       revealTargets.forEach((el) => el.classList.add('in-view'));
     }
 
-    /* 逐屏叙事 */
+    /* 逐屏叙事：截图全屏铺满，滚动切换 */
     document.querySelectorAll('.showcase-story').forEach((story) => {
       const stage = story.querySelector('.showcase-stage');
       const index = stage.querySelector('.showcase-index');
       const title = stage.querySelector('h3');
       const description = stage.querySelector('.showcase-desc');
-      const image = stage.querySelector('img');
-      const imageButton = stage.querySelector('.showcase-image-button');
+      const fgImage = stage.querySelector('.showcase-fg');
+      const bgImage = stage.querySelector('.showcase-bg');
       const progress = stage.querySelector('.showcase-progress');
       const dotsBox = stage.querySelector('.showcase-dots');
       const steps = [...story.querySelectorAll('.showcase-step')];
@@ -420,9 +414,9 @@ cp .env.example .env
           index.textContent = `${step.dataset.index} / ${String(steps.length).padStart(2, '0')}`;
           title.textContent = step.dataset.title;
           description.textContent = step.dataset.description;
-          image.src = step.dataset.image;
-          image.alt = step.dataset.alt;
-          imageButton.setAttribute('aria-label', `在新窗口查看${step.dataset.title}原图`);
+          fgImage.src = step.dataset.image;
+          fgImage.alt = step.dataset.alt;
+          bgImage.src = step.dataset.image;
           progress.textContent = step.dataset.index;
           stage.classList.remove('is-changing');
         }, 140);
@@ -437,18 +431,6 @@ cp .env.example .env
       }, { rootMargin: '-42% 0px -42% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] });
       steps.forEach((step) => observer.observe(step));
     });
-
-    /* 原图预览 */
-    document.querySelectorAll('.showcase-image-button').forEach((button) => {
-      button.addEventListener('click', () => {
-        const source = button.querySelector('img');
-        dialogImage.src = source.currentSrc || source.src;
-        dialogImage.alt = source.alt;
-        dialog.showModal();
-      });
-    });
-    closeDialog.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', (event) => { if (event.target === dialog || event.target.classList.contains('dialog-body')) dialog.close(); });
 
     /* 复制部署命令 */
     document.querySelectorAll('.copy-btn').forEach((button) => {

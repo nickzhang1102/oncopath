@@ -360,7 +360,7 @@ img { max-width: 100%; }
   white-space: nowrap;
 }
 .window-bar::after { content: ""; width: 39px; flex: none; }
-.window img { display: block; width: 100%; border-radius: 9px; }
+.window img { display: block; width: 100%; height: auto; border-radius: 9px; }
 
 /* ================= 章节标题 ================= */
 .intro, .deploy { max-width: var(--content-width); margin: 0 auto; padding: 116px 24px; }
@@ -466,20 +466,45 @@ img { max-width: 100%; }
 .showcase-story { position: relative; }
 .mobile-story { display: none; }
 
+/* 全屏舞台：截图铺满视口，随滚动切换 */
 .showcase-stage {
   position: sticky;
-  top: var(--nav-height);
-  height: calc(100svh - var(--nav-height));
-  display: grid;
-  grid-template-columns: minmax(250px, .74fr) minmax(0, 1.5fr);
-  gap: clamp(28px, 5vw, 80px);
-  align-items: center;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px calc(var(--gutter) + 8px) 60px;
+  top: 0;
+  height: 100svh;
   overflow: hidden;
 }
-.showcase-copy { transition: opacity .18s ease, transform .18s ease; }
+/* 背景层：同图模糊放大填充，避免竖版截图两侧留黑 */
+.showcase-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(26px) brightness(.42) saturate(.85);
+  transform: scale(1.18);
+  transition: opacity .18s ease;
+}
+/* 前景层：完整显示截图主体 */
+.showcase-fg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.showcase-copy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 132px calc(var(--gutter) + 8px) 56px;
+  background: linear-gradient(180deg, transparent, rgba(10, 34, 44, .9) 46%);
+  transition: opacity .18s ease, transform .18s ease;
+}
 .showcase-index {
   margin: 0 0 16px;
   color: var(--sky);
@@ -510,42 +535,16 @@ img { max-width: 100%; }
 .showcase-dot:hover { background: rgba(142, 219, 236, .6); }
 .showcase-dot.active { width: 26px; background: var(--sky); }
 
-.showcase-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
-.showcase-image-button img {
-  max-height: calc(100svh - var(--nav-height) - 118px);
-  margin: 0 auto;
-  object-fit: contain;
-  transition: opacity .18s ease, transform .18s ease;
-}
-.showcase-stage.is-changing img,
-.showcase-stage.is-changing .showcase-phone img { opacity: .25; transform: translateY(12px) scale(.985); }
+/* 切换时的淡出过渡（背景层保持放大比例，避免模糊边露底） */
+.showcase-stage.is-changing .showcase-fg { opacity: .25; transform: translateY(12px) scale(.985); }
+.showcase-stage.is-changing .showcase-bg { opacity: .25; }
 .showcase-stage.is-changing .showcase-copy { opacity: .25; transform: translateY(-8px); }
-
-/* 手机窗框（移动端叙事） */
-.phone {
-  position: relative;
-  display: block;
-  border-radius: 42px;
-  border: 8px solid #0e2f3c;
-  background: #0e2f3c;
-  box-shadow: var(--shadow-deep);
-}
-.phone img { display: block; width: 100%; border-radius: 33px; }
-.phone-notch {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 82px;
-  height: 18px;
-  border-radius: 999px;
-  background: #0e2f3c;
-}
 
 .showcase-progress {
   position: absolute;
   right: calc(var(--gutter) + 12px);
   bottom: 6px;
+  z-index: 3;
   margin: 0;
   color: rgba(142, 219, 236, .08);
   font-size: clamp(96px, 13vw, 176px);
@@ -560,7 +559,7 @@ img { max-width: 100%; }
   .showcase-progress { color: transparent; -webkit-text-stroke: 1.5px rgba(142, 219, 236, .22); }
 }
 
-.showcase-step { min-height: calc(100svh - var(--nav-height)); pointer-events: none; }
+.showcase-step { min-height: 100svh; pointer-events: none; }
 
 /* 无脚本回退画廊 */
 .no-js-gallery { display: grid; gap: 56px; max-width: var(--content-width); margin: 0 auto; padding: 0 24px 96px; }
@@ -751,49 +750,6 @@ footer {
 }
 .footer-bottom p { margin: 0; font-size: 12.5px; color: #7fa3b0; }
 
-/* ================= 原图预览对话框 ================= */
-.image-dialog {
-  width: min(96vw, 1700px);
-  max-width: none;
-  max-height: 96vh;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  overflow: visible;
-}
-.image-dialog::backdrop { background: rgba(4, 16, 22, .78); backdrop-filter: blur(6px); }
-.dialog-body {
-  position: relative;
-  padding: 14px;
-  border-radius: 22px;
-  background: #0c2e3c;
-  box-shadow: var(--shadow-deep);
-}
-.dialog-body img {
-  display: block;
-  max-width: 100%;
-  max-height: calc(96vh - 28px);
-  margin: 0 auto;
-  border-radius: 12px;
-}
-.dialog-close {
-  position: absolute;
-  top: -16px;
-  right: -16px;
-  width: 42px;
-  height: 42px;
-  border: 1px solid rgba(255, 255, 255, .22);
-  border-radius: 50%;
-  color: #fff;
-  background: #0c2e3c;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(3, 18, 25, .45);
-  transition: background .2s, transform .2s;
-}
-.dialog-close:hover { background: #123c4d; transform: scale(1.06); }
-
 /* ================= 进入视口浮现（仅在 JS 可用时启用） ================= */
 html.js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
 html.js [data-reveal].in-view { opacity: 1; transform: translateY(0); }
@@ -828,19 +784,13 @@ html.js [data-reveal].in-view { opacity: 1; transform: translateY(0); }
   .desktop-story { display: none; }
   .mobile-story { display: block; }
   .showcase-heading { padding: 72px 20px 36px; }
-  .showcase-stage {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 20px;
-    padding: 22px 20px 48px;
+  .showcase-copy {
+    text-align: center;
+    padding: 110px 20px 44px;
   }
-  .showcase-copy { text-align: center; }
   .showcase-copy h3 { font-size: 30px; }
   .showcase-desc { margin: 12px auto 0; font-size: 14px; }
   .showcase-dots { justify-content: center; margin-top: 20px; }
-  .showcase-image-button { height: 100%; }
-  .phone { height: 100%; }
-  .phone img { height: calc(100% - 0px); object-fit: contain; }
   .showcase-progress { font-size: 88px; right: 20px; }
 
   .no-js-gallery { padding-left: 20px; padding-right: 20px; }
