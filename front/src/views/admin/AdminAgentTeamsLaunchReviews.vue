@@ -6,7 +6,7 @@
         <h2>AgentTeams 会诊启动复核</h2>
         <p>
           这里仅查询 AgentTeams 已有启动记录，不会重新发送 launch POST。
-          只有在外部系统确认 request ID 没有创建或计费记录后，才能解除本地启动锁。
+          只有在外部系统确认 request ID 没有创建记录后，才能解除本地启动锁。
         </p>
       </div>
     </section>
@@ -147,7 +147,7 @@
       <div class="resolve-dialog">
         <p>
           此操作会将本地启动意图标记为拒绝，并允许用户重新发起可能产生费用的新会诊。
-          必须先在 AgentTeams 外部核验 request ID 没有创建和计费记录。
+          必须先在 AgentTeams 外部核验 request ID 没有创建记录。
         </p>
         <van-field
           v-model="resolveReason"

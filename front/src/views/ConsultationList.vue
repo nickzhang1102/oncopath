@@ -470,7 +470,7 @@ async function confirmStartConsultation() {
     if (!result || result.launch_status !== 'accepted' || !result.embed_url) {
       if (result?.launch_status === 'rejected') {
         activeLaunchIntent.value = null
-        showToast('虚拟会诊未创建，请检查配置或额度后重新发起')
+        showToast('虚拟会诊未创建，请检查 AgentTeams 配置后重新发起')
       } else if (result?.launch_status === 'manual_review') {
         showToast('虚拟会诊启动需要人工复核，请勿重复发起')
       } else {

@@ -1,8 +1,8 @@
 const ERROR_COPY = {
   agentteams_quota_exceeded: {
-    title: '会诊额度已用完',
-    message: '当前 AgentTeams 会诊次数不足，请为 OncoPath 集成账户增加会诊额度后继续使用。',
-    cta_label: '增加额度',
+    title: 'AgentTeams 会诊服务不可用',
+    message: '当前部署返回了旧版服务错误，请检查两端 AgentTeams 版本和集成配置。开源自部署不需要额外购买服务。',
+    cta_label: '查看配置说明',
   },
   agentteams_service_account_not_configured: {
     title: 'AgentTeams 服务账户未配置',

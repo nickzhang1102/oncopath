@@ -12,7 +12,7 @@
 | 人工复核与审计 | `back/tests/test_agentteams_start_embed.py` | admin-only 权限、只读对账不重发、confirmed-not-created 解锁、并发 lease、重复处置和审计理由 |
 | PHI 快照生命周期 | `back/tests/test_agentteams_start_embed.py` | accepted/rejected 立即清理 payload、manual_review 保留快照、迁移 head 和终态回读 |
 | 后端错误映射 | `back/tests/test_agentteams_start_embed.py` | quota、service account、integration disabled、unsupported version、invalid integration key、unknown raw body fallback |
-| upsell 和 start 错误 UX | `front/tests/e2e/agentteams-upsell.spec.js` | 未配置提示、开始会诊、容量和配置类错误弹窗 |
+| upsell 和 start 错误 UX | `front/tests/e2e/agentteams-upsell.spec.js` | 未配置提示、开始会诊和配置类错误弹窗 |
 | iframe 和历史详情 | `front/tests/e2e/agentteams-embed.spec.js` | 桌面/移动 iframe 展示、历史记录、详情失败提示 |
 
 ## 后端验证
@@ -59,7 +59,7 @@ Playwright 配置通常会自动启动前端测试服务。若本地配置没有
 |---|---|
 | OncoPath 未配置或未启用 AgentTeams | 普通用户看到“需要配置 AgentTeams 项目”，不会创建本地会诊 |
 | AgentTeams 服务账户缺失 | 弹窗标题为“AgentTeams 服务账户未配置” |
-| AgentTeams 额度不足 | 弹窗标题为“会诊额度已用完” |
+| AgentTeams 返回不兼容错误 | 弹窗标题为“AgentTeams 会诊服务不可用”，不显示购买提示 |
 | AgentTeams 侧集成关闭 | 弹窗标题为“AgentTeams 集成未启用” |
 | AgentTeams 版本不支持 | 弹窗标题为“AgentTeams 版本不兼容” |
 | `integration_secret` 不一致 | 弹窗标题为“AgentTeams 集成密钥无效” |
@@ -91,5 +91,5 @@ order by status;
 
 - 本测试文档不新增运行时能力。
 - OncoPath 不模拟 AgentTeams 分享能力，也不把本地 `share_token` 当作 AgentTeams embed token。
-- OncoPath 不处理 AgentTeams 私有部署授权；会诊次数和扣费边界由 AgentTeams 服务账户负责。
+- OncoPath 不处理 AgentTeams 私有部署授权；当前开源部署不配置会诊次数或扣费边界。
 - 本项目只用于健康信息整理、辅助理解和分析，不替代医生诊断或治疗建议。

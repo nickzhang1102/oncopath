@@ -1,12 +1,12 @@
 # AgentTeams 集成部署说明
 
-本文说明 OncoPath 如何接入外部 AgentTeams 项目来执行虚拟会诊。OncoPath 只负责患者资料整理、会诊 prompt、启动代理、历史壳和 iframe 展示；会诊执行、额度、扣费和使用记录由 AgentTeams 的 OncoPath 集成服务账户负责。启动请求会先落到 OncoPath 的持久化 launch intent，再由 `agentteams-launch-worker` 派发或查询状态：超时/断连返回 `202` 并进入确认态，后续只查询状态，不重复发送 launch，也不会重复扣费；超过有限重试窗口后进入人工复核。
+本文说明 OncoPath 如何接入开源 AgentTeams 项目来执行虚拟会诊。OncoPath 只负责患者资料整理、会诊 prompt、启动代理、历史壳和 iframe 展示；AgentTeams 负责模型、Agent、工具和会诊工作流。启动请求会先落到 OncoPath 的持久化 launch intent，再由 `agentteams-launch-worker` 派发或查询状态：超时/断连返回 `202` 并进入确认态，后续只查询状态，不重复发送 launch；超过有限重试窗口后进入人工复核。
 
 ## 前置条件
 
 - OncoPath 已部署并可通过 HTTPS 访问。
 - AgentTeams 已部署，且启用了 OncoPath 集成 API。
-- AgentTeams 内已有 OncoPath 集成服务账户，普通登录禁用，额度充足。
+- AgentTeams 内已有 OncoPath 集成服务账户，普通登录禁用。该账户只用于会话归属和权限隔离，不承载计费或额度配置。
 - 已生成一组只用于 OncoPath 集成的 `integration_secret`。
 
 不要把真实 `integration_secret` 提交到 Git、截图、日志或工单中。
@@ -20,8 +20,6 @@
 | AgentTeams 地址 | `/agentteams` | 推荐同站反代路径；也可填写完整 HTTPS URL |
 | 是否启用 | `启用` | 关闭时用户只看到配置提示，不会创建会诊 |
 | 集成密钥 | `change-me-in-agentteams-too` | 必须与 AgentTeams 侧配置一致；保存后只显示掩码 |
-| 提示标题/说明 | `需要配置 AgentTeams 项目` | 未配置或关闭时展示给普通用户 |
-| CTA 文案/链接 | `了解部署方案` / `https://example.com/agentteams` | 可选；为空时不显示外链按钮 |
 
 推荐把 AgentTeams 地址配置为 `/agentteams`，让浏览器里的 iframe 与 OncoPath 同站，避免跨站 cookie、`SameSite` 和 CORS 问题。
 
@@ -81,7 +79,7 @@ server {
 
 Compose 启动时只有 `backend` 执行 Alembic 迁移和种子初始化；`agentteams-launch-worker` 依赖 backend 健康检查后启动，并设置 `RUN_DB_MIGRATIONS=false`。如果手工升级数据库，先停止 worker，确认 `/api/v1/health` 返回 200 后再启动 worker。
 
-在启动结果仍未确认或已进入人工复核时，OncoPath 会阻止删除相关会诊记录或患者（返回 409），以免把可能已经扣费的远端会诊变成无主数据。已接受的会诊仍可按产品契约删除 OncoPath 本地壳；这不会删除 AgentTeams 远端会话，删除前应确认远端数据保留策略。
+在启动结果仍未确认或已进入人工复核时，OncoPath 会阻止删除相关会诊记录或患者（返回 409），以免把可能仍在运行的远端会诊变成无主数据。已接受的会诊仍可按产品契约删除 OncoPath 本地壳；这不会删除 AgentTeams 远端会话，删除前应确认远端数据保留策略。
 
 ## launch worker 生产演练与升级顺序
 
@@ -110,7 +108,7 @@ docker compose -p oncopath logs --tail=100 agentteams-launch-worker
 
 ### 崩溃恢复演练
 
-每个场景都要在 AgentTeams 管理端或其只读审计接口核对同一 request ID 的远端 launch/计费计数。数据库只读检查示例：
+每个场景都要在 AgentTeams 管理端或其只读审计接口核对同一 request ID 的远端 launch 状态和尝试次数。数据库只读检查示例：
 
 ```bash
 docker compose -p oncopath exec -T postgres sh -c \
@@ -119,17 +117,17 @@ docker compose -p oncopath exec -T postgres sh -c \
 ```
 
 1. **POST 前停止 worker**：确认未决 intent 在 worker 恢复后只派发一次。
-2. **POST 已提交但响应丢失**：在远端已接受请求后停止 backend 或 worker，恢复服务，确认 OncoPath 继续使用原 request ID 并只做 status 查询；远端 launch/计费计数必须为 1。
+2. **POST 已提交但响应丢失**：在远端已接受请求后停止 backend 或 worker，恢复服务，确认 OncoPath 继续使用原 request ID 并只做 status 查询；远端 launch 尝试次数应为 1。
 3. **status/renew 中断**：在对账或续签等待期间重启 worker，确认 lease 过期后由新 worker 接管，迟到响应不能覆盖较新的状态。
 4. **人工复核**：让 intent 进入 `manual_review`，分别演练“只读对账找到远端会诊”和“外部确认未创建”。前者只能补映射并收敛为 `accepted`，后者只能收敛为 `rejected` 并解除锁；两条路径都不得再次调用 launch POST。
 
-每次演练至少保存：Compose config、容器状态、backend health 响应、迁移 head、worker 日志、request ID、远端 launch/计费计数、intent 前后状态和人工审计摘要。
+每次演练至少保存：Compose config、容器状态、backend health 响应、迁移 head、worker 日志、request ID、远端 launch 状态、intent 前后状态和人工审计摘要。
 
 ### 人工复核与 PHI 快照检查
 
 管理员只能在 `/admin` 的 AgentTeams 启动复核页操作 `manual_review` 记录。页面和 API 只展示 request ID、引用 ID、错误摘要、payload hash、保留状态和审计历史；不会解密或返回医疗 prompt、`payload_ciphertext` 或 integration secret。
 
-只读对账使用 `POST /api/v1/admin/agentteams-launch-intents/{id}/reconcile`，只查询既有 request ID；确认远端存在后补写映射并接受。确认未创建使用 `.../{id}/resolve`，必须先在 AgentTeams 外部完成无创建/无计费核验并填写至少 10 个非空白字符的理由；该动作只拒绝旧 intent、清理终态快照和解除旧锁，不替用户发起下一次 launch。
+只读对账使用 `POST /api/v1/admin/agentteams-launch-intents/{id}/reconcile`，只查询既有 request ID；确认远端存在后补写映射并接受。确认未创建使用 `.../{id}/resolve`，必须先在 AgentTeams 外部完成无创建核验并填写至少 10 个非空白字符的理由；该动作只拒绝旧 intent、清理终态快照和解除旧锁，不替用户发起下一次 launch。
 
 目标 PostgreSQL 和备份副本验收时只做聚合抽样，不读取 ciphertext 内容：
 
@@ -161,7 +159,7 @@ docker compose -p oncopath up -d agentteams-launch-worker frontend
 1. 在 OncoPath 后台保存 AgentTeams 配置并启用。
 2. 用普通用户打开“虚拟会诊”。
 3. 点击“开始会诊”。
-4. 如果 AgentTeams 可用且额度充足，页面应进入 `/home/consultation/{conversation_id}` 并显示 AgentTeams iframe。
+4. 如果 AgentTeams 可用且集成配置有效，页面应进入 `/home/consultation/{conversation_id}` 并显示 AgentTeams iframe。
 5. 回到会诊列表，点击历史记录，应再次打开 AgentTeams 会诊详情。
 
 后端可用性 API 不返回密钥：
@@ -171,7 +169,7 @@ curl -H "Authorization: Bearer <token>" \
   https://oncopath.example.com/api/v1/consultation/agentteams/availability
 ```
 
-响应里应包含 `configured`、`enabled`、`base_url`、`upsell`，不应包含 `integration_secret`。
+响应里应包含 `configured`、`enabled`、`base_url`、`upsell`，不应包含 `integration_secret`。`upsell` 仅为旧客户端兼容的只读提示；当前管理表单不再保存提示文案或额度信息。
 
 ## 常见错误
 
@@ -179,7 +177,7 @@ curl -H "Authorization: Bearer <token>" \
 |---|---|---|
 | 需要配置 AgentTeams 项目 | OncoPath 未保存配置、未启用，或 AgentTeams 地址/密钥为空 | 在 OncoPath 后台补齐配置并启用 |
 | AgentTeams 服务账户未配置 | AgentTeams 侧没有 OncoPath 集成服务账户 | 在 AgentTeams 管理后台完成服务账户配置 |
-| 会诊额度已用完 | AgentTeams OncoPath 服务账户余额不足 | 为 AgentTeams OncoPath 服务账户增加会诊额度 |
+| AgentTeams 返回不兼容错误 | 连接到仍保留旧商业逻辑的 AgentTeams 版本 | 升级 AgentTeams，并检查两侧集成配置；当前开源版本不需要额外购买服务 |
 | AgentTeams 集成未启用 | AgentTeams 侧关闭了 OncoPath 集成 | 在 AgentTeams 管理后台启用集成 |
 | AgentTeams 版本不兼容 | AgentTeams 版本不支持 OncoPath launch/renew API | 升级 AgentTeams |
 | AgentTeams 集成密钥无效 | OncoPath 和 AgentTeams 两侧密钥不一致 | 重新生成并同步 `integration_secret` |
@@ -190,7 +188,7 @@ curl -H "Authorization: Bearer <token>" \
 ## 安全边界
 
 - OncoPath 不保存 AgentTeams 源码，也不包含 AgentTeams 私有部署授权逻辑。
-- OncoPath 不对虚拟会诊扣费；次数边界由 AgentTeams 服务账户负责。
+- OncoPath 和当前开源 AgentTeams 都不对虚拟会诊计费；服务账户只用于会话归属和权限隔离。
 - iframe 使用短期 embed token，只应访问单条 AgentTeams 会话。
 - AgentTeams 分享不在当前能力内；不要把 OncoPath 本地 `share_token` 当作 AgentTeams embed token 使用。
 - 本项目仅用于健康信息整理和辅助理解，不替代医生诊断或治疗建议。

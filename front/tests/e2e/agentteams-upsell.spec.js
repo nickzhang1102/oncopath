@@ -165,7 +165,7 @@ test('starts AgentTeams flow when AgentTeams is enabled', async ({ page }) => {
 
 const agentTeamsStartErrors = [
   { status: 502, error: 'agentteams_invalid_integration_key', title: 'AgentTeams 集成密钥无效' },
-  { status: 402, error: 'agentteams_quota_exceeded', title: '会诊额度已用完' },
+  { status: 402, error: 'agentteams_quota_exceeded', title: 'AgentTeams 会诊服务不可用' },
   { status: 403, error: 'agentteams_service_account_not_configured', title: 'AgentTeams 服务账户未配置' },
   { status: 403, error: 'agentteams_integration_disabled', title: 'AgentTeams 集成未启用' },
   { status: 426, error: 'agentteams_unsupported_version', title: 'AgentTeams 版本不兼容' },
@@ -215,7 +215,7 @@ for (const scenario of agentTeamsStartErrors) {
     await expect(page.getByText(scenario.title)).toBeVisible()
     await expect(page.getByText('启动 AgentTeams 会诊失败，请稍后重试')).toHaveCount(0)
     await expect(page.getByText('agentteams.internal')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /增加额度|查看配置说明|查看升级说明/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /查看配置说明|查看升级说明/ })).toBeVisible()
     expect(counters.agentTeamsStart).toBe(1)
     expect(counters.createConversation || 0).toBe(0)
   })

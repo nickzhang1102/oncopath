@@ -75,11 +75,8 @@ class AgentTeamsConfigService:
                 config.integration_secret = encryption_service.encrypt(secret)
 
         config.enabled = data.enabled
-        self._apply_upsell(
-            config,
-            data.upsell,
-            update_existing="upsell" in data.model_fields_set,
-        )
+        if data.upsell is not None:
+            self._apply_upsell(config, data.upsell)
 
         await self.db.commit()
         await self.db.refresh(config)
@@ -166,11 +163,7 @@ class AgentTeamsConfigService:
         self,
         config: AgentTeamsIntegrationConfig,
         upsell: AgentTeamsUpsell,
-        update_existing: bool,
     ) -> None:
-        if not update_existing and config.id:
-            return
-
         config.upsell_title = upsell.title or DEFAULT_UPSELL.title
         config.upsell_message = upsell.message or DEFAULT_UPSELL.message
         config.demo_asset_url = upsell.demo_asset_url or DEFAULT_UPSELL.demo_asset_url

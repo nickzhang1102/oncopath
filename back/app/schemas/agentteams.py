@@ -29,7 +29,11 @@ class AgentTeamsConfigUpdate(BaseModel):
     enabled: bool = False
     base_url: str = Field(default="")
     integration_secret: str = Field(default="")
-    upsell: AgentTeamsUpsell = Field(default_factory=AgentTeamsUpsell)
+    # Upsell copy remains accepted for API compatibility, but it is an
+    # optional advanced field. The normal connection form only submits
+    # enabled/base_url/integration_secret and must not rewrite copy stored by
+    # an older deployment.
+    upsell: AgentTeamsUpsell | None = None
 
 
 class AgentTeamsAvailabilityResponse(BaseModel):

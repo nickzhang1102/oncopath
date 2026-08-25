@@ -162,6 +162,40 @@ async def test_upsell_copy_is_configurable(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_basic_config_save_preserves_existing_upsell_copy(client, db_session):
+    override_current_user("admin")
+    first = await client.put(
+        "/api/v1/admin/agentteams-config",
+        json=full_payload(
+            upsell={
+                "title": "custom title",
+                "message": "custom message",
+                "demo_asset_url": "https://example.com/custom.gif",
+                "cta_label": "custom cta",
+                "cta_url": "https://example.com/custom",
+            },
+        ),
+    )
+    assert first.status_code == 200
+
+    basic = await client.put(
+        "/api/v1/admin/agentteams-config",
+        json={
+            "enabled": False,
+            "base_url": "https://agentteams.example.com/v2",
+            "integration_secret": "",
+        },
+    )
+
+    assert basic.status_code == 200
+    data = basic.json()
+    assert data["enabled"] is False
+    assert data["base_url"] == "https://agentteams.example.com/v2"
+    assert data["upsell"]["title"] == "custom title"
+    assert data["upsell"]["cta_url"] == "https://example.com/custom"
+
+
+@pytest.mark.asyncio
 async def test_availability_returns_unconfigured_for_logged_in_user(client, db_session):
     override_current_user("user")
 
