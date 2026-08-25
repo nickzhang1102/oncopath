@@ -71,7 +71,7 @@ const online = computed(() => Boolean(
 }
 
 .status-dot.offline {
-  background: var(--text-quaternary, #c8c9cc);
+  background: var(--text-quaternary);
 }
 
 .status-text {

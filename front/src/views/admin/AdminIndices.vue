@@ -169,7 +169,7 @@
       :before-close="onImportConfirm"
     >
       <div style="padding: 16px;">
-        <p style="font-size: 13px; color: #969799; margin-bottom: 8px;">
+        <p style="font-size: 13px; color: var(--text-quaternary); margin-bottom: 8px;">
           粘贴 JSON 数组，每项需含 index_name，最多 500 条
         </p>
         <van-field
@@ -410,8 +410,8 @@ onMounted(() => { loadCategories(); loadData() })
 }
 
 .toolbar {
-  background: var(--bg-surface, #fff);
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .toolbar .van-search {
@@ -435,7 +435,7 @@ onMounted(() => { loadCategories(); loadData() })
 
 .table-wrapper {
   overflow-x: auto;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
 }
 
 .data-table {
@@ -448,14 +448,14 @@ onMounted(() => { loadCategories(); loadData() })
 .data-table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
 }
 
 .data-table th {
-  background: var(--bg-primary, #f5f5f5);
+  background: var(--bg-primary);
   font-weight: 600;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   position: sticky;
   top: 0;
 }
@@ -466,32 +466,32 @@ onMounted(() => { loadCategories(); loadData() })
 }
 
 .data-table th.sortable:hover {
-  color: var(--primary-color, #1989fa);
+  color: var(--primary-color);
 }
 
 .sort-indicator {
   font-size: 12px;
-  color: var(--primary-color, #1989fa);
+  color: var(--primary-color);
 }
 
 .data-table tbody tr:hover {
-  background: var(--bg-primary, #f5f5f5);
+  background: var(--bg-primary);
 }
 
 .center-text {
   text-align: center;
-  color: var(--text-secondary, #969799);
+  color: var(--text-secondary);
   padding: 40px 0 !important;
 }
 
 .name-cell {
   font-weight: 500;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
 }
 
 .secondary-text {
   font-size: 12px;
-  color: var(--text-secondary, #969799);
+  color: var(--text-secondary);
 }
 
 .action-cell {
@@ -505,21 +505,21 @@ onMounted(() => { loadCategories(); loadData() })
   justify-content: center;
   gap: 12px;
   padding: 12px;
-  background: var(--bg-surface, #fff);
-  border-top: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
 }
 
 .page-info {
   font-size: 13px;
-  color: var(--text-secondary, #969799);
+  color: var(--text-secondary);
 }
 
 .page-size-select {
   font-size: 12px;
   padding: 2px 4px;
-  border: 1px solid var(--border-color, #ebedf0);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-primary);
   outline: none;
   cursor: pointer;

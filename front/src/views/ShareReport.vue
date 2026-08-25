@@ -422,17 +422,17 @@ onMounted(() => {
 
 .row-high .col-value,
 .row-high .col-status {
-  color: var(--danger-color, #ee0a24);
+  color: var(--danger-color);
 }
 
 .row-low .col-value,
 .row-low .col-status {
-  color: var(--warning-color, #ed6a0c);
+  color: var(--warning-color);
 }
 
 .row-abnormal .col-value,
 .row-abnormal .col-status {
-  color: var(--danger-color, #ee0a24);
+  color: var(--danger-color);
 }
 
 /* 文本信息区 */
@@ -534,7 +534,7 @@ onMounted(() => {
 
 .disclaimer .van-icon {
   flex-shrink: 0;
-  color: var(--warning-color, #ed6a0c);
+  color: var(--warning-color);
   margin-top: 2px;
 }
 

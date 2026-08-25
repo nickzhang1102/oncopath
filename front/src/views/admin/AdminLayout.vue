@@ -103,13 +103,13 @@ function toggleCollapse() {
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--bg-primary, #f5f5f5);
+  background: var(--bg-primary);
 }
 
 .admin-sidebar {
   width: 220px;
-  background: var(--bg-surface, #fff);
-  border-right: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
@@ -130,14 +130,14 @@ function toggleCollapse() {
   gap: 10px;
   padding: 16px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  border-bottom: 1px solid var(--border-color);
   min-height: 60px;
 }
 
 .sidebar-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
@@ -152,7 +152,7 @@ function toggleCollapse() {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  color: var(--text-secondary, #969799);
+  color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -160,13 +160,13 @@ function toggleCollapse() {
 }
 
 .nav-item:hover {
-  background: var(--bg-primary, #f5f5f5);
-  color: var(--text-primary, #323233);
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  color: var(--primary-color, #1989fa);
-  background: var(--primary-light, #e8f3fe);
+  color: var(--primary-color);
+  background: var(--primary-light);
 }
 
 .nav-label {
@@ -174,7 +174,7 @@ function toggleCollapse() {
 }
 
 .sidebar-footer {
-  border-top: 1px solid var(--border-color, #ebedf0);
+  border-top: 1px solid var(--border-color);
   padding: 8px 0;
 }
 
@@ -193,8 +193,8 @@ function toggleCollapse() {
 
 .admin-topbar {
   height: 56px;
-  background: var(--bg-surface, #fff);
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -207,7 +207,7 @@ function toggleCollapse() {
 .topbar-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
 }
 
 .topbar-user {
@@ -215,7 +215,7 @@ function toggleCollapse() {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: var(--text-secondary, #969799);
+  color: var(--text-secondary);
 }
 
 .admin-page {
@@ -230,7 +230,7 @@ function toggleCollapse() {
   padding: 8px;
   margin-right: 8px;
   cursor: pointer;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   min-width: 44px;

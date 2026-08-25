@@ -882,7 +882,7 @@ defineExpose({
 }
 
 .btn-view {
-  color: #fff !important;
+  color: var(--color-white) !important;
   background: var(--primary-color);
   border-color: var(--primary-color);
 }

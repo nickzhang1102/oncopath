@@ -218,8 +218,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 18px 20px;
   box-shadow: var(--shadow-sm);
@@ -273,7 +273,7 @@ onMounted(() => {
 }
 
 .secret-mask {
-  color: var(--text-tertiary, #999);
+  color: var(--text-tertiary);
   font-family: monospace;
   font-size: 13px;
   white-space: nowrap;
@@ -287,8 +287,8 @@ onMounted(() => {
 }
 
 .config-card {
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);

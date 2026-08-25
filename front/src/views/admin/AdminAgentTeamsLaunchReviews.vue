@@ -341,7 +341,7 @@ onMounted(loadIntents)
   justify-content: center;
   gap: 12px;
   border-radius: 12px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-secondary);
 }
 
@@ -367,7 +367,7 @@ onMounted(loadIntents)
   padding: 14px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -414,7 +414,7 @@ onMounted(loadIntents)
 }
 
 .intent-meta {
-  color: var(--text-tertiary, #999);
+  color: var(--text-tertiary);
   font-size: 11px;
 }
 
@@ -423,7 +423,7 @@ onMounted(loadIntents)
   overflow: hidden;
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
 }
 
 .detail-heading {
@@ -534,7 +534,7 @@ onMounted(loadIntents)
 }
 
 .audit-list small {
-  color: var(--text-tertiary, #999);
+  color: var(--text-tertiary);
 }
 
 .resolve-dialog {
@@ -545,7 +545,7 @@ onMounted(loadIntents)
   margin: 0 0 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: var(--status-danger-bg, #fff1f0);
+  background: var(--status-danger-bg);
   color: var(--danger-color);
   font-size: 12px;
   line-height: 1.6;

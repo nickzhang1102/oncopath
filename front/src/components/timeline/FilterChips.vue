@@ -47,7 +47,7 @@ function hasDisabledInGroup(group) {
 
 /**
  * 将 hex 颜色转为 rgba
- * @param {string} hex - 如 '#DC2626'
+ * @param {string} hex - 如 'var(--danger-color)'
  * @param {number} alpha - 0~1
  */
 function hexToRgba(hex, alpha) {
@@ -163,7 +163,7 @@ function chipStyle(item) {
   height: 14px;
   padding: 0 3px;
   border-radius: 7px;
-  background: var(--count-bg, var(--primary-alpha-20));
+  background: var(--count-bg);
   font-size: 12px;
   font-weight: 600;
   line-height: 1;

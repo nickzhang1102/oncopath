@@ -231,7 +231,7 @@ watch(patientId, loadSummaries)
   gap: 8px;
 }
 .summary-card {
-  background: var(--van-background-2, #f7f8fa);
+  background: var(--van-background-2);
   border-radius: 8px;
   padding: 10px 12px;
 }

@@ -544,7 +544,7 @@ watch(() => patientStore.currentPatient?.patient_id, async (newId, oldId) => {
 }
 
 .favorite-icon.is-favorited {
-  color: #f5a623;
+  color: var(--warning-color);
 }
 
 .delete-icon {
@@ -556,7 +556,7 @@ watch(() => patientStore.currentPatient?.patient_id, async (newId, oldId) => {
 }
 
 .delete-icon:hover {
-  color: var(--danger-color, #ee0a24);
+  color: var(--danger-color);
 }
 
 /* 滑动单元格样式 */

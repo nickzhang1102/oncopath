@@ -207,7 +207,7 @@ const toggleComment = (index) => {
     right: 0;
     bottom: 0;
     width: 24px;
-    background: linear-gradient(to right, transparent, var(--bg-surface, #fff));
+    background: linear-gradient(to right, transparent, var(--bg-surface));
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s;

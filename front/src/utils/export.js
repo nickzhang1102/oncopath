@@ -60,7 +60,7 @@ export async function exportToImage(element, filename = 'report') {
       scale: 2, // 提高分辨率
       useCORS: true, // 允许跨域图片
       logging: false, // 禁用日志
-      backgroundColor: '#ffffff', // 白色背景
+      backgroundColor: '#ffffff', // html2canvas 不解析 CSS 变量，须用字面量
       windowWidth: element.scrollWidth,
       windowHeight: element.scrollHeight
     })
@@ -94,7 +94,7 @@ export async function exportToPDF(element, filename = 'report', options = {}) {
       scale: 2,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#ffffff', // html2canvas 不解析 CSS 变量
       windowWidth: element.scrollWidth,
       windowHeight: element.scrollHeight
     })

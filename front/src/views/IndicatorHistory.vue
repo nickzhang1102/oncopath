@@ -630,7 +630,7 @@ const resetForm = () => {
 
 .date-chip.active {
   background: var(--primary-color);
-  color: #fff;
+  color: var(--color-white);
   border-color: var(--primary-color);
 }
 
@@ -666,7 +666,7 @@ const resetForm = () => {
   padding: 4px 12px;
   border-radius: 12px;
   background: var(--primary-color);
-  color: #fff;
+  color: var(--color-white);
   font-size: 12px;
   cursor: pointer;
 }

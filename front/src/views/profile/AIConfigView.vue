@@ -316,13 +316,13 @@ onMounted(() => {
 }
 
 .test-ok {
-  background: var(--success-alpha-10, #f0fff4);
-  color: var(--success-color, #07c160);
+  background: var(--success-alpha-10);
+  color: var(--success-color);
 }
 
 .test-fail {
-  background: var(--danger-alpha-10, #fff1f0);
-  color: var(--danger-color, #ee0a24);
+  background: var(--danger-alpha-10);
+  color: var(--danger-color);
 }
 
 /* 响应式 */

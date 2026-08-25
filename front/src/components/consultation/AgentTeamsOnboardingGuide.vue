@@ -430,7 +430,7 @@ function handleSkip() {
   height: 36px;
   border-radius: 50%;
   font-size: 16px;
-  color: #fff;
+  color: var(--color-white);
   background: var(--primary-color);
   box-shadow: 0 4px 12px var(--primary-alpha-20, rgba(0, 0, 0, 0.15));
 }

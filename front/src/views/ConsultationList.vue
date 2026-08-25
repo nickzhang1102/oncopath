@@ -35,8 +35,8 @@
 
     <van-notice-bar
       v-if="launchPending"
-      color="#8a5a00"
-      background="#fff7e6"
+      color="var(--warning-color)"
+      background="var(--status-warning-bg)"
       left-icon="clock-o"
       :text="launchNoticeText"
     />

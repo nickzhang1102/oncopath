@@ -168,7 +168,7 @@
               {{ stat.adherence_rate }}%
             </span>
           </div>
-          <van-progress :percentage="stat.adherence_rate" :color="stat.adherence_rate >= 80 ? '#4caf50' : stat.adherence_rate >= 50 ? '#ff9800' : '#f44336'" stroke-width="8" :show-pivot="false" />
+          <van-progress :percentage="stat.adherence_rate" :color="stat.adherence_rate >= 80 ? 'var(--success-color)' : stat.adherence_rate >= 50 ? 'var(--warning-color)' : 'var(--danger-color)'" stroke-width="8" :show-pivot="false" />
           <div class="adherence-detail">
             <span>应服 {{ stat.total_slots }} 次</span>
             <span class="detail-taken">实服 {{ stat.taken_slots }}</span>
@@ -182,7 +182,7 @@
               <span>记录率</span>
               <span :class="['recording-value', stat.recording_rate < 50 ? 'rate-bad' : '']">{{ stat.recording_rate }}%</span>
             </div>
-            <van-progress :percentage="stat.recording_rate" :color="stat.recording_rate >= 80 ? '#4caf50' : stat.recording_rate >= 50 ? '#ff9800' : '#f44336'" stroke-width="4" :show-pivot="false" />
+            <van-progress :percentage="stat.recording_rate" :color="stat.recording_rate >= 80 ? 'var(--success-color)' : stat.recording_rate >= 50 ? 'var(--warning-color)' : 'var(--danger-color)'" stroke-width="4" :show-pivot="false" />
             <div v-if="stat.recording_rate < 50" class="recording-warning">记录不足，数据参考性低</div>
           </div>
         </div>
@@ -561,18 +561,18 @@ watch(() => patientStore.currentPatient?.patient_id, (newId, oldId) => {
 .adherence-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .adherence-name { font-size: 15px; font-weight: 500; color: var(--text-primary); }
 .adherence-rate { font-size: 20px; font-weight: 700; }
-.rate-good { color: #4caf50; }
-.rate-warn { color: #ff9800; }
-.rate-bad { color: #f44336; }
+.rate-good { color: var(--success-color); }
+.rate-warn { color: var(--warning-color); }
+.rate-bad { color: var(--danger-color); }
 .adherence-detail { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
-.detail-taken { color: #4caf50; }
-.detail-skipped { color: #ff9800; }
-.detail-missed { color: #f44336; }
-.detail-unrecorded { color: #9e9e9e; }
+.detail-taken { color: var(--success-color); }
+.detail-skipped { color: var(--warning-color); }
+.detail-missed { color: var(--danger-color); }
+.detail-unrecorded { color: var(--text-secondary); }
 .recording-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); }
 .recording-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
 .recording-value { font-weight: 500; }
-.recording-warning { font-size: 11px; color: #f44336; margin-top: 4px; }
+.recording-warning { font-size: 11px; color: var(--danger-color); margin-top: 4px; }
 
 /* 表单弹窗 */
 .form-popup { height: 100%; display: flex; flex-direction: column; background: var(--bg-elevated); }

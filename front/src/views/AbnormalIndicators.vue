@@ -305,7 +305,7 @@ watch(() => patientStore.currentPatient?.patient_id, (newId) => {
 
 .date-chip.active {
   background: var(--primary-color);
-  color: #fff;
+  color: var(--color-white);
   border-color: var(--primary-color);
 }
 
@@ -334,7 +334,7 @@ watch(() => patientStore.currentPatient?.patient_id, (newId) => {
   padding: 4px 10px;
   border-radius: 8px;
   background: var(--primary-color);
-  color: #fff;
+  color: var(--color-white);
   cursor: pointer;
 }
 

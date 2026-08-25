@@ -151,7 +151,7 @@ function renderTrendChart() {
     yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 10 } },
     series: [
       { name: '新增用户', type: 'line', data: newUsers, smooth: true, symbol: 'none', lineStyle: { width: 2 }, itemStyle: { color: colors.primary || '#1989fa' } },
-      { name: '会诊数', type: 'line', data: consultations, smooth: true, symbol: 'none', lineStyle: { width: 2 }, itemStyle: { color: colors.success || '#07c160' } },
+      { name: '会诊数', type: 'line', data: consultations, smooth: true, symbol: 'none', lineStyle: { width: 2 }, itemStyle: { color: colors.success || '#059669' } },
     ],
   })
 }
@@ -166,8 +166,8 @@ function renderUserPie() {
       type: 'pie', radius: ['40%', '70%'], center: ['50%', '50%'],
       label: { show: true, fontSize: 11, formatter: '{b}\n{d}%' },
       data: [
-        { value: u.active, name: '活跃', itemStyle: { color: '#07c160' } },
-        { value: u.inactive, name: '禁用', itemStyle: { color: '#ee0a24' } },
+        { value: u.active, name: '活跃', itemStyle: { color: colors.success || '#059669' } },
+        { value: u.inactive, name: '禁用', itemStyle: { color: colors.danger || '#dc2626' } },
       ],
     }],
   })
@@ -219,7 +219,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-radius: 12px;
   cursor: pointer;
   transition: box-shadow 0.2s;
@@ -261,7 +261,7 @@ onUnmounted(() => {
 
 /* 图表卡片 */
 .chart-card {
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 20px;
@@ -296,7 +296,7 @@ onUnmounted(() => {
 
 /* 系统概要 */
 .system-summary {
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 16px;
 }
@@ -314,7 +314,7 @@ onUnmounted(() => {
   gap: 4px;
   padding: 12px 8px;
   border-radius: 8px;
-  background: var(--bg-primary, #f5f5f5);
+  background: var(--bg-primary);
 }
 
 .summary-value {

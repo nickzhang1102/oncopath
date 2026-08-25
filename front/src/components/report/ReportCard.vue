@@ -295,7 +295,7 @@ const structuredTags = computed(() => {
 .report-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, var(--text-primary));
+  color: var(--text-primary);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -313,7 +313,7 @@ const structuredTags = computed(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: var(--text-secondary, var(--text-secondary));
+  color: var(--text-secondary);
 }
 
 /* 内容区域 */
@@ -326,7 +326,7 @@ const structuredTags = computed(() => {
 .content-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--primary-color, var(--primary-color));
+  color: var(--primary-color);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -334,7 +334,7 @@ const structuredTags = computed(() => {
 
 .card-content :deep(.van-text-ellipsis) {
   font-size: 14px;
-  color: var(--text-secondary, var(--text-secondary));
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -401,17 +401,17 @@ const structuredTags = computed(() => {
 
 .footer-icon {
   font-size: 14px;
-  color: var(--text-tertiary, var(--text-tertiary));
+  color: var(--text-tertiary);
 }
 
 .footer-text {
   font-size: 13px;
-  color: var(--text-tertiary, var(--text-tertiary));
+  color: var(--text-tertiary);
 }
 
 .footer-view:hover .footer-text,
 .footer-view:hover .footer-icon {
-  color: var(--text-secondary, var(--text-secondary));
+  color: var(--text-secondary);
 }
 
 .footer-actions {
@@ -431,7 +431,7 @@ const structuredTags = computed(() => {
 }
 
 .action-danger:hover {
-  color: var(--van-danger-color, #ee0a24);
+  color: var(--van-danger-color);
 }
 
 /* 响应式调整 */

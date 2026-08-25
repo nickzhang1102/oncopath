@@ -50,7 +50,7 @@ export async function exportToPDF(element, filename = 'report.pdf') {
       html2canvas: {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff' // html2canvas 不解析 CSS 变量
       },
       jsPDF: {
         unit: 'mm',
@@ -80,7 +80,7 @@ export async function exportToImage(element, filename = 'report.png') {
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff' // html2canvas 不解析 CSS 变量
     })
 
     // 转换为图片并下载

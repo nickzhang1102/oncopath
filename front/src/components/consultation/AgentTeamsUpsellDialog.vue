@@ -114,7 +114,7 @@ watch(() => props.upsell?.demo_asset_url, () => {
   flex-direction: column;
   gap: 18px;
   padding: 24px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
 }
 
 .dialog-header {
@@ -139,7 +139,7 @@ watch(() => props.upsell?.demo_asset_url, () => {
   height: 48px;
   flex-shrink: 0;
   border-radius: 10px;
-  color: var(--primary-color, #1989fa);
+  color: var(--primary-color);
   background: var(--bg-surface);
   border: 1px solid var(--primary-alpha-20);
 }
@@ -159,7 +159,7 @@ watch(() => props.upsell?.demo_asset_url, () => {
 
 .dialog-header h2 {
   margin: 0;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 700;
   line-height: 1.35;
@@ -167,7 +167,7 @@ watch(() => props.upsell?.demo_asset_url, () => {
 
 .dialog-message {
   margin: 0;
-  color: var(--text-secondary, #646566);
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.7;
   white-space: pre-wrap;
@@ -197,9 +197,9 @@ watch(() => props.upsell?.demo_asset_url, () => {
 
 .demo-frame {
   overflow: hidden;
-  border: 1px solid var(--border-color, #ebedf0);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: var(--bg-primary, #f7f8fa);
+  background: var(--bg-primary);
   aspect-ratio: 16 / 9;
 }
 

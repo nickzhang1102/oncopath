@@ -79,7 +79,7 @@ const hasCta = computed(() => Boolean(props.error?.cta_url))
   flex-direction: column;
   gap: 18px;
   padding: 24px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
 }
 
 .dialog-header {
@@ -93,7 +93,7 @@ const hasCta = computed(() => Boolean(props.error?.cta_url))
   flex-shrink: 0;
   padding: 3px;
   border-radius: 12px;
-  background: var(--status-warning-bg, #fff7e8);
+  background: var(--status-warning-bg);
 }
 
 .dialog-icon {
@@ -104,7 +104,7 @@ const hasCta = computed(() => Boolean(props.error?.cta_url))
   height: 48px;
   flex-shrink: 0;
   border-radius: 10px;
-  color: var(--warning-color, #ed6a0c);
+  color: var(--warning-color);
   background: var(--bg-surface);
   border: 1px solid var(--warning-alpha-10);
 }
@@ -124,7 +124,7 @@ const hasCta = computed(() => Boolean(props.error?.cta_url))
 
 .dialog-header h2 {
   margin: 0;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 700;
   line-height: 1.35;
@@ -139,7 +139,7 @@ const hasCta = computed(() => Boolean(props.error?.cta_url))
 
 .dialog-message {
   margin: 0;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   font-size: 14px;
   line-height: 1.7;
   white-space: pre-wrap;

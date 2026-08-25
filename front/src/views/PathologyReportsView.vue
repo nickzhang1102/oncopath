@@ -441,7 +441,7 @@ async function onEditConfirm(action) {
 }
 
 .ihc-remove {
-  color: var(--van-danger-color, #ee0a24);
+  color: var(--van-danger-color);
   font-size: 18px;
   flex-shrink: 0;
   cursor: pointer;
@@ -460,7 +460,7 @@ async function onEditConfirm(action) {
 
 .gene-title {
   font-size: 14px;
-  color: var(--van-text-color-2, #969799);
+  color: var(--van-text-color-2);
 }
 
 .gene-row {
@@ -480,7 +480,7 @@ async function onEditConfirm(action) {
 }
 
 .gene-remove {
-  color: var(--van-danger-color, #ee0a24);
+  color: var(--van-danger-color);
   font-size: 18px;
   flex-shrink: 0;
   cursor: pointer;

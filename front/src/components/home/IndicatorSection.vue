@@ -356,7 +356,8 @@ function initSingleChart(el, historyData, indicatorItem) {
         obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 30
         return obj
       },
-      backgroundColor: 'var(--bg-surface-alpha)',
+      // ECharts 不解析 CSS 变量，须用真实色值（对应 --bg-surface-alpha）
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: colors.borderLight || colors.borderColor,
       borderWidth: 1,
       textStyle: { color: colors.textPrimary, fontSize: 12 },
@@ -697,7 +698,7 @@ watch(() => patientStore.currentPatient?.patient_id, async (newId, oldId) => {
 
 .date-chip.active {
   background: var(--primary-color);
-  color: #fff;
+  color: var(--color-white);
   border-color: var(--primary-color);
 }
 

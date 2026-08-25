@@ -22,7 +22,7 @@
 
         <div v-show="expandedGroups[group.key]" class="group-items">
           <div v-for="cat in group.items" :key="cat.category_key" class="category-row" :class="{ inactive: !cat.is_active }">
-            <div class="cat-color" :style="{ backgroundColor: cat.color || '#6B7280' }">{{ cat.icon || cat.category_name[0] }}</div>
+            <div class="cat-color" :style="{ backgroundColor: cat.color || 'var(--text-secondary)' }">{{ cat.icon || cat.category_name[0] }}</div>
             <div class="cat-info">
               <div class="cat-name">
                 {{ cat.category_name }}
@@ -67,7 +67,7 @@
         <van-field v-model="form.group_key" is-link readonly label="分组" placeholder="选择分组" @click="showGroupPicker = true" />
         <van-field v-model="form.report_type" is-link readonly label="报告类型" placeholder="选择报告类型" @click="showReportTypePicker = true" />
         <van-field v-model="form.icon" label="图标" placeholder="🩸" />
-        <van-field v-model="form.color" label="颜色" placeholder="#ff4d4f" />
+        <van-field v-model="form.color" label="颜色" placeholder="var(--danger-color)" />
         <van-field v-model="form.description" label="描述" placeholder="血常规检查" />
         <van-field v-model="form.sort" type="digit" label="排序" placeholder="0" />
         <van-field v-if="editingCategory" name="is_active" label="启用状态">
@@ -310,8 +310,8 @@ onMounted(() => { loadCategories() })
 }
 
 .toolbar {
-  background: var(--bg-surface, #fff);
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .toolbar .van-search {
@@ -330,7 +330,7 @@ onMounted(() => { loadCategories() })
 }
 
 .group-section {
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-radius: 12px;
   margin-bottom: 12px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -343,11 +343,11 @@ onMounted(() => { loadCategories() })
   align-items: center;
   padding: 14px 16px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .group-header:hover {
-  background: var(--bg-primary, #f5f5f5);
+  background: var(--bg-primary);
 }
 
 .group-title {
@@ -356,7 +356,7 @@ onMounted(() => { loadCategories() })
   gap: 10px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
 }
 
 .group-items {
@@ -368,7 +368,7 @@ onMounted(() => { loadCategories() })
   align-items: center;
   padding: 12px 16px;
   gap: 12px;
-  border-bottom: 1px solid var(--border-color, #ebedf0);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .category-row:last-child {
@@ -400,7 +400,7 @@ onMounted(() => { loadCategories() })
 .cat-name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #323233);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -412,7 +412,7 @@ onMounted(() => { loadCategories() })
   gap: 8px;
   margin-top: 2px;
   font-size: 12px;
-  color: var(--text-secondary, #969799);
+  color: var(--text-secondary);
 }
 
 .cat-key {
@@ -420,15 +420,15 @@ onMounted(() => { loadCategories() })
 }
 
 .cat-report-type {
-  background: var(--primary-light, #e8f3fe);
-  color: var(--primary-color, #1989fa);
+  background: var(--primary-light);
+  color: var(--primary-color);
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 11px;
 }
 
 .cat-count {
-  color: var(--text-tertiary, #c8c9cc);
+  color: var(--text-tertiary);
 }
 
 .cat-actions {
