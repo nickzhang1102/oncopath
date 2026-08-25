@@ -3,7 +3,7 @@ name: Deploy Project Website
 on:
   push:
     branches: [main]
-    paths: ['website/**']
+    paths: ['website/**', '.github/workflows/deploy-pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,9 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        # 仓库尚未启用 Pages 时自动启用，避免首次部署报 "Get Pages site failed"
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
