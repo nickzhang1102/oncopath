@@ -3,9 +3,19 @@ from typing import Optional
 from datetime import datetime
 import re
 
+
+def validate_password_strength(v: str) -> str:
+    """密码强度统一校验：至少8位，须同时包含字母和数字"""
+    if len(v) < 8:
+        raise ValueError('密码长度至少8位，须包含字母和数字')
+    if not re.search(r'[A-Za-z]', v) or not re.search(r'\d', v):
+        raise ValueError('密码须同时包含字母和数字')
+    return v
+
+
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=6, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
     phone: Optional[str] = Field(None, max_length=20)
     account_name: Optional[str] = Field(None, max_length=100)
 
@@ -20,10 +30,8 @@ class UserCreate(BaseModel):
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
-        """密码长度至少6位"""
-        if len(v) < 6:
-            raise ValueError('密码长度至少6位')
-        return v
+        """密码强度校验"""
+        return validate_password_strength(v)
 
     @field_validator('phone')
     @classmethod
@@ -93,29 +101,25 @@ class ResetPasswordRequest(BaseModel):
     """重置密码请求"""
     username: str = Field(..., min_length=1, max_length=50)
     reset_token: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
     @field_validator('new_password')
     @classmethod
     def validate_new_password(cls, v):
-        """新密码长度至少6位"""
-        if len(v) < 6:
-            raise ValueError('密码长度至少6位')
-        return v
+        """密码强度校验"""
+        return validate_password_strength(v)
 
 
 class PasswordChangeRequest(BaseModel):
     """修改密码请求（已登录用户）"""
     old_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
     @field_validator('new_password')
     @classmethod
     def validate_new_password(cls, v):
-        """新密码长度至少6位"""
-        if len(v) < 6:
-            raise ValueError('密码长度至少6位')
-        return v
+        """密码强度校验"""
+        return validate_password_strength(v)
 
 
 class PrivacySettings(BaseModel):
@@ -195,4 +199,10 @@ class AdminUserStatusUpdate(BaseModel):
 
 class AdminPasswordReset(BaseModel):
     """管理端重置用户密码"""
-    new_password: str = Field(..., min_length=6, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v):
+        """密码强度校验"""
+        return validate_password_strength(v)

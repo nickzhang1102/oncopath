@@ -1,5 +1,5 @@
 """上传报告API - 上传报告并自动OCR识别和指标匹配"""
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ import asyncio
 from datetime import datetime, date
 
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.core.security import decode_token
 from app.api.auth import get_current_user
 from app.models.user import LoginAccount
@@ -275,9 +276,11 @@ async def check_duplicate(
 
 
 @router.post("", response_model=ImageReportResponse)
+@limiter.limit("10/minute")
 async def upload_image_report(
     report_data: ImageReportCreate,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user)
 ):
@@ -891,8 +894,10 @@ async def _process_and_save_result(
 
 
 @router.post("/upload-stream")
+@limiter.limit("10/minute")
 async def upload_image_report_stream(
     report_data: ImageReportCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user)
 ):

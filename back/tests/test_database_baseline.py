@@ -13,6 +13,8 @@ REQUEST_ID_REVISION = "agentteams_request_id"
 LAUNCH_INTENTS_REVISION = "agentteams_launch_intents"
 PAYLOAD_RETENTION_REVISION = "agentteams_launch_intent_payload_retention"
 MANUAL_REVIEW_AUDIT_REVISION = "agentteams_launch_manual_review_audit"
+DROP_PROMPT_CONFIG_REVISION = "drop_prompt_config_system_prompt"
+SHARE_TOKEN_REVISION = "share_token_256bit"
 
 
 def test_public_migration_graph_is_tracked_and_self_contained():
@@ -20,6 +22,8 @@ def test_public_migration_graph_is_tracked_and_self_contained():
     revisions = list(script.walk_revisions())
 
     assert [revision.revision for revision in revisions] == [
+        SHARE_TOKEN_REVISION,
+        DROP_PROMPT_CONFIG_REVISION,
         MANUAL_REVIEW_AUDIT_REVISION,
         PAYLOAD_RETENTION_REVISION,
         LAUNCH_INTENTS_REVISION,
@@ -29,7 +33,7 @@ def test_public_migration_graph_is_tracked_and_self_contained():
         BASELINE_REVISION,
     ]
     assert script.get_base() == BASELINE_REVISION
-    assert script.get_current_head() == MANUAL_REVIEW_AUDIT_REVISION
+    assert script.get_current_head() == SHARE_TOKEN_REVISION
 
     alembic_config = (BACKEND_ROOT / "alembic.ini").read_text(encoding="utf-8")
     dockerignore = (BACKEND_ROOT / ".dockerignore").read_text(encoding="utf-8")

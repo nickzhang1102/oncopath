@@ -38,7 +38,7 @@ class TestAuth:
         # 尝试注册相同用户名
         response = await client.post("/api/v1/auth/register", json={
             "username": username,
-            "password": "pass456"
+            "password": "pass45678"
         })
         assert response.status_code == 400
 

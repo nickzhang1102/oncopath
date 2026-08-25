@@ -99,7 +99,7 @@
           v-model="resetPwdValue"
           type="password"
           label="新密码"
-          placeholder="请输入新密码（至少6位）"
+          placeholder="请输入新密码（至少8位，含字母和数字）"
         />
       </div>
     </van-dialog>

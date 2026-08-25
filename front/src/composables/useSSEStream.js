@@ -1,6 +1,18 @@
 import { ref } from 'vue'
 
 /**
+ * SSE 流超时错误（心跳超时/总超时）
+ * 用于区分"服务器无响应导致的流中断"（应重试或向调用方报错）
+ * 与"用户主动取消"（AbortError，静默退出）
+ */
+class SSETimeoutError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'SSETimeoutError'
+  }
+}
+
+/**
  * SSE 流处理 composable
  * 统一封装 ReadableStream 读取、JSON 解析、AbortController 管理
  *
@@ -30,14 +42,13 @@ export function useSSEStream(eventHandler, options = {}) {
   let lastChunkTime = 0
 
   /**
-   * 启动心跳监控定时器
+   * 启动心跳监控定时器（超时以 SSETimeoutError 中止流，走错误处理而非静默取消）
    */
-  function startHeartbeatMonitor(onError) {
+  function startHeartbeatMonitor() {
     stopHeartbeatMonitor()
     heartbeatTimer = setInterval(() => {
       if (heartbeatTimeout && Date.now() - lastChunkTime > heartbeatTimeout) {
-        onError(new Error('心跳超时：服务器无响应'))
-        abort()
+        abort(new SSETimeoutError(`心跳超时：${Math.round(heartbeatTimeout / 1000)} 秒内未收到服务器数据`))
       }
     }, heartbeatInterval)
   }
@@ -67,7 +78,7 @@ export function useSSEStream(eventHandler, options = {}) {
       while (true) {
         // 检查总超时
         if (totalDeadline && Date.now() > totalDeadline) {
-          throw new Error('操作超时')
+          throw new SSETimeoutError('操作超时')
         }
 
         const { done, value } = await reader.read()
@@ -121,20 +132,21 @@ export function useSSEStream(eventHandler, options = {}) {
     // 终止之前的流
     abort()
 
-    abortController = new AbortController()
-    isStreaming.value = true
-    lastHeartbeatTime.value = Date.now()
-    lastChunkTime = Date.now()
-    startHeartbeatMonitor((err) => {
-      console.error('心跳超时:', err.message)
-    })
-
     let retryCount = 0
     let hasReceivedData = false
 
     // 使用 do...while 确保首次请求总是执行
     // maxRetries 控制的是"重试次数"，首次请求不算重试
     do {
+      // 首次请求，或上一轮因超时中止被置空后，重建控制器
+      if (!abortController) {
+        abortController = new AbortController()
+        isStreaming.value = true
+      }
+      lastHeartbeatTime.value = Date.now()
+      lastChunkTime = Date.now()
+      startHeartbeatMonitor()
+
       try {
         const response = await fetch(url, {
           ...fetchOptions,
@@ -158,8 +170,11 @@ export function useSSEStream(eventHandler, options = {}) {
       } catch (error) {
         stopHeartbeatMonitor()
 
+        // 超时属于流异常，走下方重试/抛错路径；仅用户主动取消静默退出
+        const isTimeout = error instanceof SSETimeoutError || error?.name === 'SSETimeoutError'
+
         // 用户主动取消，不重试
-        if (error.name === 'AbortError') {
+        if (!isTimeout && error.name === 'AbortError') {
           break
         }
 
@@ -186,11 +201,12 @@ export function useSSEStream(eventHandler, options = {}) {
 
   /**
    * 终止当前流
+   * @param {Error} [reason] - 中止原因；传入 SSETimeoutError 时 fetch 以该错误 reject
    */
-  function abort() {
+  function abort(reason) {
     stopHeartbeatMonitor()
     if (abortController) {
-      abortController.abort()
+      abortController.abort(reason)
       abortController = null
     }
     isStreaming.value = false

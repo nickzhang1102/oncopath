@@ -15,10 +15,10 @@
           v-model="form.new_password"
           type="password"
           label="新密码"
-          placeholder="请输入新密码"
+          placeholder="请输入新密码（8位以上，含字母和数字）"
           :rules="[
             { required: true, message: '请输入新密码' },
-            { pattern: passwordPattern, message: '密码需至少8位，且包含字母、数字和特殊字符' }
+            { pattern: passwordPattern, message: '密码需至少8位，且包含字母和数字' }
           ]"
         />
         <van-field
@@ -78,8 +78,8 @@ const form = reactive({
   confirm_password: ''
 })
 
-// 密码复杂度正则：至少8位，包含字母、数字和特殊字符
-const passwordPattern = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;:'",.<>?/\\`~]).{8,128}$/
+// 密码复杂度正则：至少8位，包含字母和数字（与后端校验口径一致，特殊字符可选）
+const passwordPattern = /^(?=.*[a-zA-Z])(?=.*\d).{8,128}$/
 
 function validateConfirmPassword() {
   return form.confirm_password === form.new_password
@@ -96,7 +96,7 @@ async function handleSubmit() {
     return
   }
   if (!passwordPattern.test(form.new_password)) {
-    showToast('密码需至少8位，且包含字母、数字和特殊字符')
+    showToast('密码需至少8位，且包含字母和数字')
     return
   }
   if (form.new_password !== form.confirm_password) {

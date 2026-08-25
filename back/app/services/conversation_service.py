@@ -551,19 +551,19 @@ class ConversationService:
 
     @staticmethod
     def _generate_share_token() -> str:
-        """生成 8 字符的分享令牌（字母数字混合）"""
-        return secrets.token_urlsafe(6)[:8]
+        """生成 256bit 分享令牌（token_urlsafe(32)，43 字符）"""
+        return secrets.token_urlsafe(32)
 
-    async def _generate_unique_share_token(self, max_retries: int = 3) -> str:
-        """生成唯一分享令牌，碰撞时重试"""
-        for _ in range(max_retries):
+    async def _generate_unique_share_token(self) -> str:
+        """生成唯一分享令牌；256bit 熵下碰撞概率可忽略，查重仅作防御"""
+        for _ in range(3):
             token = self._generate_share_token()
             result = await self.db.execute(
                 select(Conversation).where(Conversation.share_token == token)
             )
             if not result.scalar_one_or_none():
                 return token
-        # 极端情况：加长token避免碰撞
-        return secrets.token_urlsafe(12)[:16]
+        # 理论不可达：连续碰撞时直接返回新 token
+        return self._generate_share_token()
 
     # ===== 启动清理 =====

@@ -30,7 +30,7 @@ class Conversation(Base):
     patient_id = Column(Integer, ForeignKey("patient.patient_id"), nullable=True, index=True, comment="oncopath 扩展：关联患者")
     is_archived = Column(Boolean, default=False, nullable=False, comment="是否归档")
     is_review_mode = Column(Boolean, default=False, nullable=False, comment="评审模式")
-    share_token = Column(String(20), unique=True, index=True, comment="分享令牌")
+    share_token = Column(String(64), unique=True, index=True, comment="分享令牌")
     share_password = Column(String(100), nullable=True, comment="分享密码(bcrypt哈希)")
     share_expire_at = Column(DateTime, nullable=True, comment="分享过期时间")
     category = Column(String(20), default="medical", index=True, comment="分类")

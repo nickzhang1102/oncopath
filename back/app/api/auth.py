@@ -136,7 +136,8 @@ async def get_current_admin_user(
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(user_data: UserCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """用户注册"""
     try:
         logger.info(f"开始注册用户: {user_data.username}")

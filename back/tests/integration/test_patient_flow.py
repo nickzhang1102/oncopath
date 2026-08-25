@@ -21,7 +21,8 @@ class TestPatientFlow:
         )
         assert create_response.status_code == 200
         patient_data = create_response.json()
-        assert patient_data["patient_name"] == "测试患者"
+        # PatientResponse 序列化前强制脱敏，不再返回明文姓名
+        assert patient_data["patient_name"] != "测试患者"
         patient_id = patient_data["patient_id"]
 
         # 2. 查询患者列表
@@ -41,7 +42,7 @@ class TestPatientFlow:
         )
         assert detail_response.status_code == 200
         detail_data = detail_response.json()
-        assert detail_data["patient_name"] == "测试患者"
+        assert detail_data["patient_name"] != "测试患者"
 
     @pytest.mark.asyncio
     async def test_patient_data_isolation(self, client: AsyncClient, auth_headers):
@@ -87,12 +88,25 @@ class TestPatientFlow:
         )
         assert update_response.status_code == 200
         updated_data = update_response.json()
-        assert updated_data["patient_name"] == "更新后患者名"
+        # 更新成功，但响应中姓名为脱敏版本
+        assert updated_data["patient_name"] != "更新后患者名"
 
     @pytest.mark.asyncio
     async def test_delete_patient(self, client: AsyncClient, auth_headers):
-        """测试删除患者"""
-        # 创建患者
+        """测试删除患者（主患者不可删，需先创建占位主患者）"""
+        # 创建第一个患者——同账号首个患者自动成为主患者，受删除保护
+        primary_response = await client.post(
+            "/api/v1/patients",
+            headers=auth_headers,
+            json={
+                "patient_name": "主患者",
+                "gender": "male"
+            }
+        )
+        assert primary_response.status_code == 200
+        primary_id = primary_response.json()["patient_id"]
+
+        # 创建待删除患者（非主患者）
         create_response = await client.post(
             "/api/v1/patients",
             headers=auth_headers,
@@ -101,9 +115,18 @@ class TestPatientFlow:
                 "gender": "male"
             }
         )
+        assert create_response.status_code == 200
         patient_id = create_response.json()["patient_id"]
+        assert create_response.json()["is_primary"] is False
 
-        # 删除患者
+        # 主患者删除应被拒绝
+        primary_delete_response = await client.delete(
+            f"/api/v1/patients/{primary_id}",
+            headers=auth_headers
+        )
+        assert primary_delete_response.status_code == 400
+
+        # 删除非主患者
         delete_response = await client.delete(
             f"/api/v1/patients/{patient_id}",
             headers=auth_headers

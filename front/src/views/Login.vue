@@ -23,7 +23,7 @@
           type="password"
           name="password"
           label="密码"
-          placeholder="请输入密码"
+          :placeholder="mode === 'register' ? '请输入密码（8位以上，含字母和数字）' : '请输入密码'"
           :rules="[{ required: true, message: '请输入密码' }]"
         />
         <van-field
@@ -85,7 +85,7 @@
           type="password"
           name="newPassword"
           label="新密码"
-          placeholder="请输入新密码（6位以上）"
+          placeholder="请输入新密码（8位以上，含字母和数字）"
           :rules="[{ required: true, message: '请输入新密码' }]"
         />
         <van-field

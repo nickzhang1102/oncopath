@@ -38,7 +38,7 @@ class TestAuthFlow:
 
         # 3. 使用token访问受保护资源
         profile_response = await client.get(
-            "/api/v1/user/profile",
+            "/api/v1/accounts/me",
             headers={"Authorization": f"Bearer {token}"}
         )
         assert profile_response.status_code == 200
@@ -73,8 +73,8 @@ class TestAuthFlow:
     async def test_register_duplicate_username(self, client: AsyncClient, test_user):
         """测试注册重复用户名"""
         response = await client.post("/api/v1/auth/register", json={
-            "username": "testuser",
-            "password": "anotherpass",
+            "username": test_user.username,
+            "password": "anotherpass123",
             "account_name": "另一个用户"
         })
         assert response.status_code == 400
@@ -84,7 +84,7 @@ class TestAuthFlow:
         """测试Token刷新"""
         # 登录获取refresh token
         login_response = await client.post("/api/v1/auth/login", json={
-            "username": "testuser",
+            "username": test_user.username,
             "password": "testpass123"
         })
         refresh_token = login_response.json()["refresh_token"]
