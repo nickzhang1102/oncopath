@@ -17,7 +17,9 @@ from app.models.agentteams_launch_intent import (
     AgentTeamsLaunchIntentAudit,
 )
 from app.models.conversation import Conversation, ConsultationExternalSession
+from app.models.notification import Notification
 from app.models.patient import Patient
+from app.models.user import LoginAccount
 from app.schemas.agentteams import (
     AgentTeamsLaunchIntentResponse,
     AgentTeamsStartRequest,
@@ -712,6 +714,7 @@ class AgentTeamsLaunchIntentService:
             intent.last_error_message = "AgentTeams 启动结果多次无法确认，请人工核对"
             intent.next_attempt_at = None
             await self._mark_conversation_rejected(intent)
+            await self._notify_admins_manual_review(intent)
         else:
             intent.status = "confirming"
             intent.next_attempt_at = get_utc_now() + timedelta(
@@ -719,6 +722,41 @@ class AgentTeamsLaunchIntentService:
             )
         intent.lease_owner = None
         intent.lease_expires_at = None
+
+    async def _notify_admins_manual_review(self, intent: AgentTeamsLaunchIntent) -> None:
+        """进入人工复核时为全体 active 管理员写入通知。
+
+        仅 db.add 挂入当前事务、随外层 commit 原子落库（不独立 commit/publish）；
+        任何失败只记日志，绝不阻断启动状态机。该分支对同一 intent 仅触发一次
+        （worker 路径不再认领 manual_review 状态），无需额外去重。
+        """
+        try:
+            result = await self.db.execute(
+                select(LoginAccount.account_id).where(
+                    LoginAccount.account_type == "admin",
+                    LoginAccount.status == "active",
+                )
+            )
+            for account_id in result.scalars().all():
+                self.db.add(Notification(
+                    account_id=account_id,
+                    type="consultation",
+                    title="会诊启动需人工复核",
+                    content=(
+                        f"会诊对话 #{intent.conversation_id} 启动结果多次自动确认失败，"
+                        "已转入人工复核，请前往管理后台「会诊启动复核」处置。"
+                    ),
+                    extra_data={
+                        "intent_id": intent.id,
+                        "conversation_id": intent.conversation_id,
+                        "request_id": intent.request_id,
+                        "error_code": intent.last_error_code,
+                    },
+                ))
+        except Exception as exc:
+            logger.warning(
+                "写入人工复核管理员通知失败 (intent_id=%s): %s", intent.id, exc
+            )
 
     @staticmethod
     def _purge_terminal_payload(intent: AgentTeamsLaunchIntent) -> None:

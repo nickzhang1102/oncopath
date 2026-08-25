@@ -248,8 +248,8 @@ const launchPending = computed(() => ['prepared', 'dispatching', 'confirming', '
 ))
 const launchNoticeText = computed(() => (
   activeLaunchIntent.value?.launch_status === 'manual_review'
-    ? '虚拟会诊启动需要人工复核，请勿重复发起'
-    : '正在确认虚拟会诊启动结果，请勿重复发起'
+    ? '会诊启动结果待人工确认，管理员处理完成后即可正常查看，请勿重复发起'
+    : '正在自动确认会诊启动结果（通常几分钟内完成），请稍后刷新查看，请勿重复发起'
 ))
 
 // 方法
@@ -472,9 +472,9 @@ async function confirmStartConsultation() {
         activeLaunchIntent.value = null
         showToast('虚拟会诊未创建，请检查 AgentTeams 配置后重新发起')
       } else if (result?.launch_status === 'manual_review') {
-        showToast('虚拟会诊启动需要人工复核，请勿重复发起')
+        showToast('会诊启动结果待人工确认，管理员处理完成后即可正常查看，请勿重复发起')
       } else {
-        showToast('会诊启动结果仍在确认中，可稍后返回本页查看')
+        showToast('正在自动确认会诊启动结果（通常几分钟内完成），请稍后返回本页查看')
       }
       return
     }

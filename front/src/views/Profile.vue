@@ -64,10 +64,14 @@
             <van-cell :title="`外观模式 · ${themeLabel}`" icon="brush-o" is-link @click="showThemePicker = true" />
             <van-cell title="消息通知" icon="bell" is-link to="/home/profile/notifications" />
             <van-cell title="隐私设置" icon="shield-o" is-link to="/home/profile/privacy" />
-            <van-cell title="AI 模型配置" icon="setting-o" is-link to="/home/profile/ai-config" />
             <van-cell title="帮助中心" icon="question-o" is-link to="/home/profile/help" />
             <van-cell title="关于我们" icon="info-o" is-link to="/home/profile/about" />
             <van-cell title="支持作者" icon="gift-o" is-link @click="showSponsor = true" />
+          </van-cell-group>
+
+          <!-- 系统管理入口（仅管理员可见，跳转独立管理后台） -->
+          <van-cell-group v-if="userStore.userInfo?.account_type === 'admin'" inset class="function-list">
+            <van-cell title="系统管理" icon="manager-o" is-link to="/admin/dashboard" />
           </van-cell-group>
 
           <!-- 支持作者弹窗 -->

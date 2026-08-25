@@ -1,7 +1,5 @@
 <template>
   <div class="ai-config-view">
-    <BackButton title="AI 模型配置" />
-
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <van-loading size="32px" color="var(--primary-color)" vertical>加载中...</van-loading>
@@ -98,7 +96,6 @@
 import { ref, reactive, onMounted } from 'vue'
 import { showToast, showSuccessToast } from 'vant'
 import { llmConfigApi } from '@/api/llmConfig'
-import BackButton from '@/components/index-detail/BackButton.vue'
 
 const loading = ref(true)
 const error = ref(null)
@@ -215,9 +212,7 @@ onMounted(() => {
 
 <style scoped>
 .ai-config-view {
-  min-height: 100vh;
   background: var(--bg-primary);
-  padding-bottom: var(--safe-bottom);
 }
 
 .loading-state,

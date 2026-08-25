@@ -139,15 +139,6 @@ const routes = [
               requiresAuth: true,
               title: '数据导出'
             }
-          },
-          {
-            path: 'ai-config',
-            name: 'AIConfig',
-            component: () => import('@/views/profile/AIConfigView.vue'),
-            meta: {
-              requiresAuth: true,
-              title: 'AI 模型配置'
-            }
           }
         ]
       },
@@ -395,6 +386,16 @@ const routes = [
           requiresAuth: true,
           requiresAdmin: true,
           title: '分类管理'
+        }
+      },
+      {
+        path: 'llm-config',
+        name: 'AdminAIConfig',
+        component: () => import('@/views/admin/AIConfigView.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresAdmin: true,
+          title: 'AI 模型配置'
         }
       },
       {

@@ -1,17 +1,13 @@
 """LLM 配置 API 测试：管理权限收紧与组级批量更新
 
-权限模型：仅 admin 账号或最早注册的账号（最小 account_id）可管理全局 LLM 配置，
+权限模型：仅 admin 账号可管理全局 LLM 配置，
 防止任意登录账号改写出站 API 地址窃取病历上下文。
 """
-import uuid
-
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.api.auth import get_current_user
-from app.api.llm_config import get_llm_config_manager_user
 from app.main import app
 from app.models.admin import LLMConfig
 from app.models.user import LoginAccount
@@ -54,7 +50,8 @@ def restore_llm_settings():
 
 
 async def _override_current_user(account_id, account_type="user"):
-    current = LoginAccount(account_id=account_id, account_type=account_type)
+    # status 须显式置 active：get_current_admin_user 会校验账号状态
+    current = LoginAccount(account_id=account_id, account_type=account_type, status="active")
 
     async def _override():
         return current
@@ -65,44 +62,6 @@ async def _override_current_user(account_id, account_type="user"):
 
 def teardown_function():
     app.dependency_overrides.pop(get_current_user, None)
-
-
-# ===== 权限依赖 =====
-
-class TestLLMConfigManagerPermission:
-    async def test_admin_allowed(self, db_session, test_user):
-        test_user.account_type = "admin"
-        await db_session.flush()
-        user = await _override_current_user(test_user.account_id, "admin")
-
-        result = await get_llm_config_manager_user(current_user=user, db=db_session)
-
-        assert result.account_id == test_user.account_id
-
-    async def test_first_account_allowed(self, db_session):
-        # 显式插入比现存最小 id 更小的主键，构造"最早注册账号"
-        first = LoginAccount(
-            account_id=-99999,
-            username=f"first_{uuid.uuid4().hex[:8]}",
-            password="x",
-            account_name="首个账号",
-            status="active",
-        )
-        db_session.add(first)
-        await db_session.flush()
-
-        user = await _override_current_user(-99999)
-        result = await get_llm_config_manager_user(current_user=user, db=db_session)
-        assert result.account_id == -99999
-
-    async def test_regular_account_rejected(self, db_session, test_user):
-        user = await _override_current_user(test_user.account_id)
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_llm_config_manager_user(current_user=user, db=db_session)
-
-        assert exc_info.value.status_code == 403
-        assert "首个账号" in exc_info.value.detail
 
 
 # ===== 组级批量更新 =====
@@ -203,8 +162,9 @@ class TestUpdateGroup:
         )
         assert response.status_code == 400
 
-    async def test_non_manager_forbidden(self, client, test_user, db_session):
-        await _override_current_user(test_user.account_id)  # 非 admin、非首个账号
+    async def test_non_admin_forbidden(self, client, test_user, db_session):
+        """非 admin 账号访问 LLM 配置一律 403"""
+        await _override_current_user(test_user.account_id)
         response = await client.get("/api/v1/llm-configs")
         assert response.status_code == 403
 

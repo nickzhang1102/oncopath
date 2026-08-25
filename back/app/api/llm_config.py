@@ -1,16 +1,16 @@
 """LLM 配置管理 API（主系统入口）
 
-仅限管理员或首个注册账号查看/修改/测试全局 LLM 配置（解读/OCR 两组；
+仅限管理员查看/修改/测试全局 LLM 配置（解读/OCR 两组；
 本地会诊已由 AgentTeams 承接，不再依赖本配置）。
 修改保存后自动应用到运行时，无需手动重载；应用启动时也会自动加载活跃配置。
 """
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_admin_user
 from app.core.database import get_db
 from app.models.admin import LLMConfig
 from app.models.user import LoginAccount
@@ -23,29 +23,6 @@ from app.services.encryption_service import encryption_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-async def get_llm_config_manager_user(
-    current_user: LoginAccount = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> LoginAccount:
-    """LLM 配置管理鉴权：仅管理员或首个注册账号
-
-    全局 LLM 配置决定会诊/解读/OCR 数据的出站目的地（含 API 地址与密钥），
-    暴露给任意登录账号会被恶意账号改为自建服务端以窃取病历上下文，
-    故收紧至 admin 账号或最早注册的账号（自托管单管理员定位）。
-    """
-    if current_user.account_type == "admin":
-        return current_user
-    first_id = (
-        await db.execute(select(func.min(LoginAccount.account_id)))
-    ).scalar()
-    if first_id is not None and current_user.account_id == first_id:
-        return current_user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="仅管理员或首个账号可管理 AI 模型配置",
-    )
 
 
 def _mask_secret_value(value: str) -> str:
@@ -66,7 +43,7 @@ def _decrypt_or_plaintext(ciphertext: str) -> str:
 
 @router.get("/llm-configs")
 async def list_llm_configs(
-    current_user: LoginAccount = Depends(get_llm_config_manager_user),
+    current_user: LoginAccount = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取所有 LLM 配置
@@ -138,7 +115,7 @@ async def list_llm_configs(
 
 @router.get("/llm-configs/status", response_model=LLMConfigStatusResponse)
 async def get_llm_config_status(
-    current_user: LoginAccount = Depends(get_llm_config_manager_user),
+    current_user: LoginAccount = Depends(get_current_admin_user),
 ):
     """获取 LLM 配置状态（首启弹窗判定用，仅配置管理者可见）"""
     from app.services.llm_config_service import LLMConfigService
@@ -150,7 +127,7 @@ async def get_llm_config_status(
 async def update_llm_config_group(
     group: str,
     data: LLMConfigGroupUpdate,
-    current_user: LoginAccount = Depends(get_llm_config_manager_user),
+    current_user: LoginAccount = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """整组更新 LLM 配置（单事务），保存后一次性应用该组到运行时
@@ -248,7 +225,7 @@ async def update_llm_config_group(
 @router.post("/llm-configs/test", response_model=LLMConfigTestResponse)
 async def test_llm_config(
     data: LLMConfigTestRequest,
-    current_user: LoginAccount = Depends(get_llm_config_manager_user),
+    current_user: LoginAccount = Depends(get_current_admin_user),
 ):
     """测试指定配置组的 LLM 连通性
 

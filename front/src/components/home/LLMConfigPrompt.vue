@@ -71,7 +71,7 @@ async function check() {
 
 function goConfig() {
   visible.value = false
-  router.push('/home/profile/ai-config')
+  router.push('/admin/llm-config')
 }
 
 function dismiss() {
