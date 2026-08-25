@@ -174,9 +174,7 @@ PaddleOCR uses CPU by default. NVIDIA GPU environments additionally need `docker
 GPU builds and startup must pass both Compose files:
 
 ```bash
-docker compose --env-file .env \\
-  -f docker-compose.yml -f docker-compose.gpu.yml \\
-  up -d --build
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
 The GPU file is an override and must not be run by itself. PostgreSQL does not use the GPU and keeps its internal `5432` port.

@@ -7,7 +7,7 @@
     <div v-if="box" class="tour-highlight" :style="highlightStyle" />
 
     <!-- 步骤提示卡 -->
-    <div v-if="box" class="tour-popover" :style="popoverStyle">
+    <div v-if="box" ref="popoverRef" class="tour-popover" :style="popoverStyle">
       <div class="tour-step-tag">{{ current + 1 }} / {{ steps.length }}</div>
       <h3 class="tour-title">{{ step.title }}</h3>
       <p class="tour-desc">{{ step.desc }}</p>
@@ -45,7 +45,7 @@ const HIGHLIGHT_PAD = 6
 
 const current = ref(0)
 const box = ref(null)
-const below = ref(true)
+const popoverRef = ref(null)
 
 const step = computed(() => props.steps[current.value])
 
@@ -58,13 +58,27 @@ const highlightStyle = computed(() => ({
 
 const popoverStyle = computed(() => {
   const vw = window.innerWidth
+  const vh = window.innerHeight
   const width = Math.min(320, vw - 32)
+  // 实测提示卡高度（渲染前回退估算值），保证夹紧计算可靠
+  const height = popoverRef.value?.offsetHeight || 160
+  // 水平方向夹紧到视口内
   const left = Math.max(16, Math.min(box.value.left, vw - width - 16))
+  // 垂直方向：优先放锚点下方，空间不足放上方；上下都放不下时贴近视口底部，
+  // 确保全屏高锚点（如 100vh 侧边栏）下提示卡始终可见可操作
+  let top
+  if (box.value.top + box.value.height + POPover_GAP + height < vh) {
+    top = box.value.top + box.value.height + POPover_GAP
+  } else if (box.value.top - POPover_GAP - height > 0) {
+    top = box.value.top - POPover_GAP - height
+  } else {
+    top = vh - height - 16
+  }
   return {
     width: `${width}px`,
     left: `${left}px`,
-    top: below.value ? `${box.value.top + box.value.height + POPover_GAP}px` : `${box.value.top - POPover_GAP}px`,
-    transform: below.value ? 'none' : 'translateY(-100%)',
+    top: `${Math.max(16, top)}px`,
+    transform: 'none',
   }
 })
 
@@ -81,13 +95,15 @@ function locate() {
   }
   el.scrollIntoView({ block: 'center', behavior: 'auto' })
   const rect = el.getBoundingClientRect()
+  // 全屏高锚点（如 100vh 侧边栏）收缩为可视区域，避免高亮框与提示卡超出视口
+  const top = Math.max(rect.top, 0)
+  const bottom = Math.min(rect.bottom, window.innerHeight)
   box.value = {
-    top: rect.top - HIGHLIGHT_PAD,
+    top: top - HIGHLIGHT_PAD,
     left: rect.left - HIGHLIGHT_PAD,
     width: rect.width + HIGHLIGHT_PAD * 2,
-    height: rect.height + HIGHLIGHT_PAD * 2,
+    height: Math.max(bottom - top, 0) + HIGHLIGHT_PAD * 2,
   }
-  below.value = rect.bottom + 200 < window.innerHeight || rect.top < 200
 }
 
 function next() {

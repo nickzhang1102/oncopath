@@ -18,10 +18,10 @@
       <!-- 说明 -->
       <div class="config-tip">
         <van-icon name="info-o" />
-        <span>为会诊、解读、OCR 配置 OpenAI 兼容模型，修改保存后立即生效；留空的配置项回退到会诊组或 .env 默认值。</span>
+        <span>为解读、OCR 配置 OpenAI 兼容模型，修改保存后立即生效；留空的配置项回退到 .env 默认值。AI 会诊由 AgentTeams 平台承接，无需在此配置。</span>
       </div>
 
-      <!-- 三个 Tab -->
+      <!-- 两个 Tab -->
       <van-tabs v-model:active="activeTab" animated>
         <van-tab v-for="group in groups" :key="group.key" :title="group.label">
           <div class="group-card">
@@ -111,13 +111,28 @@ const editForm = reactive({})
 const testResults = reactive({})
 
 const groups = [
-  { key: 'consultation', label: '会诊' },
   { key: 'interpretation', label: '解读' },
   { key: 'ocr', label: 'OCR' },
 ]
 
 function groupConfigs(groupKey) {
   return configs.value.filter(c => c.config_group === groupKey)
+}
+
+/**
+ * 收集编辑表单中的待提交值：留空/敏感掩码项跳过（语义为"不修改"，
+ * 测试时由后端回退到已保存生效值），保存时由后端单事务整组落库
+ */
+function buildUpdates(groupKey) {
+  const items = groupConfigs(groupKey)
+  const updates = []
+  for (const cfg of items) {
+    const newVal = (editForm[cfg.config_key] || '').trim()
+    if (!newVal) continue
+    if (cfg.is_secret && newVal.startsWith('****')) continue
+    updates.push({ config_key: cfg.config_key, config_value: newVal })
+  }
+  return updates
 }
 
 async function loadConfigs() {
@@ -143,15 +158,8 @@ function startEdit(groupKey) {
 }
 
 async function saveGroup(groupKey) {
-  const items = groupConfigs(groupKey)
   // 留空（含未修改的敏感掩码）的项不提交，由后端单事务整组落库
-  const updates = []
-  for (const cfg of items) {
-    const newVal = (editForm[cfg.config_key] || '').trim()
-    if (!newVal) continue
-    if (cfg.is_secret && newVal.startsWith('****')) continue
-    updates.push({ config_key: cfg.config_key, config_value: newVal })
-  }
+  const updates = buildUpdates(groupKey)
   if (!updates.length) {
     editingGroup.value = ''
     return
@@ -178,13 +186,26 @@ async function testGroup(groupKey) {
   testingGroup.value = groupKey
   testResults[groupKey] = null
   try {
-    const res = await llmConfigApi.testLLMConfig(groupKey)
+    // 编辑中携带表单即时值（掩码/留空项由后端回退到已保存生效值），未保存也能测试
+    const overrides = editingGroup.value === groupKey ? buildTestOverrides(groupKey) : undefined
+    const res = await llmConfigApi.testLLMConfig(groupKey, overrides)
     testResults[groupKey] = res
   } catch (e) {
     testResults[groupKey] = { success: false, message: e.response?.data?.detail || '测试失败' }
   } finally {
     testingGroup.value = ''
   }
+}
+
+/** 将表单当前值映射为测试接口的覆盖参数（api_key/api_base/model_name） */
+function buildTestOverrides(groupKey) {
+  const overrides = {}
+  for (const { config_key, config_value } of buildUpdates(groupKey)) {
+    for (const suffix of ['api_key', 'api_base', 'model_name']) {
+      if (config_key.endsWith(`_${suffix}`)) overrides[suffix] = config_value
+    }
+  }
+  return overrides
 }
 
 onMounted(() => {

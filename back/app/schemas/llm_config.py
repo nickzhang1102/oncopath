@@ -32,8 +32,15 @@ class LLMConfigGroupUpdate(BaseModel):
 
 
 class LLMConfigTestRequest(BaseModel):
-    """LLM 配置测试请求"""
-    group: str = Field(..., pattern=r'^(consultation|interpretation|ocr)$', description="配置组")
+    """LLM 配置测试请求
+
+    api_key/api_base/model_name 为可选的表单即时值：提供时优先用于本次连通性
+    测试（无需先保存），缺省或掩码值回退到该组当前生效配置。
+    """
+    group: str = Field(..., pattern=r'^(interpretation|ocr)$', description="配置组")
+    api_base: Optional[str] = None
+    api_key: Optional[str] = None
+    model_name: Optional[str] = None
 
 
 class LLMConfigTestResponse(BaseModel):

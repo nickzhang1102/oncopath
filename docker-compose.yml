@@ -1,5 +1,5 @@
 services:
-  # PostgreSQL with pgvector
+  # PostgreSQL
   postgres:
     image: postgres:17-alpine
     environment:

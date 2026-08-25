@@ -48,9 +48,7 @@ GPU 部署另需 NVIDIA GPU（建议 8 GB 或以上显存）、支持 CUDA 12.6 
 GPU 首次部署命令：
 
 ```bash
-docker compose --env-file .env -p oncopath \\
-  -f docker-compose.yml -f docker-compose.gpu.yml \\
-  up -d --build
+docker compose --env-file .env -p oncopath -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
 GPU 覆盖文件只改变 backend 的 PaddlePaddle wheel、`OCR_PADDLE_DEVICE=gpu:0` 和 NVIDIA 设备权限；PostgreSQL、Redis 和前端仍来自主 Compose。
@@ -517,6 +515,26 @@ docker compose -p oncopath exec postgres psql -U postgres -d medical_report -c "
 # 检查密码是否匹配
 docker compose -p oncopath exec backend env | grep DB_PASSWORD
 ```
+
+如果看到 `ports are not available` 或 `bind ... 5432`，这是宿主机端口被其他 PostgreSQL、WSL 或安全软件占用/保留，不是容器内部数据库故障。当前 Compose 默认使用 `127.0.0.1:15432 -> postgres:5432`；可在 `.env` 中改用未占用端口，例如：
+
+```dotenv
+DB_HOST_PORT=15433
+```
+
+修改后重建 PostgreSQL 容器：
+
+```bash
+docker compose -p oncopath up -d --force-recreate postgres
+```
+
+Windows 可先检查端口：
+
+```powershell
+Get-NetTCPConnection -LocalPort 5432,15432 -State Listen
+```
+
+backend、worker 始终通过 Docker 网络访问 `postgres:5432`，不要把容器内的 `DB_PORT=5432` 改成宿主机调试端口。
 
 ### 前端白页 / API 404
 

@@ -1,6 +1,7 @@
 """LLM 配置管理 API（主系统入口）
 
-仅限管理员或首个注册账号查看/修改/测试全局 LLM 配置（会诊/解读/OCR 三组）。
+仅限管理员或首个注册账号查看/修改/测试全局 LLM 配置（解读/OCR 两组；
+本地会诊已由 AgentTeams 承接，不再依赖本配置）。
 修改保存后自动应用到运行时，无需手动重载；应用启动时也会自动加载活跃配置。
 """
 import logging
@@ -249,8 +250,19 @@ async def test_llm_config(
     data: LLMConfigTestRequest,
     current_user: LoginAccount = Depends(get_llm_config_manager_user),
 ):
-    """测试指定配置组的 LLM 连通性"""
+    """测试指定配置组的 LLM 连通性
+
+    请求中携带的 api_key/api_base/model_name 为表单即时值，优先于已保存配置，
+    支持未保存直接测试；缺省字段回退到当前生效配置。
+    """
     from app.services.llm_config_service import LLMConfigService
 
-    result = await LLMConfigService.test_group(data.group)
+    result = await LLMConfigService.test_group(
+        data.group,
+        overrides={
+            "api_key": data.api_key or "",
+            "api_base": data.api_base or "",
+            "model_name": data.model_name or "",
+        },
+    )
     return LLMConfigTestResponse(**result)

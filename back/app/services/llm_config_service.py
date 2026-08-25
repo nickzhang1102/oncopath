@@ -15,12 +15,9 @@ from app.services.encryption_service import encryption_service
 logger = logging.getLogger(__name__)
 
 # config_key → Settings 属性名映射
+# 注：consultation 组已随本地会诊下线移除（会诊由 AgentTeams 承接）；
+# LLM_* 环境变量保留为解读组的 .env 兜底（见 Settings.interpretation_* 回退链）。
 _CONFIG_KEY_TO_ATTR: dict[str, str] = {
-    # 会诊组
-    "consultation_api_key": "LLM_API_KEY",
-    "consultation_api_base": "LLM_API_BASE",
-    "consultation_model_name": "LLM_MODEL_NAME",
-    "consultation_timeout": "LLM_TIMEOUT",
     # 解读组
     "interpretation_api_key": "INTERPRETATION_LLM_API_KEY",
     "interpretation_api_base": "INTERPRETATION_LLM_API_BASE",
@@ -37,13 +34,9 @@ _CONFIG_KEY_TO_ATTR: dict[str, str] = {
 # 配置项元数据定义（表为空时用于构造展示列表）
 LLM_CONFIG_DEFINITIONS = [
     # (config_key, config_group, display_name, description, is_secret)
-    ("consultation_api_key", "consultation", "API Key", "会诊用 LLM API Key", True),
-    ("consultation_api_base", "consultation", "API 地址", "会诊用 LLM API 地址", False),
-    ("consultation_model_name", "consultation", "模型名称", "会诊用 LLM 模型名称", False),
-    ("consultation_timeout", "consultation", "超时时间(秒)", "会诊用 LLM 请求超时", False),
-    ("interpretation_api_key", "interpretation", "API Key", "解读用 LLM API Key", True),
-    ("interpretation_api_base", "interpretation", "API 地址", "解读用 LLM API 地址", False),
-    ("interpretation_model_name", "interpretation", "模型名称", "解读用 LLM 模型名称", False),
+    ("interpretation_api_key", "interpretation", "API Key", "解读/摘要用 LLM API Key", True),
+    ("interpretation_api_base", "interpretation", "API 地址", "解读/摘要用 LLM API 地址", False),
+    ("interpretation_model_name", "interpretation", "模型名称", "解读/摘要用 LLM 模型名称", False),
     ("interpretation_timeout", "interpretation", "超时时间(秒)", "解读用 LLM 请求超时", False),
     ("ocr_api_key", "ocr", "API Key", "OCR 用 LLM API Key", True),
     ("ocr_api_base", "ocr", "API 地址", "OCR 用 LLM API 地址", False),
@@ -62,8 +55,8 @@ _INTERPRETATION_PROPERTY = {
 
 # config_group → 需要销毁的单例模块
 _GROUP_SINGLETONS: dict[str, list[str]] = {
-    "consultation": ["app.services.llm_service"],
-    "interpretation": [],  # InterpretationService 非单例，每次 new 时从 settings 读
+    # 解读组同时驱动知识库摘要/患者概要的 LLMService 单例，变更需同步重建
+    "interpretation": ["app.services.llm_service"],
     "ocr": ["app.services.ocr.openai_llm_service"],
 }
 
@@ -165,23 +158,38 @@ class LLMConfigService:
 
     @staticmethod
     def is_configured() -> bool:
-        """会诊组 LLM 是否已配置（API Key 非空），供首启弹窗判定"""
-        return bool(settings.LLM_API_KEY)
+        """解读与 OCR 均已配置才视为完成，供首启弹窗判定
+
+        会诊由 AgentTeams 承接，不依赖本配置；
+        解读组经 Settings.interpretation_api_key 回退到 .env LLM_*。
+        首启引导以"解读与 OCR 使用相同模型"一键填齐两组，AND 判定不增加负担。
+        """
+        return bool(settings.interpretation_api_key and settings.OCR_LLM_API_KEY)
+
+    # 测试连通性允许被表单即时值覆盖的字段 → 组内 config_key 后缀
+    _TEST_OVERRIDE_SUFFIXES = ("api_key", "api_base", "model_name")
 
     @staticmethod
-    async def test_group(group: str) -> dict:
+    async def test_group(
+        group: str,
+        overrides: dict[str, str] | None = None,
+    ) -> dict:
         """测试指定配置组的 LLM 连通性
 
         临时构造客户端发一条极短请求，验证 api_key/api_base/model 可用。
+        overrides 为前端表单未保存的即时值（config_value 按后缀索引），
+        缺省字段回退到该组当前生效配置；掩码/空串视为未提供。
         返回 {"success": bool, "message": str, "latency_ms": int | None}
         """
         import time
         import httpx
 
-        # 从 Settings 读取该组当前生效的配置
         group_attrs = {
-            "consultation": ("LLM_API_KEY", "LLM_API_BASE", "LLM_MODEL_NAME"),
-            "interpretation": ("INTERPRETATION_LLM_API_KEY", "INTERPRETATION_LLM_API_BASE", "INTERPRETATION_LLM_MODEL_NAME"),
+            "interpretation": (
+                "INTERPRETATION_LLM_API_KEY",
+                "INTERPRETATION_LLM_API_BASE",
+                "INTERPRETATION_LLM_MODEL_NAME",
+            ),
             "ocr": ("OCR_LLM_API_KEY", "OCR_LLM_API_BASE", "OCR_LLM_MODEL_NAME"),
         }
         if group not in group_attrs:
@@ -198,6 +206,18 @@ class LLMConfigService:
             api_key = getattr(settings, key_attr, "")
             api_base = getattr(settings, base_attr, "")
             model = getattr(settings, model_attr, "")
+
+        # 表单即时值覆盖（空串/掩码不生效）
+        supplied = {
+            suffix: (overrides or {}).get(suffix, "").strip()
+            for suffix in LLMConfigService._TEST_OVERRIDE_SUFFIXES
+        }
+        if supplied["api_key"] and not supplied["api_key"].startswith("****"):
+            api_key = supplied["api_key"]
+        if supplied["api_base"]:
+            api_base = supplied["api_base"]
+        if supplied["model_name"]:
+            model = supplied["model_name"]
 
         if not api_key:
             return {"success": False, "message": "API Key 未配置", "latency_ms": None}

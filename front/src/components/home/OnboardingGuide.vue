@@ -11,7 +11,7 @@
       <!-- 步骤指示器 -->
       <div class="step-indicator">
         <div
-          v-for="i in 3"
+          v-for="i in 4"
           :key="i"
           class="step-dot"
           :class="{ active: i === step, done: i < step }"
@@ -73,8 +73,97 @@
         </div>
       </template>
 
-      <!-- 步骤2: 上传报告 -->
+      <!-- 步骤2: 配置 AI 模型（已配置时自动跳过） -->
       <template v-if="step === 2">
+        <div class="step-content">
+          <div class="step-icon">
+            <van-icon name="magic-stick-o" size="48" color="var(--primary-color)" />
+          </div>
+          <h2 class="step-title">配置 AI 模型</h2>
+          <p class="step-desc">
+            检验解读与报告识别依赖 AI 模型服务；AI 会诊由 AgentTeams 平台承接，无需在此配置。
+            填入 OpenAI 兼容的 API 信息即可开始使用。
+          </p>
+
+          <van-form @submit="handleSaveLLMConfig" class="step-form">
+            <van-cell-group inset>
+              <van-field name="same-model" label="相同模型">
+                <template #input>
+                  <van-switch v-model="llmSameModel" size="20px" />
+                  <span class="same-model-label">{{ llmSameModel ? '解读与 OCR 共用' : '分别配置' }}</span>
+                </template>
+              </van-field>
+
+              <!-- 共用一组配置 -->
+              <template v-if="llmSameModel">
+                <van-field
+                  v-model="sharedLlm.api_base"
+                  label="API 地址"
+                  placeholder="如 https://api.example.com/v1"
+                  clearable
+                />
+                <van-field
+                  v-model="sharedLlm.model_name"
+                  label="模型名称"
+                  placeholder="如 gpt-4o / glm-5"
+                  clearable
+                />
+                <van-field
+                  v-model="sharedLlm.api_key"
+                  label="API Key"
+                  type="password"
+                  placeholder="留空则沿用已保存密钥"
+                  clearable
+                />
+              </template>
+
+              <!-- 解读 / OCR 分别配置 -->
+              <template v-else>
+                <div
+                  v-for="g in [
+                    { group: 'interpretation', label: '解读', fields: interpLlm },
+                    { group: 'ocr', label: 'OCR', fields: ocrLlm },
+                  ]"
+                  :key="g.group"
+                >
+                  <div class="group-divider">{{ g.label }}</div>
+                  <van-field
+                    v-model="g.fields.api_base"
+                    label="API 地址"
+                    placeholder="如 https://api.example.com/v1"
+                    clearable
+                  />
+                  <van-field
+                    v-model="g.fields.model_name"
+                    label="模型名称"
+                    placeholder="如 gpt-4o / glm-5"
+                    clearable
+                  />
+                  <van-field
+                    v-model="g.fields.api_key"
+                    label="API Key"
+                    type="password"
+                    placeholder="留空则沿用已保存密钥"
+                    clearable
+                  />
+                </div>
+              </template>
+            </van-cell-group>
+
+            <div class="step-actions">
+              <van-button round block type="primary" native-type="submit" :loading="savingLlm">
+                保存并继续
+              </van-button>
+              <van-button round block plain style="margin-top: 8px" @click="nextStep">
+                稍后再说
+              </van-button>
+            </div>
+          </van-form>
+        </div>
+      </template>
+
+      <!-- 步骤3: 上传报告 -->
+      <template v-if="step === 3">
         <div class="step-content">
           <div class="step-icon">
             <van-icon name="photo-o" size="48" color="var(--primary-color)" />
@@ -100,8 +189,8 @@
         </div>
       </template>
 
-      <!-- 步骤3: 锚点式功能导览入口 -->
-      <template v-if="step === 3">
+      <!-- 步骤4: 锚点式功能导览入口 -->
+      <template v-if="step === 4">
         <div class="step-content">
           <div class="step-icon">
             <van-icon name="guide-o" size="48" color="var(--primary-color)" />
@@ -140,10 +229,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, reactive, computed, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showSuccessToast } from 'vant'
 import { usePatientStore } from '@/stores/patient'
+import { llmConfigApi } from '@/api/llmConfig'
 import { useResponsive } from '@/composables/useResponsive'
 import GuideTour from '@/components/home/GuideTour.vue'
 
@@ -169,6 +259,89 @@ const maxDate = new Date()
 const visible = computed({
   get: () => !completed.value && !guideHidden.value && patientStore.loaded && (patientStore.patientCount === 0 || step.value > 1),
   set: () => {},
+})
+
+// LLM 已配置（解读+OCR 均可用）时跳过配置步骤，直接进入上传报告
+async function advanceAfterCreate() {
+  try {
+    const res = await llmConfigApi.getLLMConfigStatus()
+    step.value = res.configured ? 3 : 2
+  } catch {
+    // 状态查询失败时保守展示配置步骤，由用户自行选择
+    step.value = 2
+  }
+}
+
+// ===== 首启 AI 模型配置表单 =====
+const llmSameModel = ref(true)
+const sharedLlm = reactive({ api_base: '', model_name: '', api_key: '' })
+const interpLlm = reactive({ api_base: '', model_name: '', api_key: '' })
+const ocrLlm = reactive({ api_base: '', model_name: '', api_key: '' })
+const savingLlm = ref(false)
+let llmPrefetched = false
+
+// 进入配置步骤时回填已生效的非敏感值；敏感掩码不回填，
+// 非管理者（无权读取）静默降级为空白表单
+async function prefetchLlmConfig() {
+  if (llmPrefetched) return
+  llmPrefetched = true
+  try {
+    const res = await llmConfigApi.getLLMConfigs()
+    for (const item of res.items || []) {
+      if (item.is_secret || !item.config_value) continue
+      const target = item.config_group === 'interpretation' ? interpLlm
+        : item.config_group === 'ocr' ? ocrLlm : null
+      const field = item.config_key.replace(/^(interpretation|ocr)_/, '')
+      if (target && field in target) target[field] = item.config_value
+    }
+    // 两组现有地址/模型一致时默认共用模式并带入共享表单
+    const same = interpLlm.api_base === ocrLlm.api_base && interpLlm.model_name === ocrLlm.model_name
+    llmSameModel.value = same
+    if (same) {
+      Object.assign(sharedLlm, { api_base: interpLlm.api_base, model_name: interpLlm.model_name })
+    }
+  } catch {
+    // 保持空白表单，由用户自行填写
+  }
+}
+
+/** 将一组表单字段映射为该组的 updates（空值/掩码密钥跳过） */
+function buildGroupUpdates(group, fields) {
+  const updates = []
+  for (const field of ['api_base', 'model_name', 'api_key']) {
+    const val = (fields[field] || '').trim()
+    if (!val || (field === 'api_key' && val.startsWith('****'))) continue
+    updates.push({ config_key: `${group}_${field}`, config_value: val })
+  }
+  return updates
+}
+
+async function handleSaveLLMConfig() {
+  const targets = llmSameModel.value
+    ? [['interpretation', sharedLlm], ['ocr', sharedLlm]]
+    : [['interpretation', interpLlm], ['ocr', ocrLlm]]
+  const groupUpdates = targets.map(([group, fields]) => [group, buildGroupUpdates(group, fields)])
+  if (groupUpdates.every(([, updates]) => !updates.length)) {
+    showToast('请至少填写 API 地址与模型名称')
+    return
+  }
+
+  savingLlm.value = true
+  try {
+    for (const [group, updates] of groupUpdates) {
+      if (updates.length) await llmConfigApi.updateLLMConfigGroup(group, updates)
+    }
+    showSuccessToast('AI 模型配置已保存')
+    nextStep()
+  } catch (e) {
+    showToast(e.response?.data?.detail || '保存失败')
+  } finally {
+    savingLlm.value = false
+  }
+}
+
+watch(step, (v) => {
+  if (v === 2) prefetchLlmConfig()
 })
 
 // 锚点导览步骤（按端型区分；目标元素不存在时 GuideTour 自动跳过）
@@ -217,7 +390,7 @@ async function handleCreatePatient() {
       medical_history: medicalHistory.value || undefined,
     })
     showSuccessToast('患者创建成功')
-    step.value = 2
+    await advanceAfterCreate()
   } catch (err) {
     showToast(err.response?.data?.detail || '创建失败')
   } finally {
@@ -226,7 +399,7 @@ async function handleCreatePatient() {
 }
 
 function nextStep() {
-  step.value = 3
+  step.value = step.value === 2 ? 3 : 4
 }
 
 function goUpload() {
@@ -308,6 +481,19 @@ function markCompleted() {
 .step-form {
   text-align: left;
   margin-top: 16px;
+}
+
+.same-model-label {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.group-divider {
+  padding: 8px 16px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .step-actions {

@@ -11,7 +11,7 @@
       </div>
       <h2 class="prompt-title">配置 AI 模型</h2>
       <p class="prompt-desc">
-        使用 AI 会诊、检验解读、报告识别前，需要先配置 LLM 模型服务。
+        使用检验解读、报告识别等 AI 功能前，需要先配置对应的 LLM 模型服务。
         您可以在「AI 模型配置」中填入 OpenAI 兼容的 API 地址与密钥。
       </p>
       <div class="prompt-actions">

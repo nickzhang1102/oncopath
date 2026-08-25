@@ -39,8 +39,9 @@ class LLMService:
 
     def __init__(self):
         self.client: Optional[AsyncOpenAI] = None
-        self.model = settings.LLM_MODEL_NAME
-        self.timeout = settings.LLM_TIMEOUT
+        # 解读组配置驱动（含 .env LLM_* 回退）：知识库摘要/患者概要与解读共用
+        self.model = settings.interpretation_model_name
+        self.timeout = settings.interpretation_timeout
         self._initialized = False
 
     def _initialize(self):
@@ -49,7 +50,7 @@ class LLMService:
             return
 
         try:
-            if settings.LLM_API_KEY:
+            if settings.interpretation_api_key:
                 timeout_config = httpx.Timeout(
                     connect=10.0,
                     read=float(self.timeout),
@@ -58,20 +59,20 @@ class LLMService:
                 )
 
                 client_kwargs: Dict = {
-                    "api_key": settings.LLM_API_KEY,
+                    "api_key": settings.interpretation_api_key,
                     "timeout": timeout_config,
                 }
-                if settings.LLM_API_BASE:
-                    client_kwargs["base_url"] = settings.LLM_API_BASE
+                if settings.interpretation_api_base:
+                    client_kwargs["base_url"] = settings.interpretation_api_base
 
                 self.client = AsyncOpenAI(**client_kwargs)
                 logger.info(
                     f"LLM服务初始化成功, model={self.model}, "
-                    f"base_url={settings.LLM_API_BASE}, "
+                    f"base_url={settings.interpretation_api_base}, "
                     f"read_timeout={self.timeout}s"
                 )
             else:
-                logger.warning("未配置LLM_API_KEY, LLM服务将不可用")
+                logger.warning("未配置解读组 LLM API Key, LLM服务将不可用")
 
             self._initialized = True
 

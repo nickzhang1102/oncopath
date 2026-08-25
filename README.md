@@ -174,9 +174,7 @@ PaddleOCR 默认使用 CPU。NVIDIA GPU 环境需要同时叠加 `docker-compose
 GPU 环境构建和启动时必须同时传入两个 Compose 文件：
 
 ```bash
-docker compose --env-file .env \\
-  -f docker-compose.yml -f docker-compose.gpu.yml \\
-  up -d --build
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
 GPU 文件是覆盖配置，不应单独执行；PostgreSQL 不需要 GPU，也不会因为启用 GPU 而改变容器内的 `5432` 端口。

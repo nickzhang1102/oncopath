@@ -66,23 +66,32 @@ test.describe('前端双端界面回归', () => {
             : [],
         })
       }
+      if (pathname.endsWith('/llm-configs/status')) {
+        return route.fulfill({ json: { configured: false } })
+      }
       return route.fulfill({ json: {} })
     })
     await page.addInitScript(() => {
       localStorage.setItem('token', 'onboarding-test-token')
       localStorage.removeItem('onboarding_completed')
       localStorage.removeItem('currentPatientId')
+      // 屏蔽引导完成后的 LLM 配置提醒弹窗，避免干扰滚动恢复断言
+      localStorage.setItem('llm_config_prompt_dismissed', '1')
     })
     await page.goto('/home/main')
     await page.getByRole('heading', { name: '欢迎来到 OncoPath' }).waitFor()
 
     await page.getByPlaceholder('请输入患者姓名').fill('引导回归患者')
     await page.getByRole('button', { name: '创建患者并继续' }).click()
+    // LLM 未配置（mock 返回空对象）时先进入 AI 模型配置步骤
+    await page.getByRole('heading', { name: '配置 AI 模型' }).waitFor()
+    await page.getByRole('button', { name: '稍后再说' }).click()
     await page.getByRole('heading', { name: '上传检验报告' }).waitFor()
     await page.getByRole('button', { name: '稍后再说' }).click()
-    await page.getByRole('button', { name: '开始使用' }).click()
+    await page.getByRole('heading', { name: '快速了解' }).waitFor()
+    await page.getByRole('button', { name: '跳过引导' }).click()
 
-    await expect(page.getByRole('heading', { name: '开始使用' })).not.toBeVisible()
+    await expect(page.locator('.onboarding-guide')).not.toBeVisible()
     await expect.poll(() => page.evaluate(() => document.body.classList.contains('van-overflow-hidden'))).toBe(false)
   })
 

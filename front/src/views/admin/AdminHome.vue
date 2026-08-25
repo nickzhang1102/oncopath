@@ -119,12 +119,15 @@ async function loadStats() {
   try {
     const res = await adminApi.getAdminStats()
     stats.value = res
-    loading.value = false
-    await nextTick()
-    renderCharts()
   } catch (e) {
     error.value = e.response?.data?.detail || '数据加载失败'
+  } finally {
     loading.value = false
+  }
+  // 图表渲染独立于请求 try 块，避免渲染异常被误报为网络错误
+  if (!error.value && stats.value) {
+    await nextTick()
+    renderCharts()
   }
 }
 
@@ -158,6 +161,7 @@ function renderTrendChart() {
 
 function renderUserPie() {
   if (!userPieRef.value) return
+  const colors = getThemeColors()
   const u = stats.value.users
   userPieChart = echarts.init(userPieRef.value)
   userPieChart.setOption({
