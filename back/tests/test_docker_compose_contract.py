@@ -14,6 +14,12 @@ def _compose() -> dict:
     )
 
 
+def _gpu_compose() -> dict:
+    return yaml.safe_load(
+        (PROJECT_ROOT / "docker-compose.gpu.yml").read_text(encoding="utf-8")
+    )
+
+
 def test_only_backend_owns_database_initialization():
     services = _compose()["services"]
 
@@ -41,3 +47,25 @@ def test_frontend_waits_for_healthy_backend():
     assert frontend["depends_on"]["backend"] == {
         "condition": "service_healthy"
     }
+
+
+def test_postgres_host_port_is_separate_from_container_port():
+    postgres = _compose()["services"]["postgres"]
+
+    assert postgres["ports"] == [
+        "${DB_BIND_ADDRESS:-127.0.0.1}:${DB_HOST_PORT:-15432}:5432"
+    ]
+
+
+def test_gpu_override_selects_gpu_wheel_and_runtime_device():
+    backend = _gpu_compose()["services"]["backend"]
+
+    assert backend["build"]["args"] == {"OCR_PADDLE_DEVICE": "gpu:0"}
+    assert "OCR_PADDLE_DEVICE=gpu:0" in backend["environment"]
+    assert backend["deploy"]["resources"]["reservations"]["devices"] == [
+        {
+            "driver": "nvidia",
+            "count": 1,
+            "capabilities": ["gpu"],
+        }
+    ]

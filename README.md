@@ -150,7 +150,7 @@ docker compose ps
 容器端口映射（与 `docker-compose.yml` 一致）：
 - **前端**：默认仅绑定宿主机 `127.0.0.1:3000` → 容器 `80`（Nginx）
 - **后端 API / Redis**：仅通过 Docker 内部网络访问，不发布宿主端口
-- **PostgreSQL**：默认仅绑定宿主机 `127.0.0.1:5432` 供本机调试，不对外网暴露
+- **PostgreSQL**：默认绑定宿主机 `127.0.0.1:15432` → 容器 `5432`，仅供本机调试；容器内部仍使用 `postgres:5432`
 
 如需局域网直接访问前端，可显式设置 `FRONTEND_BIND_ADDRESS=0.0.0.0`；生产环境建议保持 loopback，由宿主机反向代理提供 HTTPS。
 
@@ -170,6 +170,16 @@ backend 容器启动时会自动执行 `alembic upgrade head` 建立/升级表�
 生产部署以 `docker-compose.yml` 为准。部署前请逐项确认【安全说明】中的必改项：
 
 PaddleOCR 默认使用 CPU。NVIDIA GPU 环境需要同时叠加 `docker-compose.gpu.yml`，并预先安装 NVIDIA Container Toolkit；两套环境的硬件要求、完整命令、验证、切换和排障见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./docs/deployment/ocr-cpu-gpu.md)。
+
+GPU 环境构建和启动时必须同时传入两个 Compose 文件：
+
+```bash
+docker compose --env-file .env \\
+  -f docker-compose.yml -f docker-compose.gpu.yml \\
+  up -d --build
+```
+
+GPU 文件是覆盖配置，不应单独执行；PostgreSQL 不需要 GPU，也不会因为启用 GPU 而改变容器内的 `5432` 端口。
 
 - 修改 `.env` 中的 `SECRET_KEY`、`DB_PASSWORD`、`REDIS_PASSWORD`、`ENCRYPTION_KEY`
 - 部署后登录系统，在「个人中心 → AI 模型配置」完成 LLM 配置（或在 `.env` 预填 `LLM_*` 回退值）

@@ -4,14 +4,14 @@ The field was never consumed: MedicalPromptBuilder only reads
 user_content_config, and AgentTeams launch sends a single message.
 
 Revision ID: drop_prompt_config_system_prompt
-Revises: agentteams_launch_manual_review_audit
+Revises: agentteams_review_audit
 """
 
 from alembic import op
 
 
 revision = "drop_prompt_config_system_prompt"
-down_revision = "agentteams_launch_manual_review_audit"
+down_revision = "agentteams_review_audit"
 branch_labels = None
 depends_on = None
 

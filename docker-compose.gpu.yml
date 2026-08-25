@@ -1,5 +1,7 @@
 # PaddleOCR NVIDIA GPU 部署覆盖文件。
 # 必须与 docker-compose.yml 同时使用；不要单独启动本文件。
+# 该文件只改变 OCR 镜像和 backend 的 GPU 运行时权限，数据库仍通过
+# medical-network 使用容器内的 postgres:5432，不会额外发布宿主机端口。
 services:
   backend:
     build:

@@ -150,7 +150,7 @@ docker compose ps
 Port mapping (matches `docker-compose.yml`):
 - **Frontend**: binds host `127.0.0.1:3000` → container `80` (Nginx) by default
 - **Backend API / Redis**: internal Docker network only, no host ports published
-- **PostgreSQL**: bound to host `127.0.0.1:5432` by default for local debugging, not exposed externally
+- **PostgreSQL**: binds host `127.0.0.1:15432` → container `5432` by default for local debugging; containers still use `postgres:5432`
 
 To expose the frontend on your LAN, set `FRONTEND_BIND_ADDRESS=0.0.0.0` explicitly; in production keep loopback and terminate HTTPS on a host reverse proxy.
 
@@ -170,6 +170,16 @@ On startup the backend container automatically runs `alembic upgrade head` to cr
 Production deployment follows `docker-compose.yml`. Before deploying, verify every mandatory item in the [Security](#-security) section:
 
 PaddleOCR uses CPU by default. NVIDIA GPU environments additionally need `docker-compose.gpu.yml` and the NVIDIA Container Toolkit preinstalled; hardware requirements, full commands, verification, switching and troubleshooting are documented in the [PaddleOCR CPU / NVIDIA GPU deployment guide](./docs/deployment/ocr-cpu-gpu.md) (Chinese).
+
+GPU builds and startup must pass both Compose files:
+
+```bash
+docker compose --env-file .env \\
+  -f docker-compose.yml -f docker-compose.gpu.yml \\
+  up -d --build
+```
+
+The GPU file is an override and must not be run by itself. PostgreSQL does not use the GPU and keeps its internal `5432` port.
 
 - Change `SECRET_KEY`, `DB_PASSWORD`, `REDIS_PASSWORD`, `ENCRYPTION_KEY` in `.env`
 - After deployment, sign in and complete the LLM configuration under **Profile → AI Model Config** (or pre-fill `LLM_*` fallback values in `.env`)

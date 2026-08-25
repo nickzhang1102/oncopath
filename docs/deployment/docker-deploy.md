@@ -42,8 +42,18 @@ GPU 部署另需 NVIDIA GPU（建议 8 GB 或以上显存）、支持 CUDA 12.6 
 ## 选择 PaddleOCR CPU 或 GPU 环境
 
 - **CPU 是默认环境**：仅使用 `docker-compose.yml`，适合没有 NVIDIA GPU 的机器。
-- **GPU 是独立覆盖环境**：始终同时使用 `docker-compose.yml` 和 `docker-compose.gpu.yml`，安装 PaddlePaddle 3.2.0 CUDA 12.6 wheel，并使用 `gpu:0`。
+- **GPU 是独立覆盖环境**：始终同时使用 `docker-compose.yml` 和 `docker-compose.gpu.yml`，安装 PaddlePaddle 3.2.0 CUDA 12.6 wheel，并使用 `gpu:0`。GPU 文件是覆盖配置，不能单独执行。
 - 两种环境不能通过重启热切换；切换必须重建 backend。详细构建、验证、切换和排障命令见 [PaddleOCR CPU / NVIDIA GPU 部署指南](./ocr-cpu-gpu.md)。
+
+GPU 首次部署命令：
+
+```bash
+docker compose --env-file .env -p oncopath \\
+  -f docker-compose.yml -f docker-compose.gpu.yml \\
+  up -d --build
+```
+
+GPU 覆盖文件只改变 backend 的 PaddlePaddle wheel、`OCR_PADDLE_DEVICE=gpu:0` 和 NVIDIA 设备权限；PostgreSQL、Redis 和前端仍来自主 Compose。
 
 ### 网络要求（国内环境）
 
@@ -438,7 +448,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 
 ### 3. 网络隔离
 
-当前配置中 PostgreSQL、Redis 和后端 API 端口**不暴露到宿主机**，仅通过 Docker 内部网络 `medical-network` 访问。前端默认只绑定 `127.0.0.1:3000`，由宿主机反向代理提供公网 HTTPS。
+当前配置中 Redis 和后端 API 端口不暴露到宿主机，仅通过 Docker 内部网络 `medical-network` 访问。PostgreSQL 默认仅绑定宿主机 `127.0.0.1:15432` 供本机调试；前端默认只绑定 `127.0.0.1:3000`，由宿主机反向代理提供公网 HTTPS。生产环境可删除 PostgreSQL 的 `ports` 映射。
 
 ### 4. 端口暴露
 
@@ -446,7 +456,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 |------|------|------|
 | 3000 | 前端 | 生产环境通过 Nginx 反代 + HTTPS |
 | 8000 | 后端 API | 仅 Docker 内部网络，通过前端 Nginx 代理 |
-| 5432 | PostgreSQL | 默认仅绑定 `127.0.0.1` 供本机调试，不对外网暴露 |
+| 15432 → 5432 | PostgreSQL | 默认仅绑定 `127.0.0.1` 供本机调试；容器内部服务使用 `postgres:5432` |
 | 6379 | Redis | 不暴露（内部网络） |
 
 ### 5. HTTPS 配置
@@ -610,6 +620,7 @@ docker compose -p oncopath up -d --build
 | `SECRET_KEY` | ✅ | — | JWT 签名密钥 (≥32字符) |
 | `ENCRYPTION_KEY` | ✅ | — | Fernet 加密密钥 |
 | `ADMIN_INITIAL_PASSWORD` | ❌ | admin123 | 管理员初始密码（生产必改） |
+| `DB_HOST_PORT` | ❌ | 15432 | PostgreSQL 宿主机调试端口（容器内部仍为 5432） |
 | `DB_BIND_ADDRESS` | ❌ | 127.0.0.1 | PostgreSQL 宿主机绑定地址 |
 | `DB_USER` | ❌ | postgres | 数据库用户 |
 | `DB_NAME` | ❌ | medical_report | 数据库名 |

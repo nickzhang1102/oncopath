@@ -1,15 +1,18 @@
 """Add manual review audit trail for AgentTeams launch intents.
 
-Revision ID: agentteams_launch_manual_review_audit
-Revises: agentteams_launch_intent_payload_retention
+Revision ID: agentteams_review_audit
+Revises: agentteams_payload_retention
+
+注: revision ID 必须不超过 32 字符（alembic_version.version_num 列为
+VARCHAR(32)，超长 ID 会导致 UPDATE alembic_version 失败并回滚整个迁移）。
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 
-revision = "agentteams_launch_manual_review_audit"
-down_revision = "agentteams_launch_intent_payload_retention"
+revision = "agentteams_review_audit"
+down_revision = "agentteams_payload_retention"
 branch_labels = None
 depends_on = None
 

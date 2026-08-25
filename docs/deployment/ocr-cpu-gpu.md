@@ -1,6 +1,6 @@
 # PaddleOCR CPU / NVIDIA GPU 部署指南
 
-OncoPath 提供两套彼此独立的本地 PaddleOCR 部署环境。CPU 是默认环境；GPU 环境通过 `docker-compose.gpu.yml` 覆盖文件显式启用。两者使用相同的应用代码、数据库和存储卷，只在 PaddlePaddle wheel、容器 GPU 权限和推理设备上不同。
+OncoPath 提供 CPU 默认环境和 NVIDIA GPU 覆盖环境。GPU 使用 `docker-compose.yml` 加 `docker-compose.gpu.yml` 两个文件启用；后者是独立维护的覆盖文件，不是可单独启动的完整 Compose。两者使用相同的应用代码、数据库和存储卷，只在 PaddlePaddle wheel、容器 GPU 权限和推理设备上不同。
 
 > 本项目当前不支持云端 OCR、AMD GPU、Apple Silicon GPU、多 GPU 调度或运行时热切换。GPU 环境固定使用 PaddlePaddle 3.2.0 的 CUDA 12.6 wheel，并使用容器内第一张可见 NVIDIA GPU（`gpu:0`）。
 
@@ -12,6 +12,8 @@ OncoPath 提供两套彼此独立的本地 PaddleOCR 部署环境。CPU 是默�
 | NVIDIA GPU | OCR 频繁、报告图片较大、需要降低本地识别耗时 | 支持 CUDA 12.6 的 NVIDIA 驱动、NVIDIA Container Toolkit；建议 8 GB 或以上显存 | `docker-compose.yml` + `docker-compose.gpu.yml` |
 
 GPU 只加速 PaddleOCR 的基础文本识别和表格识别。本项目后续的 OCR LLM 解析仍调用 `OCR_LLM_API_BASE`，其延迟和费用不会因本地 GPU 改变。识别出的文本可能会发送给该 LLM 服务，部署者仍需评估相应的医疗数据与隐私边界。
+
+> PostgreSQL 的容器端口固定为 `5432`，GPU 不会改变它。主 Compose 默认把宿主机调试端口映射为 `127.0.0.1:15432`；如该端口也被占用，在 `.env` 中设置其他 `DB_HOST_PORT`，或删除 PostgreSQL 的 `ports` 映射。backend 始终使用 `postgres:5432`。
 
 ## 共同准备
 
@@ -125,6 +127,7 @@ docker compose --env-file .env -p oncopath \
 - 构建参数 `OCR_PADDLE_DEVICE: gpu:0`；
 - 容器环境变量 `OCR_PADDLE_DEVICE: gpu:0`；
 - `deploy.resources.reservations.devices` 包含 `driver: nvidia` 和 `capabilities: [gpu]`。
+- PostgreSQL 的宿主机调试映射使用 `DB_HOST_PORT`（默认 `15432`），不会占用宿主机 `5432`。
 
 ### 4. 构建和启动
 
