@@ -1,5 +1,8 @@
 <template>
   <div class="timeline-view">
+    <!-- 统一页面抬头 -->
+    <BackButton title="治疗时间线" />
+
     <!-- 过滤器区域 -->
     <div class="filter-section">
       <!-- 日期范围快捷按钮 -->
@@ -152,6 +155,7 @@ import { exportApi } from '@/api/export'
 import { downloadBlob } from '@/utils/export'
 import { getNavigationTarget } from '@/utils/timelineNavigation'
 import FilterChips from '@/components/timeline/FilterChips.vue'
+import BackButton from '@/components/index-detail/BackButton.vue'
 import TimelineEventCard from '@/components/timeline/TimelineEventCard.vue'
 import MedicalCheckCard from '@/components/timeline/MedicalCheckCard.vue'
 import MedicalExamCard from '@/components/timeline/MedicalExamCard.vue'

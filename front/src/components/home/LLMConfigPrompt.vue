@@ -7,7 +7,7 @@
   >
     <div class="prompt-content">
       <div class="prompt-icon">
-        <van-icon name="magic-stick-o" size="44" color="var(--primary-color)" />
+        <van-icon name="bulb-o" size="44" color="var(--primary-color)" />
       </div>
       <h2 class="prompt-title">配置 AI 模型</h2>
       <p class="prompt-desc">

@@ -1,37 +1,20 @@
 <!-- front/src/views/ConsultationList.vue -->
 <template>
   <div class="consultation-list" :class="{ 'is-desktop': isDesktop }">
-    <!-- 移动端顶部导航 -->
-    <van-nav-bar
-      v-if="!isDesktop"
-      title="虚拟会诊"
-      left-text="返回"
-      left-arrow
-      @click-left="handleBack"
-      fixed
-      placeholder
-      :safe-area-inset-top="true"
-    >
+    <!-- 统一页面抬头 -->
+    <BackButton title="虚拟会诊">
       <template #right>
-        <van-button size="mini" type="primary" plain icon="setting-o" @click="router.push('/home/consultation/prompt-config')">提示词</van-button>
+        <van-button size="small" plain type="primary" icon="setting-o" @click="router.push('/home/consultation/prompt-config')">提示词</van-button>
+        <van-button
+          v-if="isDesktop"
+          size="small"
+          type="primary"
+          icon="add-o"
+          :loading="agentTeamsAvailabilityLoading || launchPending"
+          @click="handleStartConsultation"
+        >开始会诊</van-button>
       </template>
-    </van-nav-bar>
-
-    <!-- 桌面端页面头部 -->
-    <header v-if="isDesktop" class="desktop-header">
-      <div class="header-content">
-        <h1 class="page-title">虚拟会诊</h1>
-        <div class="header-actions">
-          <van-button plain icon="setting-o" @click="router.push('/home/consultation/prompt-config')">提示词配置</van-button>
-          <van-button
-            type="primary"
-            icon="add-o"
-            :loading="agentTeamsAvailabilityLoading || launchPending"
-            @click="handleStartConsultation"
-          >开始会诊</van-button>
-        </div>
-      </div>
-    </header>
+    </BackButton>
 
     <van-notice-bar
       v-if="launchPending"
@@ -211,6 +194,7 @@ import AgentTeamsUpsellDialog from '@/components/consultation/AgentTeamsUpsellDi
 import AgentTeamsErrorDialog from '@/components/consultation/AgentTeamsErrorDialog.vue'
 import AgentTeamsOnboardingGuide, { GUIDE_SEEN_KEY } from '@/components/consultation/AgentTeamsOnboardingGuide.vue'
 import AgentTeamsStatusBar from '@/components/consultation/AgentTeamsStatusBar.vue'
+import BackButton from '@/components/index-detail/BackButton.vue'
 import { getAgentTeamsErrorUx, isAgentTeamsError } from '@/utils/agentteamsErrorUx'
 import dayjs from 'dayjs'
 
@@ -253,10 +237,6 @@ const launchNoticeText = computed(() => (
 ))
 
 // 方法
-function handleBack() {
-  router.push('/home/news')
-}
-
 function getConversationStatus(conv) {
   return conv?.external_session_status || conv?.status || 'new'
 }
@@ -760,34 +740,6 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 
 .delete-button {
   height: 100%;
-}
-
-/* ===== 桌面端头部（与其他视图统一） ===== */
-.desktop-header {
-  margin-bottom: var(--space-4);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.page-title {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
 }
 
 /* ===== 桌面端列表 ===== */

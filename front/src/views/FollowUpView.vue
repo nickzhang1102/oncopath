@@ -1,15 +1,10 @@
 <template>
   <div class="follow-up-view">
-    <BackButton v-if="!isDesktop" title="随访提醒" />
-
-    <header v-if="isDesktop" class="desktop-header">
-      <div class="header-content">
-        <h1 class="page-title">随访提醒</h1>
-        <div class="header-actions">
-          <van-button type="primary" icon="plus" @click="openAddForm">新建提醒</van-button>
-        </div>
-      </div>
-    </header>
+    <BackButton title="随访提醒">
+      <template #right>
+        <van-button size="small" type="primary" icon="plus" @click="openAddForm">新建提醒</van-button>
+      </template>
+    </BackButton>
 
     <!-- 筛选Tab -->
     <van-tabs v-model:active="activeTab" @change="loadReminders" class="filter-tabs">
@@ -264,34 +259,6 @@ watch(() => patientStore.currentPatient?.patient_id, (n, o) => { if (n && n !== 
   padding: 16px 24px;
   border-top: 1px solid var(--border-color);
   background: var(--bg-elevated);
-}
-
-/* 桌面端页面头部（对齐 StatusView/ConsultationList） */
-.desktop-header {
-  margin-bottom: var(--space-4);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.page-title {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
 }
 
 @media (min-width: 768px) {

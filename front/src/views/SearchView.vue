@@ -1,5 +1,8 @@
 <template>
   <div class="search-view">
+    <!-- 统一页面抬头 -->
+    <BackButton title="全局搜索" />
+
     <div class="search-bar">
       <van-search
         v-model="keyword"
@@ -48,6 +51,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatientStore } from '@/stores/patient'
 import searchApi from '@/api/search'
+import BackButton from '@/components/index-detail/BackButton.vue'
 
 const router = useRouter()
 const patientStore = usePatientStore()

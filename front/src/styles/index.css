@@ -107,7 +107,9 @@
   /* 新增变量 */
   --bg-secondary: #F0FDFA;
   --tabbar-height: 50px;
-  --safe-bottom: calc(var(--tabbar-height) + 30px + env(safe-area-inset-bottom));
+  /* 全局底部状态栏高度 */
+  --footer-height: 32px;
+  --safe-bottom: calc(var(--tabbar-height) + var(--footer-height) + 30px + env(safe-area-inset-bottom));
   /* 固定底栏补偿高度，有固定底栏的页面在自身作用域内覆盖此值 */
   --bottom-bar-height: 0px;
 

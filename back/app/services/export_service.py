@@ -278,7 +278,7 @@ class ExportService:
         exams_result = await self.db.execute(
             select(MedicalExam)
             .where(MedicalExam.patient_id == patient_id)
-            .order_by(MedicalExam.exam_date.desc())
+            .order_by(MedicalExam.medical_date.desc())
             .limit(10)
         )
         exams = exams_result.scalars().all()
@@ -494,7 +494,7 @@ class ExportService:
         exam_list = []
         for e in exams:
             exam_list.append({
-                "exam_date": e.exam_date.isoformat() if e.exam_date else '',
+                "exam_date": e.medical_date.isoformat() if e.medical_date else '',
                 "exam_type": e.exam_type or '',
                 "exam_info": e.exam_info or '',
                 "exam_diag": e.exam_diag or '',

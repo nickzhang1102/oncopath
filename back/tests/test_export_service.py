@@ -43,3 +43,29 @@ def test_sync_html_to_pdf_chinese_content():
     assert isinstance(pdf_bytes, bytes)
     assert len(pdf_bytes) > 1000
     assert pdf_bytes[:4] == b"%PDF"
+
+
+def test_render_summary_html_with_exams():
+    """完整病历渲染：含检查报告时不应抛错（回归：MedicalExam 字段名为 medical_date）"""
+    from datetime import date
+    from app.models.patient import Patient
+    from app.models.medical import MedicalExam
+    from app.services.export_service import ExportService
+
+    patient = Patient(
+        gender="male",
+        birth_date=date(1990, 1, 1),
+        medical_history={"diagnosis": "测试诊断"},
+    )
+    exam = MedicalExam(
+        medical_date=date(2026, 8, 1),
+        exam_type="CT",
+        exam_info="检查所见",
+        exam_diag="诊断意见",
+    )
+    service = ExportService(db=None)  # _render_summary_html 为纯渲染方法，不触库
+    html = service._render_summary_html(patient, checks=[], exams=[exam], medications=[])
+
+    assert "检查报告" in html
+    assert "CT" in html
+    assert "2026-08-01" in html

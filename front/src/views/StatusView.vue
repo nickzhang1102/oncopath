@@ -3,18 +3,12 @@
     <!-- 动态背景 -->
     <BackgroundAnimation />
 
-    <!-- 移动端返回按钮 -->
-    <BackButton v-if="!isDesktop" title="状态记录" />
-
-    <!-- 桌面端页面头部 -->
-    <header v-if="isDesktop" class="desktop-header">
-      <div class="header-content">
-        <h1 class="page-title">状态记录</h1>
-        <div class="header-actions">
-          <van-button type="primary" icon="plus" @click="showAddForm = true">添加记录</van-button>
-        </div>
-      </div>
-    </header>
+    <!-- 统一页面抬头 -->
+    <BackButton title="状态记录">
+      <template #right>
+        <van-button size="small" type="primary" icon="plus" @click="showAddForm = true">添加记录</van-button>
+      </template>
+    </BackButton>
 
     <!-- 加载状态 -->
     <van-loading v-if="loading" class="loading-center" />
@@ -1090,33 +1084,6 @@ watch(() => patientStore.currentPatient?.patient_id, async (newId, oldId) => {
 /* 滑块样式 */
 :deep(.van-slider) {
   margin: 8px 0;
-}
-
-.desktop-header {
-  margin-bottom: var(--space-4);
-}
-
-.desktop-header .header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.desktop-header .page-title {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.desktop-header .header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
 }
 
 /* 桌面端侧边栏适配 + 居中限宽 */

@@ -212,6 +212,7 @@ onMounted(() => {
 
 <style scoped>
 .ai-config-view {
+  max-width: 1040px;
   background: var(--bg-primary);
 }
 
@@ -235,7 +236,7 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin: 12px 16px 0;
+  margin: 0 0 12px;
   padding: 10px 12px;
   background: var(--primary-alpha-5, rgba(114, 50, 160, 0.05));
   border-radius: 8px;
@@ -254,7 +255,7 @@ onMounted(() => {
   background: var(--bg-surface);
   border-radius: 12px;
   padding: 16px;
-  margin: 12px 16px;
+  margin: 12px 0;
 }
 
 .card-top {

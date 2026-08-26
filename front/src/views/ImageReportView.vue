@@ -8,17 +8,8 @@
     </div>
 
     <div class="content-wrapper">
-      <!-- 顶部导航（桌面端隐藏，侧边栏替代） -->
-      <van-nav-bar
-        v-if="!isDesktop"
-        title="上传报告"
-        left-text="返回"
-        left-arrow
-        @click-left="goBack"
-        fixed
-        placeholder
-        :safe-area-inset-top="true"
-      />
+      <!-- 统一页面抬头 -->
+      <BackButton title="上传报告" />
 
       <!-- 未选择患者时的空状态 -->
       <div v-if="!hasPatient" class="empty-patient">
@@ -57,6 +48,7 @@ import { showToast } from 'vant'
 import ImageTimeline from '@/components/image-report/ImageTimeline.vue'
 import ImageUpload from '@/components/image-report/ImageUpload.vue'
 import ImageStats from '@/components/image-report/ImageStats.vue'
+import BackButton from '@/components/index-detail/BackButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -100,10 +92,6 @@ watch(activeTab, async (newTab) => {
     await imageStatsRef.value.refreshData()
   }
 })
-
-const goBack = () => {
-  router.back()
-}
 
 // 上传完成后导航到OCR确认页面
 const onUploadCompleted = (reportId) => {
@@ -214,23 +202,6 @@ const onUploadCompleted = (reportId) => {
 .bottom-button {
   min-width: 160px;
   padding: 12px 24px;
-}
-
-/* 覆盖 vant 组件样式 */
-:deep(.van-nav-bar) {
-  z-index: 100;
-  background: var(--bg-surface-alpha);
-  box-shadow: 0 2px 8px var(--primary-alpha-8);
-  backdrop-filter: blur(10px);
-}
-
-:deep(.van-nav-bar__title) {
-  color: var(--primary-color);
-  font-weight: 600;
-}
-
-:deep(.van-nav-bar__text) {
-  color: var(--primary-color);
 }
 
 :deep(.van-icon-arrow-left) {

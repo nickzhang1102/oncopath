@@ -1,15 +1,7 @@
 <template>
   <div class="abnormal-indicators">
-    <!-- 移动端返回按钮 -->
-    <BackButton v-if="!isDesktop" title="异常指标" />
-
-    <!-- 桌面端页面头部 -->
-    <header v-if="isDesktop" class="desktop-header">
-      <div class="header-content">
-        <h1 class="page-title">异常指标</h1>
-        <p class="page-subtitle">追踪偏离参考范围的指标变化</p>
-      </div>
-    </header>
+    <!-- 统一页面抬头（标题 + 解释性副标题） -->
+    <BackButton title="异常指标" subtitle="追踪偏离参考范围的指标变化" />
 
     <!-- 日期范围过滤 -->
     <div class="date-filter-section">
@@ -446,30 +438,6 @@ watch(() => patientStore.currentPatient?.patient_id, (newId) => {
 .indicator-unit {
   font-size: 12px;
   color: var(--text-secondary);
-}
-
-.desktop-header {
-  margin-bottom: var(--space-4);
-}
-
-.desktop-header .header-content {
-  padding: var(--space-4) var(--space-5);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.desktop-header .page-title {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.desktop-header .page-subtitle {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 0;
 }
 
 @media (min-width: 768px) {

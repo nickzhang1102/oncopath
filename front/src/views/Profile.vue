@@ -74,30 +74,8 @@
             <van-cell title="系统管理" icon="manager-o" is-link to="/admin/dashboard" />
           </van-cell-group>
 
-          <!-- 支持作者弹窗 -->
-          <van-popup
-            v-model:show="showSponsor"
-            :position="isDesktop ? 'center' : 'bottom'"
-            :round="!isDesktop"
-            :style="isDesktop ? 'width: 420px; border-radius: var(--radius-lg);' : ''"
-          >
-            <div class="sponsor-panel">
-              <span class="sponsor-close" @click="showSponsor = false">✕</span>
-              <p class="sponsor-title">如果 OncoPath 对你有帮助，欢迎<em>请作者喝一杯咖啡</em></p>
-              <p class="sponsor-subtitle">每一份支持都是持续维护的动力，真的很重要！</p>
-              <div class="sponsor-qr-row">
-                <figure class="sponsor-qr">
-                  <img :src="wechatQr" alt="微信赞赏码">
-                  <figcaption>💚 微信</figcaption>
-                </figure>
-                <figure class="sponsor-qr">
-                  <img :src="alipayQr" alt="支付宝收款码">
-                  <figcaption>💙 支付宝</figcaption>
-                </figure>
-              </div>
-              <p class="sponsor-star-tip">⭐ 去 GitHub 点个 Star，同样是对作者的支持</p>
-            </div>
-          </van-popup>
+          <!-- 支持作者弹窗（档位选择 + 微信收款码） -->
+          <SponsorPopup v-model:show="showSponsor" />
 
           <!-- 主题选择器 -->
           <van-popup
@@ -133,10 +111,7 @@
             </van-button>
           </div>
 
-          <!-- 版本信息 -->
-          <div class="version-info">
-            <p>版本 2.0.0</p>
-          </div>
+          <!-- 版本信息已移至全局底部状态栏（AppFooter），此处不再重复展示 -->
         </div>
       </template>
     </router-view>
@@ -151,8 +126,7 @@ import { useUserStore } from '@/stores/user'
 import { usePatientStore } from '@/stores/patient'
 import { useTheme } from '@/composables/useTheme'
 import { useResponsive } from '@/composables/useResponsive'
-import wechatQr from '@/assets/sponsor/wechat.jpg'
-import alipayQr from '@/assets/sponsor/alipay.jpg'
+import SponsorPopup from '@/components/common/SponsorPopup.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -376,84 +350,6 @@ async function handleLogout() {
 
 .active-icon {
   color: var(--primary-color);
-}
-
-/* 支持作者弹窗 */
-.sponsor-panel {
-  position: relative;
-  padding: 24px 20px calc(20px + env(safe-area-inset-bottom, 0px));
-  text-align: center;
-}
-
-.sponsor-close {
-  position: absolute;
-  top: 12px;
-  right: 16px;
-  font-size: 15px;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.sponsor-title {
-  margin: 0 12px;
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.6;
-}
-
-.sponsor-title em {
-  font-style: normal;
-  color: var(--primary-color);
-}
-
-.sponsor-subtitle {
-  margin: 6px 0 16px;
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
-.sponsor-qr-row {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-}
-
-.sponsor-qr {
-  margin: 0;
-  padding: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--primary-alpha-15);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.sponsor-qr img {
-  display: block;
-  width: 132px;
-  height: 132px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-}
-
-.sponsor-qr figcaption {
-  margin-top: 6px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.sponsor-star-tip {
-  margin: 14px 0 0;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
-.version-info {
-  text-align: center;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin-top: var(--space-4);
 }
 
 /* 桌面端布局 */

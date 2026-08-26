@@ -1,12 +1,6 @@
 <template>
   <div class="export-view">
-    <BackButton v-if="!isDesktop" title="数据导出" />
-
-    <header v-if="isDesktop" class="desktop-header">
-      <div class="header-content">
-        <h1 class="page-title">数据导出</h1>
-      </div>
-    </header>
+    <BackButton title="数据导出" />
 
     <div class="export-content">
       <van-cell-group inset>
@@ -42,14 +36,26 @@
 import { ref } from 'vue'
 import { showToast } from 'vant'
 import { usePatientStore } from '@/stores/patient'
-import { useResponsive } from '@/composables/useResponsive'
 import { exportApi } from '@/api/export'
 import { downloadBlob } from '@/utils/export'
 import BackButton from '@/components/index-detail/BackButton.vue'
 
-const { isDesktop } = useResponsive()
 const patientStore = usePatientStore()
 const exporting = ref('')
+
+// blob 错误响应解析后端 detail（responseType: blob 时 e.response.data 也是 Blob）
+async function resolveErrorMessage(e) {
+  const detail = e?.response?.data
+  if (detail instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await detail.text())
+      if (parsed?.detail) return parsed.detail
+    } catch {
+      // 非 JSON 响应，回退通用文案
+    }
+  }
+  return '导出失败，请重试'
+}
 
 async function handleExport(type) {
   if (!patientStore.currentPatient) {
@@ -76,7 +82,7 @@ async function handleExport(type) {
     }
   } catch (e) {
     console.error('导出失败:', e)
-    showToast('导出失败，请重试')
+    showToast(await resolveErrorMessage(e))
   } finally {
     exporting.value = ''
   }

@@ -6,6 +6,8 @@
           <component :is="Component" />
         </transition>
       </router-view>
+      <!-- 全局底部状态栏（版本/GitHub/赞助/协议/署名） -->
+      <AppFooter />
     </div>
   </van-config-provider>
 </template>
@@ -16,6 +18,7 @@ import { useUserStore } from '@/stores/user'
 import { usePatientStore } from '@/stores/patient'
 import { useNotificationStore } from '@/stores/notification'
 import { useTheme } from '@/composables/useTheme'
+import AppFooter from '@/components/common/AppFooter.vue'
 
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
@@ -56,6 +59,8 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
   width: 100%;
   min-height: 100vh;
   background: var(--bg-primary);
+  /* 全局底部状态栏占位补偿，防止页面内容被遮挡 */
+  padding-bottom: var(--footer-height);
 }
 
 /* 页面切换动画 */

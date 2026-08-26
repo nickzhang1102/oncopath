@@ -77,7 +77,7 @@
       <template v-if="step === 2">
         <div class="step-content">
           <div class="step-icon">
-            <van-icon name="magic-stick-o" size="48" color="var(--primary-color)" />
+            <van-icon name="bulb-o" size="48" color="var(--primary-color)" />
           </div>
           <h2 class="step-title">配置 AI 模型</h2>
           <p class="step-desc">

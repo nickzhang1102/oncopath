@@ -1,15 +1,7 @@
 <template>
   <div class="prompt-config" :class="{ 'is-desktop': isDesktop }">
-    <!-- 导航栏 -->
-    <van-nav-bar
-      title="提示词配置"
-      left-text="返回"
-      left-arrow
-      @click-left="router.back()"
-      fixed
-      placeholder
-      :safe-area-inset-top="true"
-    />
+    <!-- 统一页面抬头 -->
+    <BackButton title="提示词配置" />
 
     <!-- 无患者提示 -->
     <div v-if="!patientId" class="empty-patient">
@@ -207,6 +199,7 @@ import { usePatientStore } from '@/stores/patient'
 import { useResponsive } from '@/composables/useResponsive'
 import { getPromptConfig, savePromptConfig, previewPromptConfig } from '@/api/prompt'
 import { sanitizeHtml } from '@/utils/sanitize'
+import BackButton from '@/components/index-detail/BackButton.vue'
 
 const router = useRouter()
 const patientStore = usePatientStore()
@@ -331,31 +324,6 @@ async function handlePreview() {
   background: var(--bg-primary);
   /* 移动端: tabbar ~50px + 底部操作栏 66px + 安全间距 */
   padding-bottom: calc(50px + 66px + env(safe-area-inset-bottom, 0px) + 12px);
-}
-
-.prompt-config :deep(.van-nav-bar) {
-  background: var(--bg-surface-alpha);
-  box-shadow: 0 2px 8px var(--primary-alpha-8);
-  z-index: 10;
-}
-
-.prompt-config :deep(.van-nav-bar__title) {
-  color: var(--primary-color);
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.prompt-config :deep(.van-nav-bar__text) {
-  color: var(--primary-color);
-}
-
-.prompt-config :deep(.van-icon-arrow-left) {
-  color: var(--primary-color);
-}
-
-.prompt-config.is-desktop :deep(.van-nav-bar) {
-  max-width: 640px;
-  margin: 0 auto;
 }
 
 .prompt-config.is-desktop {
