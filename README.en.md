@@ -28,7 +28,7 @@ Cancer treatment is a marathon measured in years. As a patient's family member, 
 | Reality | How OncoPath helps |
 |---------|-------------------|
 | 📋 Piles of lab reports — indicators and reference ranges you can't read | Snap a photo: **OCR recognition + LLM matching against a standard index library**, with professional jargon translated into plain language |
-| 📁 Reports scattered across chat apps, paper folders, hospital portals | Lab / exam / pathology / medication / follow-up data **unified into one traceable treatment timeline**, filterable and exportable to PDF |
+| 📁 Reports scattered across chat apps, paper folders, hospital portals | Lab / exam / pathology / medication / timeline-event data **unified into one traceable treatment timeline**, filterable and exportable to PDF |
 | 📉 Trends of key indicators tracked by hand in notebooks | Automatic abnormal-indicator tracking, per-indicator **trend charts + side-by-side comparison** |
 | 🏥 Not sure what to ask the doctor before the visit | One-click aggregation of the full record into a consultation prompt, launching a **multi-agent virtual consultation via AgentTeams** |
 
@@ -43,7 +43,7 @@ OncoPath targets tech-savvy patient families and self-hosted deployments: your d
 |---------|-------------|
 | 🔍 **OCR index extraction** | PaddleOCR recognition → LLM table parsing → LLM matching against the standard library, saved automatically; three flows (lab / exam / pathology) routed by report category; manual review & correction |
 | 📷 **Image report management** | 27 report categories, upload dedup checks, SSE live progress, thumbnail timeline |
-| 🤖 **AI lab interpretation** | Overall assessment + abnormal-indicator explanations + trend changes + suggestions; follow-up reminders auto-created from interpretation results |
+| 🤖 **AI lab interpretation** | Overall assessment + abnormal-indicator explanations + trend changes + suggestions |
 
 ### 🗂️ Unified Health Record
 | Feature | Description |
@@ -51,7 +51,6 @@ OncoPath targets tech-savvy patient families and self-hosted deployments: your d
 | 🧑‍⚕️ **Patient management** | Multi-patient support; name / phone / ID card encrypted with Fernet + one-way hash index for dedup; PHI-edit audit logging |
 | 📈 **Treatment timeline** | Unified aggregation across 5 tables, milestones, multi-dimensional filters, date-range statistics |
 | 💊 **Medication & adherence** | Medication CRUD (incl. discontinue), intake check-ins (taken/skipped/missed), adherence stats (7–365 days) |
-| ⏰ **Follow-up reminders** | Manual / AI-interpretation / consultation sources, pending → sent → confirmed loop |
 | 🧪 **Combined indicator queries** | Related indicators aligned by date for side-by-side reading, one click to trend chart |
 | 🔎 **Global search** | Fuzzy search across labs / exams / pathology / medication / timeline |
 
@@ -66,7 +65,7 @@ OncoPath targets tech-savvy patient families and self-hosted deployments: your d
 | Feature | Description |
 |---------|-------------|
 | 📱 **Responsive dual layout** | Mobile-first with Vant 4, adaptive desktop layout |
-| 🛡️ **Dashboard** | Current medications / abnormal indicators / pending OCR / running consultations / due follow-ups at a glance |
+| 🛡️ **Dashboard** | Current medications / abnormal indicators / pending OCR / running consultations at a glance |
 | 👨‍💼 **Admin console** | User management, index-library CRUD / drag-sort / bulk import, index-category management |
 | 🔐 **Security stack** | JWT + SSO single-session login, login-failure lockout (Redis Lua), SlowAPI rate limiting, DOMPurify XSS protection, path-traversal protection |
 
@@ -195,8 +194,6 @@ docker compose --env-file .env up -d
 
 # The backend entrypoint migrates the schema and loads seed data automatically
 ```
-
-> **Known limitation**: automatic follow-up reminder delivery and expiry marking depend on a Celery worker/beat, which the current Compose setup does not include — reminders are still created, listed and can be confirmed manually, but no notifications are sent automatically. To enable automation, run `celery -A app.core.celery_app worker --loglevel=info` and the matching beat process yourself.
 
 ---
 

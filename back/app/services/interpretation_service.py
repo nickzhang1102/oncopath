@@ -7,7 +7,6 @@
 - 建议与提醒
 """
 import logging
-import re
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 
@@ -23,11 +22,6 @@ from app.models.patient import Patient
 from app.utils.time_utils import calculate_age, get_utc_now, utc_isoformat
 
 logger = logging.getLogger(__name__)
-
-# 提取复查建议的正则
-FOLLOW_UP_PATTERN = re.compile(
-    r"建议(\d+)(天|周|月|年)后复查(.+?)(?:[，。,.\n]|$)"
-)
 
 SYSTEM_PROMPT = """你是一位拥有 20 年临床检验经验的检验科专家，正在为患者解读检验报告。请用通俗易懂的语言完成以下解读。
 
@@ -191,7 +185,7 @@ class InterpretationService:
         user_id: int,
         max_tokens: int = 16384,
     ) -> Dict[str, Any]:
-        """通用解读执行流程：LLM调用 → 保存 → 提取复查建议"""
+        """通用解读执行流程：LLM调用 → 保存"""
         result = await self._llm_analyze(
             system_prompt=system_prompt,
             user_prompt=user_message,
@@ -205,19 +199,9 @@ class InterpretationService:
         save_target.interpretation_at = get_utc_now()
         await self.db.flush()
 
-        # 提取复查建议
-        follow_ups = self._extract_follow_ups(interpretation, getattr(save_target, 'medical_date', None) or getattr(save_target, 'report_date', None) or getattr(save_target, 'medical_date', None))
-        await self._create_follow_up_reminders(
-            patient_id=save_target.patient_id,
-            user_id=user_id,
-            follow_ups=follow_ups,
-            source_id=getattr(save_target, 'exam_id', None) or getattr(save_target, 'report_id', None) or getattr(save_target, 'medical_id', None),
-        )
-
         return {
             "interpretation": interpretation,
             "interpretation_at": utc_isoformat(save_target.interpretation_at),
-            "follow_ups": follow_ups,
         }
 
     async def interpret_check(
@@ -226,7 +210,7 @@ class InterpretationService:
         """生成检验报告 AI 解读
 
         Returns:
-            dict: {interpretation, follow_ups}
+            dict: {interpretation, interpretation_at}
         """
         # 1. 查询检验报告 + 指标详情
         check, details, patient = await self._load_check_data(check_id)
@@ -243,7 +227,7 @@ class InterpretationService:
             check, details, patient, history_data
         )
 
-        # 4. 执行解读（LLM → 保存 → 提取复查建议）
+        # 4. 执行解读（LLM → 保存）
         return await self._execute_interpretation(
             user_message=user_message,
             system_prompt=SYSTEM_PROMPT,
@@ -650,88 +634,3 @@ class InterpretationService:
                 )
 
         return "\n".join(parts)
-
-    def _extract_follow_ups(
-        self, interpretation: str, source_date_holder: Any
-    ) -> List[Dict[str, Any]]:
-        """从解读文本中提取复查建议"""
-        follow_ups = []
-        # 获取日期：支持 MedicalCheck/MedicalExam/PathologyReport/普通date对象
-        if hasattr(source_date_holder, 'medical_date'):
-            source_date = source_date_holder.medical_date
-        elif hasattr(source_date_holder, 'report_date'):
-            source_date = source_date_holder.report_date
-        elif isinstance(source_date_holder, date):
-            source_date = source_date_holder
-        else:
-            source_date = None
-
-        if not source_date:
-            return follow_ups
-
-        for match in FOLLOW_UP_PATTERN.finditer(interpretation):
-            num, unit, item = match.group(1), match.group(2), match.group(3).strip()
-            # 计算提醒日期
-            from dateutil.relativedelta import relativedelta
-
-            delta_map = {
-                "天": lambda n: relativedelta(days=int(n)),
-                "周": lambda n: relativedelta(weeks=int(n)),
-                "月": lambda n: relativedelta(months=int(n)),
-                "年": lambda n: relativedelta(years=int(n)),
-            }
-            delta_func = delta_map.get(unit)
-            if delta_func:
-                reminder_date = source_date + delta_func(num)
-                follow_ups.append({
-                    "title": f"复查{item}",
-                    "description": f"建议{num}{unit}后复查{item}",
-                    "reminder_date": reminder_date.isoformat(),
-                    "source_type": "interpretation",
-                })
-
-        return follow_ups
-
-    async def _create_follow_up_reminders(
-        self,
-        check: Any = None,
-        follow_ups: List[Dict] = None,
-        user_id: int = None,
-        patient_id: int = None,
-        source_id: int = None,
-    ):
-        """从提取的复查建议自动创建随访提醒"""
-        if not follow_ups:
-            return
-
-        # 兼容旧接口：从check对象获取patient_id
-        if check is not None:
-            if hasattr(check, 'patient_id'):
-                patient_id = check.patient_id
-            if hasattr(check, 'medical_id'):
-                source_id = check.medical_id
-            elif hasattr(check, 'exam_id'):
-                source_id = check.exam_id
-            elif hasattr(check, 'report_id'):
-                source_id = check.report_id
-
-        if not patient_id or not user_id:
-            return
-
-        from app.models.follow_up import FollowUpReminder
-        from datetime import date as date_type
-
-        for fu in follow_ups:
-            reminder = FollowUpReminder(
-                patient_id=patient_id,
-                account_id=user_id,
-                title=fu["title"],
-                description=fu["description"],
-                reminder_date=date_type.fromisoformat(fu["reminder_date"]),
-                source_type="interpretation",
-                source_id=source_id,
-            )
-            self.db.add(reminder)
-
-        await self.db.flush()
-        logger.info(f"已创建 {len(follow_ups)} 条随访提醒")

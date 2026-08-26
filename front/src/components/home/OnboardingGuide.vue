@@ -358,7 +358,7 @@ const tourSteps = computed(() => {
     { selector: '[data-tour="quick-actions"]', title: '快捷操作', desc: '上传报告图片、发起 AI 会诊等常用功能都在这里。' },
     { selector: '[data-tour="stats"]', title: '健康概览', desc: '汇总各类报告数量与异常指标，点击可查看详情。' },
     { selector: '[data-tour="indicators"]', title: '指标关注', desc: '这里展示您收藏指标的最新结果与历史趋势。' },
-    { selector: '[data-tour="features"]', title: '全部功能', desc: '用药管理、知识库、随访提醒等更多功能入口。' },
+    { selector: '[data-tour="features"]', title: '全部功能', desc: '用药管理、知识库、病人管理等更多功能入口。' },
     { selector: '.tabbar-wrapper', title: '底部导航', desc: '在主页、时间线、报告等主要页面之间快速切换。' },
   ]
 })

@@ -11,11 +11,6 @@
         <span class="todo-text">待确认OCR报告</span>
         <van-tag type="warning" size="small">{{ data.pending_review_count }}</van-tag>
       </div>
-      <div v-if="data.pending_reminder_count > 0" class="todo-item" @click="$emit('go-reminders')">
-        <van-icon name="clock-o" size="16" color="var(--primary-color)" />
-        <span class="todo-text">待复查提醒</span>
-        <van-tag type="primary" size="small">{{ data.pending_reminder_count }}</van-tag>
-      </div>
       <div v-if="data.ongoing_consultation_count > 0" class="todo-item" @click="$emit('go-consultation')">
         <van-icon name="chat-o" size="16" color="var(--info-color)" />
         <span class="todo-text">进行中会诊</span>
@@ -36,12 +31,11 @@ const props = defineProps({
   data: { type: Object, required: true },
 })
 
-defineEmits(['go-pending-review', 'go-consultation', 'go-reminders'])
+defineEmits(['go-pending-review', 'go-consultation'])
 
 const todoCount = computed(() => {
   return (props.data.pending_review_count || 0)
     + (props.data.ongoing_consultation_count || 0)
-    + (props.data.pending_reminder_count || 0)
 })
 </script>
 

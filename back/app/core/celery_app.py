@@ -1,4 +1,4 @@
-"""Celery application configuration for reminders and knowledge tasks."""
+"""Celery application configuration for async tasks."""
 from celery import Celery
 from app.core.config import settings
 
@@ -26,14 +26,6 @@ celery_app.conf.update(
     # Worker配置
     worker_prefetch_multiplier=1,  # 每次只取1个任务
     worker_max_tasks_per_child=100,  # 每个worker处理100个任务后重启
-
-    # Beat 定时调度
-    beat_schedule={
-        "check-follow-up-reminders": {
-            "task": "check_follow_up_reminders",
-            "schedule": 86400.0,  # 每天（秒）
-        },
-    },
 )
 
 # 开发环境：任务同步执行（跳过 Redis broker）

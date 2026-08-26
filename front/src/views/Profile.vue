@@ -53,7 +53,6 @@
           <!-- 功能列表 -->
           <!-- 健康管理 -->
           <van-cell-group inset class="function-list">
-            <van-cell title="随访提醒" icon="clock-o" is-link to="/home/follow-up" />
             <van-cell title="数据导出" icon="down" is-link to="/home/profile/export" />
           </van-cell-group>
 

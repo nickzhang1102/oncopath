@@ -17,7 +17,6 @@ from app.models.timeline import TimelineEvent
 from app.models.image_report import ImageReport, ImageCategory
 from app.models.ocr_review_log import OCRReviewLog
 from app.models.medication import Medication
-from app.models.follow_up import FollowUpReminder
 from app.models.notification import Notification
 from app.models.prompt import PromptConfig
 # 知识库模型
@@ -75,8 +74,6 @@ __all__ = [
     "OCRReviewLog",
     # 用药记录
     "Medication",
-    # 随访提醒
-    "FollowUpReminder",
     # 服药记录
     "MedicationLog",
     # 分享

@@ -113,7 +113,6 @@ class DashboardResponse(BaseModel):
     # 待办提醒
     pending_review_count: int = 0
     ongoing_consultation_count: int = 0
-    pending_reminder_count: int = 0
 
     # 日期范围
     earliest_date: Optional[str] = None

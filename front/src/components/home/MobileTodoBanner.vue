@@ -16,11 +16,6 @@
         <span>进行中会诊</span>
         <van-tag type="primary" size="small">{{ data.ongoing_consultation_count }}</van-tag>
       </div>
-      <div v-if="data.pending_reminder_count > 0" class="todo-tag" @click="$emit('go-reminders')">
-        <van-icon name="clock-o" size="13" />
-        <span>待复查</span>
-        <van-tag type="primary" size="small">{{ data.pending_reminder_count }}</van-tag>
-      </div>
     </div>
   </div>
   <div v-else class="mobile-todo-banner mobile-todo-banner--empty">
@@ -36,12 +31,11 @@ const props = defineProps({
   data: { type: Object, required: true },
 })
 
-defineEmits(['go-pending-review', 'go-consultation', 'go-reminders'])
+defineEmits(['go-pending-review', 'go-consultation'])
 
 const todoCount = computed(() =>
   (props.data.pending_review_count || 0)
   + (props.data.ongoing_consultation_count || 0)
-  + (props.data.pending_reminder_count || 0)
 )
 </script>
 

@@ -5,7 +5,7 @@ from app.api import (
     medical_check, medical_exam, pathology, indicator_query, indicator_legacy,
     timeline, upload, prompt,
     image_report, knowledge, knowledge_preview, conversation, medication, dashboard,
-    export, follow_up, files, medication_log,
+    export, files, medication_log,
     indicator_history, share, search, admin, admin_agentteams, llm_config,
 )
 
@@ -33,7 +33,6 @@ api_router.include_router(conversation.router, prefix="/consultation", tags=["�
 api_router.include_router(medication.router, prefix="/medications", tags=["用药记录"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["仪表盘"])
 api_router.include_router(export.router, tags=["数据导出"])
-api_router.include_router(follow_up.router, tags=["随访提醒"])
 api_router.include_router(files.router, tags=["文件服务"])
 api_router.include_router(medication_log.router, prefix="/medication-logs", tags=["服药记录"])
 api_router.include_router(indicator_history.router, prefix="/indicator-history", tags=["指标历史"])

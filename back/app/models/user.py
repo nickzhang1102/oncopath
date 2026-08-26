@@ -32,7 +32,6 @@ class LoginAccount(Base):
     conversations_v2 = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
     prompt_configs = relationship("PromptConfig", back_populates="account", cascade="all, delete-orphan")
     medications = relationship("Medication", back_populates="account", cascade="all, delete-orphan")
-    follow_up_reminders = relationship("FollowUpReminder", back_populates="account", cascade="all, delete-orphan")
     image_reports = relationship("ImageReport", back_populates="account", cascade="all, delete-orphan")
     medication_logs = relationship("MedicationLog", back_populates="account", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="account", cascade="all, delete-orphan")

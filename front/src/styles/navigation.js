@@ -7,7 +7,7 @@
  * - HOME_NAV_ITEMS: 首页核心功能（主页、时间线）
  * - MEDICAL_NAV_ITEMS: 医疗管理功能（检验/检查/病理报告、指标、用药等）
  * - AI_NAV_ITEMS: AI智能工具（会诊、提示词、搜索）
- * - MANAGEMENT_NAV_ITEMS: 生活管理（随访、知识库、病人管理）
+ * - MANAGEMENT_NAV_ITEMS: 生活管理（知识库、病人管理）
  * - PROFILE_NAV_ITEMS: 个人中心（我的、数据导出）
  * - EXTERNAL_NAV_ITEMS: 外部链接（临床试验）
  * - NAV_GROUPS: 完整导航分组（用于 Sidebar/Drawer）
@@ -44,7 +44,6 @@ export const AI_NAV_ITEMS = [
 
 // 管理功能项
 export const MANAGEMENT_NAV_ITEMS = [
-  { path: '/home/follow-up', icon: 'clock-o', label: '随访提醒' },
   { path: '/home/knowledge', icon: 'bookmark-o', label: '知识库' },
   { path: '/home/patient-management', icon: 'manager-o', label: '病人管理' },
 ]

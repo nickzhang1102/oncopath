@@ -15,7 +15,6 @@ from app.models.medical import MedicalCheck, MedicalCheckDetail, MedicalExam, Pa
 from app.models.medication import Medication
 from app.models.image_report import ImageReport
 from app.models.conversation import LeaderSession
-from app.models.follow_up import FollowUpReminder
 from app.schemas.dashboard import (
     DashboardResponse, DashboardAbnormalIndicator, DashboardActiveMedication,
     DashboardTimelineEvent,
@@ -77,13 +76,6 @@ async def _query_counts(patient_id: int) -> dict:
             )
         )).scalar() or 0
 
-        pending_reminder_count = (await db.execute(
-            select(func.count(FollowUpReminder.id)).where(
-                FollowUpReminder.patient_id == patient_id,
-                FollowUpReminder.status.in_(["pending", "sent"]),
-            )
-        )).scalar() or 0
-
         return {
             "check_count": check_count,
             "exam_count": exam_count,
@@ -92,7 +84,6 @@ async def _query_counts(patient_id: int) -> dict:
             "med_total": med_total,
             "pending_review_count": pending_review_count,
             "ongoing_consult_count": ongoing_consult_count,
-            "pending_reminder_count": pending_reminder_count,
         }
 
 
@@ -272,7 +263,6 @@ async def get_dashboard(
         medication_total=counts["med_total"],
         pending_review_count=counts["pending_review_count"],
         ongoing_consultation_count=counts["ongoing_consult_count"],
-        pending_reminder_count=counts["pending_reminder_count"],
         earliest_date=date_range.get("start"),
         latest_date=date_range.get("end"),
     )

@@ -107,7 +107,7 @@ const tabRouteMap = [
     '/home/pathology-reports', '/home/treatment', '/home/status',
     '/home/image-report', '/home/index', '/home/abnormal-indicators',
     '/home/indicator/history', '/home/news', '/home/knowledge', '/home/medication',
-    '/home/follow-up', '/home/search'
+    '/home/search'
   ],
   ['/home/timeline'],                                       // 1: 时间线
   [],                                                       // 2: 上传（中间按钮，不关联路由）

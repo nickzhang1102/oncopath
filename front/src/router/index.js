@@ -318,15 +318,6 @@ const routes = [
         }
       },
       {
-        path: 'follow-up',
-        name: 'FollowUp',
-        component: () => import('@/views/FollowUpView.vue'),
-        meta: {
-          requiresAuth: true,
-          title: '随访提醒'
-        }
-      },
-      {
         path: 'search',
         name: 'Search',
         component: () => import('@/views/SearchView.vue'),

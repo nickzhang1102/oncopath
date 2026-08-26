@@ -53,7 +53,6 @@ test.describe('个人中心 E2E', () => {
     await page.waitForURL(/\/home\/profile/, { timeout: 10000 });
 
     await expect(page.getByRole('button', { name: /病人管理/ })).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.van-cell').filter({ hasText: '随访提醒' })).toBeVisible();
     await expect(page.locator('.van-cell').filter({ hasText: '数据导出' })).toBeVisible();
 
     // 设置

@@ -29,7 +29,6 @@
             :data="dashboardData"
             @go-pending-review="handleGoPendingReview"
             @go-consultation="handleGoConsultation"
-            @go-reminders="handleGoReminders"
           />
         </div>
         <IndicatorSection data-tour="indicators" />
@@ -45,7 +44,6 @@
             :data="dashboardData"
             @go-pending-review="handleGoPendingReview"
             @go-consultation="handleGoConsultation"
-            @go-reminders="handleGoReminders"
           />
           <MobileAbnormalPreview :data="dashboardData" @go-abnormal="handleGoAbnormal" />
         </template>
@@ -117,10 +115,6 @@ function handleGoPendingReview() {
 
 function handleGoConsultation() {
   router.push('/home/consultation')
-}
-
-function handleGoReminders() {
-  router.push('/home/profile/notifications?tab=reminders')
 }
 
 // 刷新数据（桌面端和移动端统一加载）

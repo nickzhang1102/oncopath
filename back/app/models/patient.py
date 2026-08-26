@@ -41,7 +41,6 @@ class Patient(Base):
     conversations = relationship("Conversation", back_populates="patient", cascade="all, delete-orphan")
     prompt_configs = relationship("PromptConfig", back_populates="patient", cascade="all, delete-orphan")
     medications = relationship("Medication", back_populates="patient", cascade="all, delete-orphan")
-    follow_up_reminders = relationship("FollowUpReminder", back_populates="patient", cascade="all, delete-orphan")
     image_reports = relationship("ImageReport", back_populates="patient", cascade="all, delete-orphan")
     medication_logs = relationship("MedicationLog", back_populates="patient", cascade="all, delete-orphan")
     record_summaries = relationship("RecordSummary", back_populates="patient", cascade="all, delete-orphan")

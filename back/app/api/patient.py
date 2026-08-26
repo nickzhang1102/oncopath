@@ -267,7 +267,6 @@ async def delete_patient(
 
     # 统计关联数据
     from app.models.conversation import ConsultationExternalSession, LeaderSession, Conversation
-    from app.models.follow_up import FollowUpReminder
     from app.models.image_report import ImageReport
     from app.models.medication import Medication
     from app.models.medication_log import MedicationLog
@@ -279,7 +278,6 @@ async def delete_patient(
         "conversations": select(func.count(Conversation.id)).where(Conversation.patient_id == patient_id),
         "medications": select(func.count(Medication.id)).where(Medication.patient_id == patient_id),
         "medication_logs": select(func.count(MedicationLog.id)).where(MedicationLog.patient_id == patient_id),
-        "follow_ups": select(func.count(FollowUpReminder.id)).where(FollowUpReminder.patient_id == patient_id),
         "checks": select(func.count(MedicalCheck.medical_id)).where(MedicalCheck.patient_id == patient_id),
         "exams": select(func.count(MedicalExam.exam_id)).where(MedicalExam.patient_id == patient_id),
         "pathology": select(func.count(PathologyReport.report_id)).where(PathologyReport.patient_id == patient_id),
@@ -294,15 +292,11 @@ async def delete_patient(
     await db.execute(
         MedicationLog.__table__.delete().where(MedicationLog.patient_id == patient_id)
     )
-    # 2. FollowUpReminder
-    await db.execute(
-        FollowUpReminder.__table__.delete().where(FollowUpReminder.patient_id == patient_id)
-    )
-    # 3. ImageReport
+    # 2. ImageReport
     await db.execute(
         ImageReport.__table__.delete().where(ImageReport.patient_id == patient_id)
     )
-    # 4. Conversation（手动级联：LeaderSession/LeaderMessage/LeaderAgentResult/LeaderFinalReport）
+    # 3. Conversation（手动级联：LeaderSession/LeaderMessage/LeaderAgentResult/LeaderFinalReport）
     conv_result = await db.execute(
         select(Conversation.id).where(Conversation.patient_id == patient_id)
     )
