@@ -1,6 +1,7 @@
 <template>
   <van-config-provider :theme="resolvedTheme">
-    <div id="app">
+    <!-- app-shell: 模板层壳元素。勿用 id="app"，避免与 index.html 挂载容器重复命中样式 -->
+    <div class="app-shell">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -55,9 +56,10 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
 <style>
 @import '@/styles/responsive.css';
 
-#app {
+.app-shell {
   width: 100%;
-  min-height: 100vh;
+  /* min-height 同步扣除页脚 padding，避免文档最小总高超出一屏出现滚动条 */
+  min-height: calc(100vh - var(--footer-height));
   background: var(--bg-primary);
   /* 全局底部状态栏占位补偿，防止页面内容被遮挡 */
   padding-bottom: var(--footer-height);

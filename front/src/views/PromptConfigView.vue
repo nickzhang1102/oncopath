@@ -320,20 +320,22 @@ async function handlePreview() {
 <style scoped>
 /* 使用项目主色调 */
 .prompt-config {
-  min-height: 100vh;
+  /* 扣除 #app 为固定页脚预留的 padding，避免高度叠加产生滚动条 */
+  min-height: calc(100vh - var(--footer-height));
   background: var(--bg-primary);
-  /* 移动端: tabbar ~50px + 底部操作栏 66px + 安全间距 */
-  padding-bottom: calc(50px + 66px + env(safe-area-inset-bottom, 0px) + 12px);
+  /* 移动端: tabbar + 全局页脚 + 底部操作栏 ~66px + 安全间距 */
+  padding-bottom: calc(var(--tabbar-height) + var(--footer-height) + 66px + env(safe-area-inset-bottom, 0px) + 12px);
 }
 
 .prompt-config.is-desktop {
   /* 桌面端无 tabbar，flex 布局使 sticky 底部生效 */
   /* --bottom-bar-height 补偿固定操作栏高度 */
   --bottom-bar-height: 74px;
-  padding-bottom: calc(var(--bottom-bar-height) + var(--space-4));
+  padding-bottom: calc(var(--bottom-bar-height) + var(--footer-height) + var(--space-4));
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* 桌面端额外扣除 content-area 底部留白(--space-4, 见 responsive.css)，避免高度链叠加产生滚动条 */
+  min-height: calc(100vh - var(--footer-height) - var(--space-4));
 }
 .is-desktop .config-content {
   flex: 1;
@@ -538,14 +540,14 @@ async function handlePreview() {
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 -2px 8px var(--primary-alpha-6);
   z-index: 100;
-  /* 移动端: 避开 tabbar */
-  bottom: 50px;
+  /* 移动端: 避开 tabbar + 全局页脚（页脚 z-index 更高，重叠时会盖住工具栏） */
+  bottom: calc(var(--tabbar-height) + var(--footer-height));
 }
 
 .is-desktop .bottom-actions {
-  /* 桌面端: fixed 贴底，left 避开侧边栏 */
+  /* 桌面端: fixed 贴底并抬高全局页脚高度，left 避开侧边栏 */
   position: fixed;
-  bottom: 0;
+  bottom: var(--footer-height);
   left: var(--sidebar-offset, 220px);
   right: 0;
   padding: 16px 24px;

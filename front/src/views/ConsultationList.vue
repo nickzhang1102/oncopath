@@ -545,7 +545,8 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 .consultation-list {
   display: flex; /* 配合状态栏 margin-top:auto，内容不足一屏时也贴底 */
   flex-direction: column;
-  min-height: 100vh;
+  /* 扣除 #app 为固定页脚预留的 padding，避免高度叠加产生滚动条 */
+  min-height: calc(100vh - var(--footer-height));
   background: var(--bg-primary);
   /* 底部不留 padding：sticky 状态栏自身占位防遮挡，且保证能钉到页脚上方 */
 }
@@ -842,5 +843,12 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 .no-more {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
+}
+
+/* 桌面端：额外扣除 content-area 底部留白(--space-4, 见 responsive.css)，避免高度链叠加产生滚动条 */
+@media (min-width: 768px) {
+  .consultation-list {
+    min-height: calc(100vh - var(--footer-height) - var(--space-4));
+  }
 }
 </style>

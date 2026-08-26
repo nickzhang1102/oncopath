@@ -132,7 +132,8 @@ watch(
 
 <style scoped>
 .home-view {
-  min-height: 100vh;
+  /* 扣除全局页脚占位，避免与 .app-shell 的 padding 叠加产生滚动条 */
+  min-height: calc(100vh - var(--footer-height));
   background: var(--bg-primary);
 }
 
@@ -242,7 +243,8 @@ watch(
 /* 桌面端滚动优化 */
 @media (min-width: 768px) {
   .content-area {
-    min-height: 100vh;
+    /* 扣除全局页脚占位 + 自身桌面端底部留白(responsive.css 的 --space-4)，避免高度链叠加产生滚动条 */
+    min-height: calc(100vh - var(--footer-height) - var(--space-4));
   }
 
   .drawer-trigger-btn {

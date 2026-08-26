@@ -6,7 +6,7 @@
         虚拟会诊引擎 AgentTeams {{ online ? '已连接' : '未部署' }}
       </span>
     </div>
-    <!-- 项目一句话简介 -->
+    <!-- 项目一句话简介（仅桌面端显示，移动端只保留状态） -->
     <span class="status-intro">
       开源多智能体系统：多个 AI 医生模拟 MDT 多学科会诊，协作分析病情并出具综合报告
     </span>
@@ -103,6 +103,7 @@ const online = computed(() => Boolean(
   min-width: 0;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -123,10 +124,10 @@ const online = computed(() => Boolean(
 }
 
 @media (max-width: 480px) {
-  .at-status-bar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-1);
+  /* 移动端简化：只保留引擎连接状态，简介与仓库链接不在小屏展示 */
+  .status-intro,
+  .repo-link {
+    display: none;
   }
 }
 </style>
