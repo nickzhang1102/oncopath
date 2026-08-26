@@ -345,8 +345,7 @@ onMounted(() => {
 /* 桌面端侧边栏适配 */
 @media (min-width: 768px) {
   .patient-management {
-    padding: var(--space-6);
-    padding-bottom: var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
   }
 
   .patient-list {

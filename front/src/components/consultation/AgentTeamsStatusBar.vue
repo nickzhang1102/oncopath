@@ -6,6 +6,10 @@
         虚拟会诊引擎 AgentTeams {{ online ? '已连接' : '未部署' }}
       </span>
     </div>
+    <!-- 项目一句话简介 -->
+    <span class="status-intro">
+      开源多智能体系统：多个 AI 医生模拟 MDT 多学科会诊，协作分析病情并出具综合报告
+    </span>
     <a
       class="repo-link"
       :href="repoUrl"
@@ -14,7 +18,7 @@
       @click.stop
     >
       <van-icon name="link-o" />
-      <span>{{ repoHost }}</span>
+      <span>GitHub</span>
     </a>
   </footer>
 </template>
@@ -32,7 +36,6 @@ const props = defineProps({
 
 // agentTeams 开源仓库地址（与后端 DEFAULT_UPSELL.cta_url 保持一致）
 const repoUrl = AGENTTEAMS_REPO_URL
-const repoHost = repoUrl.replace(/^https?:\/\//, '')
 
 const online = computed(() => Boolean(
   props.availability?.configured && props.availability?.enabled,
@@ -41,14 +44,27 @@ const online = computed(() => Boolean(
 
 <style scoped>
 .at-status-bar {
+  /* 固定在 Oncopath 全局页脚上方：sticky 钉住视口，margin-top:auto 在内容不足时贴底 */
+  position: sticky;
+  bottom: var(--footer-height);
+  z-index: 5; /* 高于列表卡片，低于 tabbar(--z-nav)/页脚(900) */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   max-width: 1100px;
-  margin: var(--space-4) auto 0;
-  padding: var(--space-2) var(--space-4);
+  width: 100%;
+  margin-top: auto;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  background: var(--bg-primary); /* 不透明背景，滚动时防止内容透出 */
   border-top: 1px solid var(--border-color);
+}
+
+/* 移动端 (/home 含 tabbar)：抬升到 tabbar + 页脚之上，与 AppFooter.above-tabbar 对齐 */
+@media (max-width: 767.98px) {
+  .at-status-bar {
+    bottom: calc(var(--tabbar-height) + var(--footer-height));
+  }
 }
 
 .status-left {
@@ -77,6 +93,16 @@ const online = computed(() => Boolean(
 .status-text {
   font-size: var(--text-xs);
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-intro {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

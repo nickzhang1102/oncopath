@@ -448,7 +448,7 @@ onMounted(async () => {
   .medical-record {
     max-width: 960px;
     margin: 0 auto;
-    padding: 24px 32px;
+    padding: 0 32px 24px;
   }
 
   .record-header {

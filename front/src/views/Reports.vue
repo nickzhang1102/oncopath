@@ -350,8 +350,7 @@ onMounted(() => {
 /* 桌面端居中限宽 */
 @media (min-width: 768px) {
   .reports-view {
-    padding: var(--space-6);
-    padding-bottom: var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
     max-width: 1000px;
     margin: 0 auto;
   }

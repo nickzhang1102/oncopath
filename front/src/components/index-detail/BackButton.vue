@@ -61,6 +61,8 @@ const goBack = () => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  /* 统一抬头到页面顶部的间距（各页面容器不再重复提供） */
+  padding-top: var(--space-6);
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-light);

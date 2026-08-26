@@ -543,9 +543,11 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 
 <style scoped>
 .consultation-list {
+  display: flex; /* 配合状态栏 margin-top:auto，内容不足一屏时也贴底 */
+  flex-direction: column;
   min-height: 100vh;
   background: var(--bg-primary);
-  padding-bottom: var(--safe-bottom);
+  /* 底部不留 padding：sticky 状态栏自身占位防遮挡，且保证能钉到页脚上方 */
 }
 
 .consultation-list :deep(.van-nav-bar) {
@@ -566,10 +568,6 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 
 .consultation-list :deep(.van-icon-arrow-left) {
   color: var(--primary-color);
-}
-
-.consultation-list.is-desktop {
-  padding-bottom: 0;
 }
 
 /* ===== 移动端卡片 ===== */
@@ -693,7 +691,8 @@ watch(currentPatientId, async (patientId, previousPatientId) => {
 
 .start-button {
   position: fixed;
-  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  /* 状态栏固定后常驻底部，按钮抬升到其上方（tabbar+页脚+状态栏高度+间距） */
+  bottom: calc(var(--tabbar-height) + var(--footer-height) + 56px + env(safe-area-inset-bottom, 0px));
   right: var(--space-4);
   z-index: var(--z-float);
 }

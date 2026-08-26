@@ -587,6 +587,6 @@ watch(() => patientStore.currentPatient?.patient_id, (newId, oldId) => {
 :deep(.van-floating-bubble) { background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); box-shadow: 0 4px 12px var(--primary-alpha-40); }
 
 @media (min-width: 768px) {
-  .medication-view { padding: var(--space-6); padding-bottom: var(--space-6); max-width: 1000px; margin: 0 auto; }
+  .medication-view { padding: 0 var(--space-6) var(--space-6); max-width: 1000px; margin: 0 auto; }
 }
 </style>

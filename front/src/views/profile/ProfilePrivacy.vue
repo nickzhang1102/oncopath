@@ -134,7 +134,7 @@ async function handleUpdate() {
   .profile-privacy {
     max-width: 600px;
     margin: 0 auto;
-    padding: var(--space-6);
+    padding: 0 var(--space-6) var(--space-6);
   }
 }
 </style>
