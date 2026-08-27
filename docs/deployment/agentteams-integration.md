@@ -29,7 +29,7 @@
 
 - OncoPath 前端运行在 `127.0.0.1:3000`
 - OncoPath 后端运行在 `127.0.0.1:8000`
-- AgentTeams 运行在 `127.0.0.1:8080`
+- AgentTeams 运行在 `127.0.0.1:8380`
 - 对外域名是 `oncopath.example.com`
 
 ```nginx
@@ -57,7 +57,7 @@ server {
     }
 
     location /agentteams/ {
-        proxy_pass http://127.0.0.1:8080/;
+        proxy_pass http://127.0.0.1:8380/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -75,7 +75,7 @@ server {
 /agentteams
 ```
 
-使用仓库自带 `docker-compose.yml` 时，frontend nginx 已内置 AgentTeams 嵌入页、静态资源和集成 API 的受限反代，默认转发到宿主机 `8080` 端口；backend 容器通过 `AGENTTEAMS_INTERNAL_ORIGIN` 访问这个同站反代入口，默认值为 `http://frontend`。如果 AgentTeams 不在宿主机 `8080`，需要同步调整 `front/nginx.conf` 的 upstream，或改用一个 backend 容器可直接访问的完整 HTTPS URL。
+使用仓库自带 `docker-compose.yml` 时，frontend nginx 已内置 AgentTeams 嵌入页、静态资源和集成 API 的受限反代，默认转发到宿主机 `8380` 端口；backend 容器通过 `AGENTTEAMS_INTERNAL_ORIGIN` 访问这个同站反代入口，默认值为 `http://frontend`。如果 AgentTeams 不在宿主机 `8380`，需要同步调整 `front/nginx.conf` 的 upstream，或改用一个 backend 容器可直接访问的完整 HTTPS URL。
 
 Compose 启动时只有 `backend` 执行 Alembic 迁移和种子初始化；`agentteams-launch-worker` 依赖 backend 健康检查后启动，并设置 `RUN_DB_MIGRATIONS=false`。如果手工升级数据库，先停止 worker，确认 `/api/v1/health` 返回 200 后再启动 worker。
 
