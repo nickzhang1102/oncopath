@@ -68,3 +68,23 @@ __pycache__/
 CLAUDE.md
 /back/.zcf/
 /.jspace
+
+# 历史遗留清理：旧版截图批次 + 一次性迁移脚本（仅保留本地，不再跟踪）
+/back/scripts/add_ocr_fields.py
+/back/scripts/backfill_index_id.py
+/back/scripts/backfill_medical_check_category.py
+/back/scripts/drop_bytea_columns.py
+/back/scripts/import_image_category.py
+/back/scripts/migrate_bytea_to_filesystem.py
+/scripts/open_source_preflight.ps1
+/docs/screenshots/desktop-admin.png
+/docs/screenshots/desktop-home.png
+/docs/screenshots/desktop-indicators.png
+/docs/screenshots/mobile-indicators.png
+/docs/screenshots/mobile-login.png
+/website/screenshots/desktop-admin.png
+/website/screenshots/desktop-consultation-room2.png
+/website/screenshots/desktop-home.png
+/website/screenshots/desktop-indicators.png
+/website/screenshots/mobile-indicators.png
+/website/screenshots/mobile-login.png
