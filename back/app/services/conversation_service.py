@@ -107,6 +107,22 @@ class ConversationService:
         )
         return result.scalar_one_or_none()
 
+    async def has_external_session(self, conversation_id: int) -> bool:
+        """该会话是否由外部会诊方（AgentTeams）承载。
+
+        外部 AgentTeams 会话无法用旧的本地分享载荷表达；直接暴露该载荷会在
+        静默中丢失真实对话记录。调用方应引导用户进入登录后的嵌入视图。
+        """
+        result = await self.db.execute(
+            select(ConsultationExternalSession.id)
+            .where(
+                ConsultationExternalSession.conversation_id == conversation_id,
+                ConsultationExternalSession.provider == "agentteams",
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
     async def delete_conversation(self, conversation_id: int, user_id: int) -> bool:
         """删除对话（仅限本人）— 手动级联删除关联数据
 

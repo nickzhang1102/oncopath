@@ -135,6 +135,70 @@ class TestAuth:
         assert "refresh_token" in data
 
     @pytest.mark.asyncio
+    async def test_refresh_token_is_single_use(self, client, db_session):
+        """同一个刷新令牌只能消费一次（一次性旋转）"""
+        import uuid
+        username = f"rotateuser_{uuid.uuid4().hex[:8]}"
+
+        user = LoginAccount(
+            username=username,
+            password=get_password_hash("password123"[:72])
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        login_response = await client.post("/api/v1/auth/login", json={
+            "username": username,
+            "password": "password123"
+        })
+        refresh_token = login_response.json()["refresh_token"]
+
+        first = await client.post(
+            "/api/v1/auth/refresh",
+            headers={"Authorization": f"Bearer {refresh_token}"}
+        )
+        assert first.status_code == 200
+
+        # 旧刷新令牌已被消费，重放必须被拒绝
+        replay = await client.post(
+            "/api/v1/auth/refresh",
+            headers={"Authorization": f"Bearer {refresh_token}"}
+        )
+        assert replay.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_logout_revokes_refresh_token(self, client, db_session):
+        """登出后名下全部刷新令牌同步失效"""
+        import uuid
+        username = f"logoutjti_{uuid.uuid4().hex[:8]}"
+
+        user = LoginAccount(
+            username=username,
+            password=get_password_hash("password123"[:72])
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        login_response = await client.post("/api/v1/auth/login", json={
+            "username": username,
+            "password": "password123"
+        })
+        access_token = login_response.json()["access_token"]
+        refresh_token = login_response.json()["refresh_token"]
+
+        logout_response = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        assert logout_response.status_code == 200
+
+        refreshed = await client.post(
+            "/api/v1/auth/refresh",
+            headers={"Authorization": f"Bearer {refresh_token}"}
+        )
+        assert refreshed.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_token_refresh_invalid(self, client):
         """测试无效refresh token"""
         response = await client.post(

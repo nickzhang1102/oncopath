@@ -105,6 +105,23 @@ def test_relative_agentteams_api_base_uses_internal_origin(monkeypatch):
     assert service._build_agentteams_api_base("/agentteams") == "http://frontend/agentteams"
 
 
+def test_integration_launch_urls_target_v1_contract(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.agentteams_start_service.settings.AGENTTEAMS_INTERNAL_ORIGIN",
+        "http://frontend",
+    )
+    service = AgentTeamsStartService(db=None)
+
+    assert (
+        service._integration_launch_url("/agentteams")
+        == "http://frontend/agentteams/api/integrations/v1/agentteams/consultation-launches"
+    )
+    assert (
+        service._integration_launch_status_url("https://at.example.com", "req-1")
+        == "https://at.example.com/api/integrations/v1/agentteams/consultation-launches/req-1"
+    )
+
+
 def test_relative_agentteams_api_base_rejects_missing_internal_origin(monkeypatch):
     monkeypatch.setattr(
         "app.services.agentteams_start_service.settings.AGENTTEAMS_INTERNAL_ORIGIN",
@@ -217,26 +234,6 @@ def patch_launch_success(monkeypatch, calls):
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
 
 
-def patch_embed_renew_success(monkeypatch, calls, embed_token="renewed-token", status="running"):
-    async def fake_renew(self, base_url, integration_secret, payload):
-        calls.append(
-            {
-                "base_url": base_url,
-                "integration_secret": integration_secret,
-                "payload": payload,
-            }
-        )
-        return {
-            "agentteams_conversation_id": payload["agentteams_conversation_id"],
-            "agentteams_session_id": payload["agentteams_session_id"],
-            "embed_token": embed_token,
-            "embed_path": f"/embed/conversation/{embed_token}",
-            "status": status,
-        }
-
-    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_embed_renew", fake_renew)
-
-
 @pytest.mark.asyncio
 async def test_agentteams_start_creates_mapping_and_returns_embed_url(
     client, db_session, current_user_override, patient, monkeypatch
@@ -272,7 +269,9 @@ async def test_agentteams_start_creates_mapping_and_returns_embed_url(
     assert calls[0]["integration_secret"] == "secret-1234"
     assert calls[0]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
     assert mapping.launch_request_id == LAUNCH_REQUEST_ID
-    assert calls[0]["payload"]["source_conversation_id"] == data["conversation_id"]
+    assert calls[0]["payload"]["user_ref"] == f"oncopath:{patient.account_id}"
+    assert calls[0]["payload"]["subject_ref"] == str(patient.patient_id)
+    assert calls[0]["payload"]["conversation_ref"] == str(data["conversation_id"])
     assert calls[0]["payload"]["title"] == f"prompt-#{data['conversation_id']}"
     assert calls[0]["payload"]["title"] != "虚拟会诊"
     assert len(calls[0]["payload"]["title"]) <= AgentTeamsStartService.MAX_TITLE_LENGTH
@@ -318,15 +317,12 @@ async def test_agentteams_start_reuses_request_id_after_lost_success_response(
             "status": "created",
             "agentteams_conversation_id": 1001,
             "agentteams_session_id": 2001,
-            "source_conversation_id": "remote-shell",
+            "conversation_ref": "remote-shell",
             "error_code": None,
         }
 
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch)
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
-    renew_calls = []
-    patch_embed_renew_success(monkeypatch, renew_calls)
-
     payload = {"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID}
     first = await client.post("/api/v1/consultation/agentteams/start", json=payload)
     assert first.status_code == 202
@@ -336,20 +332,14 @@ async def test_agentteams_start_reuses_request_id_after_lost_success_response(
     assert intent.status == "confirming"
 
     second = await client.post("/api/v1/consultation/agentteams/start", json=payload)
-    assert second.status_code == 200
+    assert second.status_code == 202
+    assert second.json()["launch_status"] == "manual_review"
+    assert second.json()["error"] == "agentteams_embed_unavailable"
     assert [call["request_id"] for call in launch_calls] == [
         f"oncopath-launch-{LAUNCH_REQUEST_ID}",
     ]
     assert len((await db_session.execute(select(Conversation))).scalars().all()) == 1
-    mapping = (await db_session.execute(select(ConsultationExternalSession))).scalar_one()
-    assert mapping.launch_request_id == LAUNCH_REQUEST_ID
-
-    renewed = await client.get(
-        f"/api/v1/consultation/agentteams/sessions/{mapping.conversation_id}",
-        params={"patient_id": patient.patient_id, "renew": True},
-    )
-    assert renewed.status_code == 200
-    assert renew_calls[0]["payload"]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
+    assert (await db_session.execute(select(ConsultationExternalSession))).scalars().all() == []
 
 
 @pytest.mark.asyncio
@@ -496,7 +486,6 @@ async def test_agentteams_start_rejects_mismatched_request_and_conversation_ids(
     await save_enabled_config(db_session)
     patch_prompt(monkeypatch)
     patch_launch_success(monkeypatch, [])
-    patch_embed_renew_success(monkeypatch, [])
 
     started = await client.post(
         "/api/v1/consultation/agentteams/start",
@@ -751,9 +740,6 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
     await save_enabled_config(db_session, base_url="/agentteams")
     patch_prompt(monkeypatch)
     patch_launch_success(monkeypatch, [])
-    renew_calls = []
-    patch_embed_renew_success(monkeypatch, renew_calls)
-
     started = await client.post(
         "/api/v1/consultation/agentteams/start",
         json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
@@ -765,52 +751,19 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
         json={"patient_id": patient.patient_id, "conversation_id": conversation_id},
     )
     assert restarted.status_code == 200
-    assert restarted.json()["embed_url"] == "/agentteams/embed/conversation/renewed-token"
-    assert renew_calls == [
-        {
-            "base_url": "/agentteams",
-            "integration_secret": "secret-1234",
-            "payload": {
-                "source_conversation_id": conversation_id,
-                "request_id": f"oncopath-launch-{LAUNCH_REQUEST_ID}",
-                "agentteams_conversation_id": 1001,
-                "agentteams_session_id": 2001,
-            },
-        }
-    ]
-
-    renew_calls.clear()
+    assert restarted.json()["embed_url"] == "/agentteams/embed/conversation/embed-token"
 
     read_response = await client.get(
         f"/api/v1/consultation/agentteams/sessions/{conversation_id}",
         params={"patient_id": patient.patient_id},
     )
     assert read_response.status_code == 200
-    assert read_response.json()["embed_url"] == "/agentteams/embed/conversation/renewed-token"
-    assert read_response.json()["status"] == "running"
-    assert renew_calls == []
-
-    explicit_renew = await client.get(
-        f"/api/v1/consultation/agentteams/sessions/{conversation_id}",
-        params={"patient_id": patient.patient_id, "renew": True},
-    )
-    assert explicit_renew.status_code == 200
-    assert renew_calls == [
-        {
-            "base_url": "/agentteams",
-            "integration_secret": "secret-1234",
-            "payload": {
-                "source_conversation_id": conversation_id,
-                "request_id": f"oncopath-launch-{LAUNCH_REQUEST_ID}",
-                "agentteams_conversation_id": 1001,
-                "agentteams_session_id": 2001,
-            },
-        }
-    ]
+    assert read_response.json()["embed_url"] == "/agentteams/embed/conversation/embed-token"
+    assert read_response.json()["status"] == "created"
 
     result = await db_session.execute(select(ConsultationExternalSession))
     mapping = result.scalar_one()
-    assert mapping.embed_url == "/agentteams/embed/conversation/renewed-token"
+    assert mapping.embed_url == "/agentteams/embed/conversation/embed-token"
 
     deleted = await client.delete(
         f"/api/v1/consultation/conversations/{conversation_id}",
@@ -852,7 +805,7 @@ async def test_agentteams_start_rejects_non_owned_patient_with_403(
 
 
 @pytest.mark.asyncio
-async def test_agentteams_restart_refreshes_legacy_title_before_renew(
+async def test_agentteams_restart_refreshes_legacy_title_without_renew(
     client, db_session, current_user_override, patient, test_user, monkeypatch
 ):
     await save_enabled_config(db_session)
@@ -876,9 +829,6 @@ async def test_agentteams_restart_refreshes_legacy_title_before_renew(
     )
     db_session.add(mapping)
     await db_session.commit()
-    renew_calls = []
-    patch_embed_renew_success(monkeypatch, renew_calls)
-
     response = await client.post(
         "/api/v1/consultation/agentteams/start",
         json={
@@ -893,7 +843,7 @@ async def test_agentteams_restart_refreshes_legacy_title_before_renew(
     await db_session.refresh(mapping)
     assert conversation.title == f"胰腺癌肝转移病情分析-#{conversation.id}"
     assert mapping.status == "completed"
-    assert len(renew_calls) == 1
+    assert response.json()["embed_url"] == "https://agentteams.example.com/embed/conversation/token"
 
 
 @pytest.mark.asyncio
@@ -1070,23 +1020,20 @@ async def test_admin_manual_review_reconcile_is_read_only_and_audited(
 
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fail_if_launch_called)
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch_status", fake_status)
-    renew_calls = []
-    patch_embed_renew_success(monkeypatch, renew_calls, status="running")
-
     response = await client.post(
         f"/api/v1/admin/agentteams-launch-intents/{intent.id}/reconcile"
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["launch_status"] == "accepted"
-    assert data["payload_retained"] is False
+    assert data["launch_status"] == "manual_review"
+    assert data["payload_retained"] is True
     assert data["audits"][0]["action"] == "read_only_reconcile"
     assert data["audits"][0]["before_status"] == "manual_review"
-    assert data["audits"][0]["after_status"] == "accepted"
+    assert data["audits"][0]["after_status"] == "manual_review"
     assert launch_calls == []
     assert status_calls == [f"oncopath-launch-{LAUNCH_REQUEST_ID}"]
-    assert len(renew_calls) == 1
+    assert data["last_error_code"] == "agentteams_embed_unavailable"
 
 
 @pytest.mark.asyncio
@@ -1497,7 +1444,7 @@ async def test_agentteams_history_requires_patient_context(
 
 
 @pytest.mark.asyncio
-async def test_agentteams_history_rejects_patient_mismatch_before_renew(
+async def test_agentteams_history_rejects_patient_mismatch_without_renew(
     client, db_session, current_user_override, patient, test_user, monkeypatch
 ):
     other_patient = Patient(
@@ -1526,15 +1473,12 @@ async def test_agentteams_history_rejects_patient_mismatch_before_renew(
     )
     await db_session.commit()
 
-    renew_calls = []
-    patch_embed_renew_success(monkeypatch, renew_calls)
     response = await client.get(
         f"/api/v1/consultation/agentteams/sessions/{conversation.id}",
         params={"patient_id": other_patient.patient_id},
     )
 
     assert response.status_code == 404
-    assert renew_calls == []
 
 
 @pytest.mark.asyncio

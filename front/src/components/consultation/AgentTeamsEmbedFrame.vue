@@ -45,7 +45,6 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { mergeAgentTeamsStatus } from '@/utils/agentteamsStatus'
 
 const EMBED_STATUS_MESSAGE = 'oncopath:embed-status'
-const EMBED_RENEW_MESSAGE = 'oncopath:embed-renew-required'
 const EMBED_LOAD_TIMEOUT_MS = 15000
 const EMBED_STATES = new Set([
   'created',
@@ -70,7 +69,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['back', 'status-change', 'renew-required'])
+const emit = defineEmits(['back', 'status-change'])
 
 const loaded = ref(false)
 const loadFailed = ref(false)
@@ -137,10 +136,6 @@ function getEmbedOrigin() {
 function handleEmbedStatus(event) {
   if (event.source !== embedFrame.value?.contentWindow) return
   if (event.origin !== getEmbedOrigin()) return
-  if (event.data?.type === EMBED_RENEW_MESSAGE) {
-    emit('renew-required')
-    return
-  }
   if (event.data?.type !== EMBED_STATUS_MESSAGE) return
   if (!EMBED_STATES.has(event.data.status)) return
 

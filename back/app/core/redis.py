@@ -114,6 +114,12 @@ class RedisClient:
             return json.loads(value)
         return None
 
+    async def sadd(self, key: str, *values: str) -> int:
+        """向集合添加成员"""
+        if not self._client:
+            await self.connect()
+        return await self._client.sadd(key, *values)
+
     async def eval(self, script: str, num_keys: int, *keys_and_args) -> Any:
         """执行Lua脚本"""
         if not self._client:

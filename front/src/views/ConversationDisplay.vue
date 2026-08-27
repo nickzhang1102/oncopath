@@ -20,7 +20,6 @@
       :session="externalSession"
       @back="handleBack"
       @status-change="handleExternalStatusChange"
-      @renew-required="handleEmbedRenewRequired"
     />
 
     <AgentTeamsErrorDialog
@@ -57,7 +56,6 @@ const showAgentTeamsError = ref(false)
 const agentTeamsError = ref({})
 const externalSession = ref(null)
 let statusUpdateChain = Promise.resolve()
-let renewPromise = null
 
 function handleBack() {
   router.push('/home/consultation')
@@ -90,19 +88,6 @@ function handleExternalStatusChange(status) {
     .catch(() => {})
 }
 
-async function handleEmbedRenewRequired() {
-  if (renewPromise) return renewPromise
-  renewPromise = loadExternalSession({ renew: true })
-    .catch(error => {
-      if (isAgentTeamsError(error)) setAgentTeamsError(error)
-      else setPlainError('AgentTeams 会诊链接续期失败')
-    })
-    .finally(() => {
-      renewPromise = null
-    })
-  return renewPromise
-}
-
 function getRouteToken() {
   return props.token || route.params.token || ''
 }
@@ -125,7 +110,7 @@ function handleAgentTeamsErrorCta(url) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-async function loadExternalSession({ renew = false } = {}) {
+async function loadExternalSession() {
   const token = String(getRouteToken())
   const patientId = String(route.query.patient_id || '')
   externalSession.value = null
@@ -152,7 +137,6 @@ async function loadExternalSession({ renew = false } = {}) {
     externalSession.value = await consultationApi.getAgentTeamsExternalSession(
       token,
       patientId,
-      renew,
     )
   } catch (error) {
     if (error?.response?.status === 404) {

@@ -135,9 +135,10 @@ async def global_exception_handler(request: Request, exc: Exception):
     """全局异常处理器，记录详细错误信息但不泄露给客户端"""
     error_detail = {
         "error": type(exc).__name__,
-        "message": str(exc),
-        "traceback": traceback.format_exc(),
-        "path": str(request.url)
+        "message": _sanitize_error_message(str(exc)),
+        "traceback": _sanitize_error_message(traceback.format_exc()),
+        # 查询字符串可能携带 bearer/分享/嵌入令牌，绝不写入日志。
+        "path": request.url.path
     }
     logger.error(f"Unhandled exception: {error_detail}")
 

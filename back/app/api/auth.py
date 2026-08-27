@@ -52,6 +52,55 @@ end
 return {new_count, redis.call('TTL', key)}
 """
 
+REFRESH_CONSUME_SCRIPT = """
+local value = redis.call('GET', KEYS[1])
+if not value then return 0 end
+redis.call('DEL', KEYS[1])
+return value
+"""
+
+
+REFRESH_PURGE_SCRIPT = """
+local members = redis.call('SMEMBERS', KEYS[1])
+for _, jti in ipairs(members) do
+    redis.call('DEL', 'refresh_token:' .. jti)
+end
+redis.call('DEL', KEYS[1])
+return #members
+"""
+
+
+def _refresh_token_key(jti: str) -> str:
+    return f"refresh_token:{jti}"
+
+
+def _refresh_index_key(account_id: int) -> str:
+    return f"refresh_tokens_index:{account_id}"
+
+
+async def _store_refresh_jti(account_id: int, token: str) -> None:
+    payload = decode_token(token) or {}
+    jti = str(payload.get("jti") or "")
+    if not jti:
+        return
+    ttl_seconds = max(int(settings.REFRESH_TOKEN_EXPIRE_DAYS) * 86400, 60)
+    index_key = _refresh_index_key(account_id)
+    await redis_client.sadd(index_key, jti)
+    await redis_client.expire(index_key, ttl_seconds)
+    await redis_client.set(_refresh_token_key(jti), str(account_id), ex=ttl_seconds)
+
+
+async def _consume_refresh_jti(account_id: int, jti: str) -> bool:
+    if not jti:
+        return False
+    consumed = await redis_client.eval(REFRESH_CONSUME_SCRIPT, 1, _refresh_token_key(jti))
+    return str(consumed or "") == str(account_id)
+
+
+async def _purge_refresh_tokens(account_id: int) -> int:
+    """撤销该账号名下全部刷新令牌（登出/重置密码/单点登录重登）。"""
+    return int(await redis_client.eval(REFRESH_PURGE_SCRIPT, 1, _refresh_index_key(account_id)))
+
 
 # 依赖注入函数 - 必须在使用前定义
 async def get_current_user(
@@ -234,7 +283,10 @@ async def login(
         user.account_id,
         device_info=f"{client_ip}|{user_agent[:100]}"  # 限制长度
     )
+    # 单点登录重登：先撤销名下全部旧刷新令牌，再签发新令牌
+    await _purge_refresh_tokens(user.account_id)
     refresh_token = create_refresh_token(user.account_id)
+    await _store_refresh_jti(user.account_id, refresh_token)
 
     # 解析token获取jti
     payload = decode_token(access_token)
@@ -279,6 +331,12 @@ async def refresh_token(
     account_id = int(payload.get("sub"))
     refresh_jti = payload.get("jti")
 
+    if not await _consume_refresh_jti(account_id, str(refresh_jti or "")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="刷新令牌已使用或已失效",
+        )
+
     # 验证用户状态
     result = await db.execute(
         select(LoginAccount).where(LoginAccount.account_id == account_id)
@@ -300,6 +358,7 @@ async def refresh_token(
     # 生成新token
     access_token = create_access_token(user.account_id)
     new_refresh_token = create_refresh_token(user.account_id)
+    await _store_refresh_jti(user.account_id, new_refresh_token)
 
     # 更新会话（使用新的jti）
     new_payload = decode_token(access_token)
@@ -323,9 +382,10 @@ async def refresh_token(
 @router.post("/logout")
 async def logout(current_user: LoginAccount = Depends(get_current_user)):
     """用户登出（撤销会话）"""
-    # 撤销会话
+    # 撤销会话并吊销该账号的全部刷新令牌
     session_service = SessionService(redis_client)
     await session_service.revoke_session(current_user.account_id)
+    await _purge_refresh_tokens(current_user.account_id)
 
     logger.info(f"用户 {current_user.username} 已登出")
 
@@ -390,7 +450,15 @@ async def reset_password(
     """重置密码 - 使用重置令牌设置新密码"""
     # 从 Redis 获取令牌
     redis_key = f"password_reset:{data.username}"
+    attempt_key = f"password_reset_attempts:{data.username}"
     stored_token = await redis_client.get(redis_key)
+
+    attempts = await redis_client.get(attempt_key)
+    if attempts and int(attempts) >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="重置尝试次数过多，请 15 分钟后重试",
+        )
 
     if not stored_token:
         raise HTTPException(
@@ -401,6 +469,9 @@ async def reset_password(
     # 恒定时间比较，防止时序攻击
     import hmac
     if not hmac.compare_digest(stored_token, data.reset_token):
+        count = await redis_client.incr(attempt_key)
+        if count == 1:
+            await redis_client.expire(attempt_key, 900)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="重置令牌无效或已过期"
@@ -424,10 +495,12 @@ async def reset_password(
 
     # 删除已使用的重置令牌
     await redis_client.delete(redis_key)
+    await redis_client.delete(attempt_key)
 
-    # 撤销所有现有会话，强制重新登录
+    # 撤销所有现有会话与刷新令牌，强制重新登录
     session_service = SessionService(redis_client)
     await session_service.revoke_session(user.account_id)
+    await _purge_refresh_tokens(user.account_id)
 
     logger.info(f"用户 {data.username} 密码重置成功")
 

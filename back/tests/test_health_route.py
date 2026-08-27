@@ -58,6 +58,6 @@ async def test_health_check_returns_503_when_database_is_unavailable(monkeypatch
     assert response.status_code == 503
     assert json.loads(response.body) == {
         "status": "unavailable",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "database_ready": False,
     }

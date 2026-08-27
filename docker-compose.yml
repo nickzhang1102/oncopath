@@ -162,7 +162,8 @@ services:
     build: ./front
     ports:
       - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-3000}:80"
-      # - "443:443"  # 取消注释以启用HTTPS（需提供SSL证书且端口未被占用）
+      # TLS 通常应在宿主机反代处终结；内置 nginx 仅监听 80 端口，
+      # 避免暴露并不存在的 443 监听器。
     depends_on:
       backend:
         condition: service_healthy

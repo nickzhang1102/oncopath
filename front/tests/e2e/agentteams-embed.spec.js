@@ -489,7 +489,7 @@ test('legacy numeric detail without AgentTeams mapping shows error and does not 
   expect(counters.localSession || 0).toBe(0)
 })
 
-test('AgentTeams detail renew error uses productized copy without raw details', async ({ page }) => {
+test('AgentTeams detail error uses productized copy without raw details', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 })
   await mockEmbedApis(page)
   await page.route('**/api/v1/consultation/agentteams/sessions/902**', route => {
@@ -516,16 +516,12 @@ test('AgentTeams detail renew error uses productized copy without raw details', 
   await expect(page.getByRole('heading', { name: 'AgentTeams 版本不兼容' })).toBeVisible()
 })
 
-test('expired embed notification renews and replaces the iframe URL', async ({ page }) => {
+test('expired embed notification does not trigger token renewal', async ({ page }) => {
   const counters = {}
   await mockEmbedApis(page, counters)
   let sessionReads = 0
-  const renewQueries = []
   await page.route('**/api/v1/consultation/agentteams/sessions/900**', route => {
     sessionReads += 1
-    const renew = new URL(route.request().url()).searchParams.get('renew')
-    renewQueries.push(renew)
-    const renewed = renew === 'true'
     route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
@@ -533,9 +529,7 @@ test('expired embed notification renews and replaces the iframe URL', async ({ p
         provider: 'agentteams',
         external_conversation_id: '1001',
         external_session_id: '2001',
-        embed_url: renewed
-          ? '/agentteams/embed/conversation/renewed-token'
-          : '/agentteams/embed/conversation/expired-token',
+        embed_url: '/agentteams/embed/conversation/expired-token',
         status: 'monitoring',
       }),
     })
@@ -543,24 +537,14 @@ test('expired embed notification renews and replaces the iframe URL', async ({ p
   await page.route('**/agentteams/embed/conversation/expired-token', route => {
     route.fulfill({
       contentType: 'text/html',
-      body: `<script>
-        window.parent.postMessage({ type: 'oncopath:embed-renew-required' }, window.location.origin)
-      </script>`,
+      body: '<main>expired embed</main>',
     })
   })
-  await page.route('**/agentteams/embed/conversation/renewed-token', route => {
-    route.fulfill({
-      contentType: 'text/html',
-      body: '<main>renewed embed</main>',
-    })
-  })
-
   await page.goto(`${baseURL}/home/consultation/900?patient_id=1`, { waitUntil: 'domcontentloaded' })
 
   await expect(page.locator('iframe.embed-iframe')).toHaveAttribute(
     'src',
-    '/agentteams/embed/conversation/renewed-token',
+    '/agentteams/embed/conversation/expired-token',
   )
-  expect(sessionReads).toBeGreaterThanOrEqual(2)
-  expect(renewQueries.slice(0, 2)).toEqual(['false', 'true'])
+  expect(sessionReads).toBe(1)
 })

@@ -75,7 +75,7 @@ server {
 /agentteams
 ```
 
-使用仓库自带 `docker-compose.yml` 时，frontend nginx 已内置 `/agentteams/` 反代，默认转发到宿主机 `8080` 端口；backend 容器通过 `AGENTTEAMS_INTERNAL_ORIGIN` 访问这个同站反代入口，默认值为 `http://frontend`。如果 AgentTeams 不在宿主机 `8080`，需要同步调整 `front/nginx.conf` 的 `/agentteams/` upstream，或改用一个 backend 容器可直接访问的完整 HTTPS URL。
+使用仓库自带 `docker-compose.yml` 时，frontend nginx 已内置 AgentTeams 嵌入页、静态资源和集成 API 的受限反代，默认转发到宿主机 `8080` 端口；backend 容器通过 `AGENTTEAMS_INTERNAL_ORIGIN` 访问这个同站反代入口，默认值为 `http://frontend`。如果 AgentTeams 不在宿主机 `8080`，需要同步调整 `front/nginx.conf` 的 upstream，或改用一个 backend 容器可直接访问的完整 HTTPS URL。
 
 Compose 启动时只有 `backend` 执行 Alembic 迁移和种子初始化；`agentteams-launch-worker` 依赖 backend 健康检查后启动，并设置 `RUN_DB_MIGRATIONS=false`。如果手工升级数据库，先停止 worker，确认 `/api/v1/health` 返回 200 后再启动 worker。
 
@@ -118,7 +118,7 @@ docker compose -p oncopath exec -T postgres sh -c \
 
 1. **POST 前停止 worker**：确认未决 intent 在 worker 恢复后只派发一次。
 2. **POST 已提交但响应丢失**：在远端已接受请求后停止 backend 或 worker，恢复服务，确认 OncoPath 继续使用原 request ID 并只做 status 查询；远端 launch 尝试次数应为 1。
-3. **status/renew 中断**：在对账或续签等待期间重启 worker，确认 lease 过期后由新 worker 接管，迟到响应不能覆盖较新的状态。
+3. **status 中断**：在对账等待期间重启 worker，确认 lease 过期后由新 worker 接管，迟到响应不能覆盖较新的状态。
 4. **人工复核**：让 intent 进入 `manual_review`，分别演练“只读对账找到远端会诊”和“外部确认未创建”。前者只能补映射并收敛为 `accepted`，后者只能收敛为 `rejected` 并解除锁；两条路径都不得再次调用 launch POST。
 
 每次演练至少保存：Compose config、容器状态、backend health 响应、迁移 head、worker 日志、request ID、远端 launch 状态、intent 前后状态和人工审计摘要。
@@ -179,7 +179,7 @@ curl -H "Authorization: Bearer <token>" \
 | AgentTeams 服务账户未配置 | AgentTeams 侧没有 OncoPath 集成服务账户 | 在 AgentTeams 管理后台完成服务账户配置 |
 | AgentTeams 返回不兼容错误 | 连接到仍保留旧商业逻辑的 AgentTeams 版本 | 升级 AgentTeams，并检查两侧集成配置；当前开源版本不需要额外购买服务 |
 | AgentTeams 集成未启用 | AgentTeams 侧关闭了 OncoPath 集成 | 在 AgentTeams 管理后台启用集成 |
-| AgentTeams 版本不兼容 | AgentTeams 版本不支持 OncoPath launch/renew API | 升级 AgentTeams |
+| AgentTeams 版本不兼容 | AgentTeams 版本不支持通用 launch/status API | 升级 AgentTeams |
 | AgentTeams 集成密钥无效 | OncoPath 和 AgentTeams 两侧密钥不一致 | 重新生成并同步 `integration_secret` |
 | AgentTeams 暂时不可用 | AgentTeams 服务不可达、反代错误或返回格式异常 | 检查 AgentTeams 进程、Nginx 反代和服务日志 |
 

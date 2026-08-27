@@ -96,7 +96,6 @@ async def get_active_agentteams_launch_intent(
 async def get_agentteams_external_session(
     conversation_id: int,
     patient_id: int = Query(ge=1),
-    renew: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
     current_user: LoginAccount = Depends(get_current_user),
 ):
@@ -107,7 +106,6 @@ async def get_agentteams_external_session(
         conversation_id,
         current_user.account_id,
         patient_id=patient_id,
-        renew_embed=renew,
     )
 
 
@@ -280,6 +278,12 @@ async def get_shared_session(
     if conversation.share_expire_at and get_utc_now() > conversation.share_expire_at:
         raise HTTPException(status_code=410, detail="分享链接已过期")
 
+    if await service.has_external_session(conversation.id):
+        raise HTTPException(
+            status_code=410,
+            detail={"error": "agentteams_share_unavailable", "message": "AgentTeams 会诊请从登录后的会诊历史进入"},
+        )
+
     # 如果设置了密码，返回需要验证的提示
     if conversation.share_password:
         return {"requires_password": True, "has_password": True}
@@ -349,6 +353,12 @@ async def get_shared_session_short(
     if conversation.share_expire_at and get_utc_now() > conversation.share_expire_at:
         raise HTTPException(status_code=410, detail="分享链接已过期")
 
+    if await service.has_external_session(conversation.id):
+        raise HTTPException(
+            status_code=410,
+            detail={"error": "agentteams_share_unavailable", "message": "AgentTeams 会诊请从登录后的会诊历史进入"},
+        )
+
     # 如果设置了密码，返回需要验证的提示
     if conversation.share_password:
         return {"requires_password": True, "has_password": True}
@@ -378,6 +388,12 @@ async def verify_shared_session(
     from app.utils.time_utils import get_utc_now
     if conversation.share_expire_at and get_utc_now() > conversation.share_expire_at:
         raise HTTPException(status_code=410, detail="分享链接已过期")
+
+    if await service.has_external_session(conversation.id):
+        raise HTTPException(
+            status_code=410,
+            detail={"error": "agentteams_share_unavailable", "message": "AgentTeams 会诊请从登录后的会诊历史进入"},
+        )
 
     # 校验密码
     if not conversation.share_password:

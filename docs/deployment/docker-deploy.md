@@ -196,11 +196,13 @@ docker compose -p oncopath logs backend --tail=50
 
 backend entrypoint 在每次启动时按固定顺序执行：
 1. `alembic upgrade head` 创建或升级 schema，并记录 Alembic revision
-2. `init_fresh_db.py` 幂等创建默认管理员账号（admin / admin123）
+2. `init_fresh_db.py` 幂等创建默认管理员账号（admin / `ADMIN_INITIAL_PASSWORD`，至少 12 位）
 3. 幂等初始化指标分类（36 种分类）
 4. 幂等初始化医疗标准指标库（血常规 / 生化 / 肿瘤标志物 / 凝血 / 尿常规，共 79 项）
 
 `agentteams-launch-worker` 不执行上述初始化。它只负责持久化 AgentTeams 启动意图的派发和不确定结果的状态查询；Compose 通过 backend 的 `/api/v1/health` 健康检查保证迁移完成后才启动 worker。
+
+> ⚠️ **已有部署升级须知**：本版本起 backend 启动时强制校验 `ADMIN_INITIAL_PASSWORD`（必须设置且至少 12 位），缺失或过短则容器直接退出（fail-closed）。全新数据库会用它创建 admin；已有数据库因 admin 已存在而跳过创建，但该校验不豁免——**升级前请先在 `.env` 补齐该变量再拉取新代码重启**。
 
 自定义管理员密码：
 ```bash
@@ -637,7 +639,8 @@ docker compose -p oncopath up -d --build
 | `REDIS_PASSWORD` | ✅ | — | Redis 密码 |
 | `SECRET_KEY` | ✅ | — | JWT 签名密钥 (≥32字符) |
 | `ENCRYPTION_KEY` | ✅ | — | Fernet 加密密钥 |
-| `ADMIN_INITIAL_PASSWORD` | ❌ | admin123 | 管理员初始密码（生产必改） |
+| `ADMIN_INITIAL_PASSWORD` | ✅ | — | 管理员初始密码（至少 12 位） |
+| `TRUST_PROXY` | ❌ | false | 位于反向代理后设为 true，限流改按 `X-Forwarded-For` 的真实客户端 IP 统计 |
 | `DB_HOST_PORT` | ❌ | 15432 | PostgreSQL 宿主机调试端口（容器内部仍为 5432） |
 | `DB_BIND_ADDRESS` | ❌ | 127.0.0.1 | PostgreSQL 宿主机绑定地址 |
 | `DB_USER` | ❌ | postgres | 数据库用户 |

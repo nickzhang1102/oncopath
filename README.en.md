@@ -155,7 +155,7 @@ To expose the frontend on your LAN, set `FRONTEND_BIND_ADDRESS=0.0.0.0` explicit
 
 ### 3️⃣ Database initialization
 
-On startup the backend container automatically runs `alembic upgrade head` to create/upgrade the schema, then an idempotent seed script creates the default admin, index categories and standard indicators. `agentteams-launch-worker` starts after the backend becomes healthy and does not run migrations. The default admin account is `admin`; its password comes from the `ADMIN_INITIAL_PASSWORD` env var, falling back to `admin123` (**in production always set `ADMIN_INITIAL_PASSWORD` and change it immediately after first login**).
+On startup the backend container automatically runs `alembic upgrade head` to create/upgrade the schema, then an idempotent seed script creates the default admin, index categories and standard indicators. `agentteams-launch-worker` starts after the backend becomes healthy and does not run migrations. The default admin account is `admin`; `ADMIN_INITIAL_PASSWORD` must be set to at least 12 characters (initialization fails when it is missing).
 
 ### 4️⃣ Access
 

@@ -4,7 +4,7 @@
 可在全新数据库初始化后或已有数据库升级后重复执行。
 
 初始化内容:
-1. 默认管理员账号 (admin/ADMIN_INITIAL_PASSWORD 环境变量，未设置则 admin123)
+1. 默认管理员账号 (admin/ADMIN_INITIAL_PASSWORD 环境变量)
 2. 指标分类 (image_category 表，复用于指标分类)
 3. 医疗标准指标库 (血常规/生化/肿瘤标志物/凝血/尿常规)
 """
@@ -27,14 +27,11 @@ DEFAULT_ADMIN_USERNAME = "admin"
 
 
 def _get_admin_password() -> str:
-    """从环境变量获取管理员初始密码，未设置则使用默认值并打印警告"""
+    """从环境变量获取管理员初始密码，未设置则拒绝初始化。"""
     pw = os.environ.get("ADMIN_INITIAL_PASSWORD")
-    if pw:
-        return pw
-    default = "admin123"
-    print(f"警告: 未设置 ADMIN_INITIAL_PASSWORD 环境变量，使用默认密码 '{default}'")
-    print("   生产环境请设置: ADMIN_INITIAL_PASSWORD=<强密码> python scripts/init_fresh_db.py")
-    return default
+    if not pw or len(pw) < 12:
+        raise RuntimeError("必须设置长度至少 12 位的 ADMIN_INITIAL_PASSWORD 后才能初始化管理员账号")
+    return pw
 
 
 # ============================================================

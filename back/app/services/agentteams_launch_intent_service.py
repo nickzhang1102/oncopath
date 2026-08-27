@@ -156,10 +156,9 @@ class AgentTeamsLaunchIntentService:
         conversation.title = self.agentteams._build_conversation_title(prompt, conversation)
         conversation.status = "analyzing"
         payload = {
-            "source": "oncopath",
-            "source_user_id": f"oncopath:{account_id}",
-            "source_patient_id": str(data.patient_id),
-            "source_conversation_id": conversation.id,
+            "user_ref": f"oncopath:{account_id}",
+            "subject_ref": str(data.patient_id),
+            "conversation_ref": str(conversation.id),
             "title": conversation.title,
             "message": prompt,
             "locale": self.agentteams.CLIENT_LOCALE,
@@ -375,11 +374,8 @@ class AgentTeamsLaunchIntentService:
             await self.db.commit()
             return True
 
-        # A status lookup is authoritative for reconciliation, but a found
-        # launch is not necessarily a successful launch.  Do not try to renew
-        # an embed token for a remote workflow that already failed/stopped;
-        # doing so would leave the local intent in a retry loop and present a
-        # dead remote session as if it were recoverable.
+        # status 查询是对账的权威依据；已失败/已停止的远程工作流是终态，
+        # 绝不能把其转换为一个新的嵌入令牌。
         remote_status = str(result.get("status") or "").strip().lower()
         if remote_status in self.REMOTE_FAILURE_STATUSES:
             intent = await self._get_owned_intent(intent_id, lease_owner)
@@ -402,49 +398,22 @@ class AgentTeamsLaunchIntentService:
             await self.db.commit()
             return True
 
-        try:
-            renew_result = await self.agentteams._call_agentteams_embed_renew(
-                base_url=config.base_url,
-                integration_secret=config.integration_secret,
-                payload={
-                    "source_conversation_id": intent.conversation_id,
-                    "request_id": self.agentteams._build_remote_request_id(
-                        intent.request_id, intent.conversation_id
-                    ),
-                    "agentteams_conversation_id": result.get("agentteams_conversation_id"),
-                    "agentteams_session_id": result.get("agentteams_session_id"),
-                },
-            )
-        except HTTPException as exc:
+        # 嵌入令牌仅在原始 launch 响应中铸造；status 响应无法找回遗失的令牌，
+        # 因此到此止步进入人工复核，而不是隐式续期或循环重试。
+        if not intent.embed_url:
             intent = await self._get_owned_intent(intent_id, lease_owner)
             if intent is None:
                 return False
-            detail = exc.detail if isinstance(exc.detail, dict) else {}
-            intent.status = "confirming"
-            intent.last_error_status = exc.status_code
-            intent.last_error_code = str(detail.get("error") or "agentteams_unavailable")
-            intent.last_error_message = str(detail.get("message") or "")
-            await self._defer_reconciliation(intent)
-            await self.db.commit()
-            return True
-        except Exception as exc:
-            intent = await self._get_owned_intent(intent_id, lease_owner)
-            if intent is None:
-                return False
-            logger.exception("AgentTeams embed renew failed: intent_id=%s", intent.id)
-            intent.status = "confirming"
+            intent.status = "manual_review"
             intent.last_error_status = 502
-            intent.last_error_code = "agentteams_unavailable"
-            intent.last_error_message = str(exc)[:500]
-            await self._defer_reconciliation(intent)
+            intent.last_error_code = "agentteams_embed_unavailable"
+            intent.last_error_message = "AgentTeams 未返回初始嵌入地址"
+            intent.next_attempt_at = None
+            intent.lease_owner = None
+            intent.lease_expires_at = None
             await self.db.commit()
             return True
-        return await self._accept(
-            intent,
-            {**result, **renew_result},
-            config.base_url,
-            lease_owner=lease_owner,
-        )
+        return await self._accept(intent, result, config.base_url, lease_owner=lease_owner)
 
     async def admin_reconcile_manual_review(
         self,
@@ -596,12 +565,16 @@ class AgentTeamsLaunchIntentService:
         if lease_owner is not None:
             owned_intent = await self._get_owned_intent(intent.id, lease_owner)
             if owned_intent is None:
-                # A manual resolution or a newer worker owns the intent now.
-                # Never let this stale remote response overwrite that decision.
+                # 当前由人工处置或更新的 worker 持有该意图，
+            # 绝不能让这份迟到的远端响应覆盖该决定。
                 return False
             intent = owned_intent
         embed_path = result.get("embed_path")
         external_conversation_id = result.get("agentteams_conversation_id")
+        if not embed_path and intent.embed_url:
+            # 只读对账复用原始 launch 铸造的地址；绝不可铸造替代品。
+            embed_path = intent.embed_url
+            base_url = ""
         if not embed_path or external_conversation_id in (None, ""):
             intent.last_error_status = 502
             intent.last_error_code = "agentteams_unavailable"
@@ -611,13 +584,16 @@ class AgentTeamsLaunchIntentService:
             return True
 
         intent.external_conversation_id = str(external_conversation_id)
-        intent.external_session_id = self.agentteams._optional_str(
-            result.get("agentteams_session_id")
-        )
-        intent.external_share_token = self.agentteams._optional_str(
-            result.get("agentteams_share_token")
-        )
-        intent.embed_url = self.agentteams._build_embed_url(base_url, str(embed_path))
+        if result.get("agentteams_session_id") is not None:
+            intent.external_session_id = self.agentteams._optional_str(
+                result.get("agentteams_session_id")
+            )
+        if result.get("agentteams_share_token") is not None:
+            intent.external_share_token = self.agentteams._optional_str(
+                result.get("agentteams_share_token")
+            )
+        if base_url:
+            intent.embed_url = self.agentteams._build_embed_url(base_url, str(embed_path))
         intent.remote_status = str(result.get("status") or "created")
         intent.status = "accepted"
         intent.last_error_code = None

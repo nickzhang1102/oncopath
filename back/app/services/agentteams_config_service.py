@@ -1,6 +1,8 @@
 """AgentTeams 集成配置服务"""
 
 from dataclasses import dataclass
+import ipaddress
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,7 +59,7 @@ class AgentTeamsConfigService:
         if not base_url:
             raise AgentTeamsConfigError("AgentTeams base_url 不能为空")
         if not self._is_valid_base_url(base_url):
-            raise AgentTeamsConfigError("AgentTeams base_url 必须以 http://、https:// 或 /agentteams 开头")
+            raise AgentTeamsConfigError("AgentTeams base_url 必须使用 HTTPS，或配置同站 /agentteams 路径")
 
         should_keep_secret = self._is_masked_secret(secret) or secret == ""
         if not config and should_keep_secret:
@@ -174,7 +176,8 @@ class AgentTeamsConfigService:
         try:
             return encryption_service.decrypt(encrypted_secret) or ""
         except ValueError:
-            return encrypted_secret or ""
+            # 绝不要把密文当作集成凭证下发；解密失败即视为未配置集成。
+            return ""
 
     @staticmethod
     def _normalize_base_url(base_url: str) -> str:
@@ -182,20 +185,30 @@ class AgentTeamsConfigService:
 
     @staticmethod
     def _is_valid_base_url(base_url: str) -> bool:
-        return (
-            base_url.startswith("http://")
-            or base_url.startswith("https://")
-            or base_url == "/agentteams"
-            or base_url.startswith("/agentteams/")
-        )
+        if base_url == "/agentteams" or base_url.startswith("/agentteams/"):
+            return True
+        parsed = urlparse(base_url)
+        if parsed.scheme == "https" and parsed.netloc:
+            return True
+        # 明文 HTTP 仅允许用于本地开发服务，绝不可经网络传输患者数据。
+        return parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
 
     @staticmethod
     def _has_trusted_api_origin(base_url: str) -> bool:
-        return (
-            base_url.startswith("http://")
-            or base_url.startswith("https://")
-            or bool(settings.AGENTTEAMS_INTERNAL_ORIGIN.strip())
-        )
+        if base_url.startswith("/"):
+            origin = settings.AGENTTEAMS_INTERNAL_ORIGIN.strip().rstrip("/")
+            parsed = urlparse(origin)
+            if parsed.scheme == "https":
+                return True
+            if parsed.scheme != "http" or not parsed.hostname:
+                return False
+            if parsed.hostname in {"localhost", "frontend", "agentteams", "127.0.0.1", "::1"}:
+                return True
+            try:
+                return ipaddress.ip_address(parsed.hostname).is_private
+            except ValueError:
+                return False
+        return AgentTeamsConfigService._is_valid_base_url(base_url)
 
     @staticmethod
     def _is_masked_secret(secret: str) -> bool:

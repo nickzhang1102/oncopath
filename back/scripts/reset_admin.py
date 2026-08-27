@@ -57,7 +57,9 @@ async def reset_admin():
 
         # 3. 创建 admin 用户
         print("\n正在创建 admin 用户...")
-        admin_password = os.environ.get("ADMIN_INITIAL_PASSWORD", "admin123")
+        admin_password = os.environ.get("ADMIN_INITIAL_PASSWORD")
+        if not admin_password or len(admin_password) < 12:
+            raise RuntimeError("ADMIN_INITIAL_PASSWORD 必须设置且至少 12 位")
         hashed_password = hash_password(admin_password)
 
         await conn.execute("""
@@ -75,7 +77,7 @@ async def reset_admin():
             print(f"  用户名: {row['username']}")
             print(f"  账号类型: {row['account_type']}")
             print(f"  状态: {row['status']}")
-            print(f"  密码: {'**** (从环境变量)' if os.environ.get('ADMIN_INITIAL_PASSWORD') else 'admin123 (默认)'}")
+        print("  密码: **** (从环境变量)")
 
         print("\n" + "=" * 60)
         print("[完成] admin 用户已就绪")

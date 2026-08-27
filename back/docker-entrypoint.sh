@@ -71,11 +71,6 @@ if [ "$DB_READY" = false ]; then
     exit 1
 else
     if [ "$RUN_DB_MIGRATIONS" = true ]; then
-        if [ -z "${ADMIN_INITIAL_PASSWORD}" ]; then
-            echo "[entrypoint] ⚠️  未设置 ADMIN_INITIAL_PASSWORD，管理员账号已使用默认凭据初始化：" >&2
-            echo "[entrypoint] ⚠️      账号: admin    初始密码: admin123" >&2
-            echo "[entrypoint] ⚠️  请立即登录并在「个人中心 → 修改密码」中更改；新部署也可在 .env 设置 ADMIN_INITIAL_PASSWORD 后重新初始化。" >&2
-        fi
         echo "[entrypoint] 数据库已就绪，执行 schema 迁移..."
         alembic -c /app/alembic.ini upgrade head
         echo "[entrypoint] ✅ 数据库迁移完成"

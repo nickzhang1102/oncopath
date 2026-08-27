@@ -76,9 +76,9 @@ export const consultationApi = {
     })
   },
 
-  getAgentTeamsExternalSession(conversationId, patientId, renew = false) {
+  getAgentTeamsExternalSession(conversationId, patientId) {
     return request.get(`/consultation/agentteams/sessions/${conversationId}`, {
-      params: { patient_id: patientId, renew },
+      params: { patient_id: patientId },
       silentError: true,
     })
   },

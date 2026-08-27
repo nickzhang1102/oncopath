@@ -70,7 +70,6 @@ class AgentTeamsStartService:
                             "message": "启动标识与会诊记录不匹配，请重新发起",
                         },
                     )
-                await self._renew_embed_url(existing_request_mapping)
                 return AgentTeamsStartResponse(**self._to_response(existing_request_mapping).model_dump())
         conversation = await self._resolve_conversation(data, account_id)
         existing_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=False)
@@ -86,13 +85,12 @@ class AgentTeamsStartService:
                 },
             )
         if existing_mapping and not self._needs_title_refresh(conversation.title):
-            renewed_mapping = await self.get_external_session(
+            existing_session = await self.get_external_session(
                 conversation.id,
                 account_id,
                 raise_not_found=True,
-                renew_embed=True,
             )
-            return AgentTeamsStartResponse(**renewed_mapping.model_dump())
+            return AgentTeamsStartResponse(**existing_session.model_dump())
 
         prompt_config = await self._load_prompt_config(data.patient_id, account_id)
         prompt = await MedicalPromptBuilder().build_consultation_prompt(
@@ -111,13 +109,12 @@ class AgentTeamsStartService:
             await self.db.flush()
 
         if existing_mapping:
-            renewed_mapping = await self.get_external_session(
+            existing_session = await self.get_external_session(
                 conversation.id,
                 account_id,
                 raise_not_found=True,
-                renew_embed=True,
             )
-            return AgentTeamsStartResponse(**renewed_mapping.model_dump())
+            return AgentTeamsStartResponse(**existing_session.model_dump())
 
         logger.info(
             "AgentTeams launch prompt prepared: conversation_id=%s patient_id=%s "
@@ -139,10 +136,9 @@ class AgentTeamsStartService:
                 integration_secret=config.integration_secret,
                 request_id=request_id,
                 payload={
-                    "source": "oncopath",
-                    "source_user_id": f"oncopath:{account_id}",
-                    "source_patient_id": str(data.patient_id),
-                    "source_conversation_id": conversation.id,
+                    "user_ref": f"oncopath:{account_id}",
+                    "subject_ref": str(data.patient_id),
+                    "conversation_ref": str(conversation.id),
                     "title": conversation.title,
                     "message": prompt,
                     "locale": self.CLIENT_LOCALE,
@@ -233,7 +229,6 @@ class AgentTeamsStartService:
         account_id: int,
         patient_id: int | None = None,
         raise_not_found: bool = True,
-        renew_embed: bool = False,
     ) -> AgentTeamsExternalSessionResponse | None:
         filters = [
             ConsultationExternalSession.conversation_id == conversation_id,
@@ -256,8 +251,6 @@ class AgentTeamsStartService:
             if raise_not_found:
                 raise HTTPException(status_code=404, detail="外部会诊映射不存在")
             return None
-        if renew_embed:
-            await self._renew_embed_url(mapping)
         return self._to_response(mapping)
 
     async def _get_external_session_by_request_id(
@@ -277,52 +270,6 @@ class AgentTeamsStartService:
             )
         )
         return result.scalar_one_or_none()
-
-    async def _renew_embed_url(self, mapping: ConsultationExternalSession) -> None:
-        config = await AgentTeamsConfigService(self.db).get_runtime_config()
-        if not config.configured or not config.enabled:
-            raise HTTPException(
-                status_code=503,
-                detail={"error": "agentteams_not_configured", "message": "AgentTeams 未配置或未启用"},
-            )
-
-        try:
-            renew_result = await self._call_agentteams_embed_renew(
-                base_url=config.base_url,
-                integration_secret=config.integration_secret,
-                payload={
-                    "source_conversation_id": mapping.conversation_id,
-                    "request_id": self._build_remote_request_id(
-                        mapping.launch_request_id, mapping.conversation_id
-                    ) if mapping.launch_request_id else None,
-                    "agentteams_conversation_id": self._optional_int(mapping.external_conversation_id),
-                    "agentteams_session_id": self._optional_int(mapping.external_session_id),
-                },
-            )
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.error("AgentTeams embed renew failed: conversation_id=%s error=%s", mapping.conversation_id, exc)
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "agentteams_unavailable", "message": "AgentTeams 服务暂时不可用"},
-            ) from exc
-
-        embed_path = renew_result.get("embed_path")
-        if not embed_path:
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回字段不完整"},
-            )
-
-        mapping.embed_url = self._build_embed_url(config.base_url, str(embed_path))
-        mapping.status = self._merge_external_status(
-            mapping.status,
-            renew_result.get("status"),
-        )
-        await self.db.flush()
-        await self.db.commit()
-        await self.db.refresh(mapping)
 
     async def update_external_status(
         self,
@@ -435,6 +382,13 @@ class AgentTeamsStartService:
         candidate = candidate[: cls.TITLE_SUMMARY_LENGTH]
         return candidate or "病情分析"
 
+    def _integration_launch_url(self, base_url: str) -> str:
+        """AgentTeams 通用 v1 启动端点。"""
+        return f"{self._build_agentteams_api_base(base_url)}/api/integrations/v1/agentteams/consultation-launches"
+
+    def _integration_launch_status_url(self, base_url: str, request_id: str) -> str:
+        return f"{self._build_agentteams_api_base(base_url)}/api/integrations/v1/agentteams/consultation-launches/{request_id}"
+
     async def _call_agentteams_launch(
         self,
         base_url: str,
@@ -442,7 +396,7 @@ class AgentTeamsStartService:
         request_id: str,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
-        url = f"{self._build_agentteams_api_base(base_url)}/api/integrations/oncopath/consultation-launches"
+        url = self._integration_launch_url(base_url)
         headers = {
             "X-Integration-Key": integration_secret,
             "X-Request-Id": request_id,
@@ -476,45 +430,13 @@ class AgentTeamsStartService:
             )
         return result
 
-    async def _call_agentteams_embed_renew(
-        self,
-        base_url: str,
-        integration_secret: str,
-        payload: dict[str, Any],
-    ) -> dict[str, Any]:
-        url = f"{self._build_agentteams_api_base(base_url)}/api/integrations/oncopath/embed-sessions/renew"
-        headers = {"X-Integration-Key": integration_secret}
-        try:
-            async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
-                response = await client.post(url, json=payload, headers=headers)
-        except (httpx.TimeoutException, httpx.RequestError) as exc:
-            logger.warning("AgentTeams embed renew unavailable: conversation_id=%s error=%s", payload.get("source_conversation_id"), exc)
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "agentteams_unavailable", "message": "AgentTeams 服务暂时不可用"},
-            ) from exc
-
-        if response.status_code >= 400:
-            self._raise_agentteams_error(response)
-
-        try:
-            return response.json()
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回格式异常"},
-            ) from exc
-
     async def _call_agentteams_launch_status(
         self,
         base_url: str,
         integration_secret: str,
         request_id: str,
     ) -> dict[str, Any]:
-        url = (
-            f"{self._build_agentteams_api_base(base_url)}"
-            f"/api/integrations/oncopath/consultation-launches/{request_id}"
-        )
+        url = self._integration_launch_status_url(base_url, request_id)
         headers = {"X-Integration-Key": integration_secret}
         try:
             async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
@@ -536,8 +458,16 @@ class AgentTeamsStartService:
 
     def _build_agentteams_api_base(self, base_url: str) -> str:
         base = base_url.rstrip("/")
-        if base.startswith("http://") or base.startswith("https://"):
+        if base.startswith("https://"):
             return base
+        if base.startswith("http://"):
+            from urllib.parse import urlparse
+            if urlparse(base).hostname in {"localhost", "127.0.0.1", "::1"}:
+                return base
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "agentteams_not_configured", "message": "AgentTeams 地址必须使用 HTTPS"},
+            )
         if base.startswith("/"):
             origin = settings.AGENTTEAMS_INTERNAL_ORIGIN.rstrip("/")
             if origin:
@@ -611,12 +541,3 @@ class AgentTeamsStartService:
         if value is None:
             return None
         return str(value)
-
-    @staticmethod
-    def _optional_int(value: Any) -> int | None:
-        if value in (None, ""):
-            return None
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
