@@ -117,21 +117,6 @@
       </template>
     </div>
 
-    <!-- 社区推广入口 -->
-    <div class="login-community">
-      <a
-        class="community-link"
-        href="https://linux.do"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="前往 LINUX DO 社区论坛"
-      >
-        <van-icon name="chat-o" size="16" />
-        <span>LINUX DO 社区 · 交流与反馈</span>
-        <van-icon name="arrow" size="12" />
-      </a>
-    </div>
-
     <div class="login-footer">
       <p>© 2026 OncoPath</p>
     </div>
@@ -317,29 +302,6 @@ async function handleResetPassword() {
   color: var(--primary-color);
   font-size: var(--text-sm);
   cursor: pointer;
-}
-
-.login-community {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--space-4);
-}
-
-.community-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-4);
-  border-radius: 999px;
-  background: var(--primary-alpha-10);
-  color: var(--primary-color);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  transition: opacity 0.2s ease;
-}
-
-.community-link:active {
-  opacity: 0.7;
 }
 
 .login-footer {

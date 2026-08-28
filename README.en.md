@@ -15,7 +15,7 @@ OCR lab-index extraction · Unified treatment timeline · AI-assisted interpreta
 
 ![OncoPath home indicator charts](docs/screenshots/desktop-home-indicators-chart.png)
 
-[Project Website](https://nickzhang1102.github.io/oncopath/) · [Quick Start](#-quick-start-docker) · [Screenshots](#-screenshots) · [Contributing](#-contributing) · [☕ Buy the author a coffee](#-sponsorship)
+[Project Website](https://nickzhang1102.github.io/oncopath/) · [Quick Start](#-quick-start-docker) · [Screenshots](#-screenshots) · [Contributing](#-contributing) · [💬 LINUX DO Community](https://linux.do) · [☕ Buy the author a coffee](#-sponsorship)
 
 > **Status**: This project is now public and in an early stage. Feedback is welcome. Before any production deployment, complete **every** mandatory item in the [Security](#-security) section and evaluate medical-data compliance requirements in your jurisdiction.
 
@@ -257,6 +257,14 @@ Copyright © 2026 nickzhang1102
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) (Chinese) for the full fork → branch → commit → PR workflow and coding standards.
+
+---
+
+## 💬 Community (LINUX DO)
+
+For discussions, feedback, and sharing your experience with OncoPath, join the [LINUX DO](https://linux.do) community — an open, friendly, and sharing tech community.
+
+👉 **[https://linux.do](https://linux.do)**
 
 ---
 

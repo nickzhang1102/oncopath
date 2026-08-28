@@ -15,7 +15,7 @@
 
 ![OncoPath 首页指标图表](docs/screenshots/desktop-home-indicators-chart.png)
 
-[项目网站](https://nickzhang1102.github.io/oncopath/) · [快速开始](#-快速开始docker) · [界面预览](#-界面预览) · [参与贡献](#-参与贡献) · [☕ 请作者喝咖啡](#-赞助支持)
+[项目网站](https://nickzhang1102.github.io/oncopath/) · [快速开始](#-快速开始docker) · [界面预览](#-界面预览) · [参与贡献](#-参与贡献) · [💬 LINUX DO 社区](https://linux.do) · [☕ 请作者喝咖啡](#-赞助支持)
 
 > **状态说明**：本项目已公开，当前处于早期版本阶段。欢迎试用与反馈；生产环境部署前必须完成本文档【安全说明】中的全部必改项，并自行评估当地医疗数据合规要求。
 
@@ -257,6 +257,14 @@ docker compose --env-file .env up -d
 ## 🤝 参与贡献
 
 欢迎参与贡献！请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解 Fork → 分支 → 提交 → PR 的完整流程与代码规范。
+
+---
+
+## 💬 社区交流（LINUX DO）
+
+项目的交流、问题反馈与使用经验分享，欢迎来到 [LINUX DO](https://linux.do) 社区 — 一个开放、真诚、乐于分享的技术社区。
+
+👉 **[https://linux.do](https://linux.do)**
 
 ---
 
