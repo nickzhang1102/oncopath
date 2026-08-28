@@ -54,7 +54,8 @@ export default defineConfig({
     allowedHosts: true,  // 开发环境允许所有域名（生产由 Nginx 处理）
     proxy: {
       // AgentTeams 同站反代（与 front/nginx.conf 的 /agentteams 规则一致）。
-      // 注意：vite 按 key 前缀长度优先匹配，以下具体前缀会先于泛化 /api 命中。
+      // 嵌入页及其 API 均挂在该前缀下：页面走 /agentteams/embed/...，
+      // API 走 /agentteams/api/integrations/...，一条规则同时覆盖。
       '/agentteams/': {
         target: 'http://localhost:8380',
         changeOrigin: true,
@@ -65,17 +66,6 @@ export default defineConfig({
       '/assets/': {
         target: 'http://localhost:8380',
         changeOrigin: true,
-      },
-      // AgentTeams 嵌入页的集成 API（根路径调用，必须分流到 AgentTeams 而非本服务后端）
-      '/api/integrations/v1/agentteams/': {
-        target: 'http://localhost:8380',
-        changeOrigin: true,
-        ws: true,
-      },
-      '/api/integrations/agentteams/': {
-        target: 'http://localhost:8380',
-        changeOrigin: true,
-        ws: true,
       },
       '/api': {
         target: 'http://localhost:8000',

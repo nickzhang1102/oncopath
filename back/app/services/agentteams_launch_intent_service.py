@@ -24,6 +24,7 @@ from app.schemas.agentteams import (
     AgentTeamsLaunchIntentResponse,
     AgentTeamsStartRequest,
 )
+from app.services import agentteams_contract as contract
 from app.services.agentteams_config_service import AgentTeamsConfigService
 from app.services.agentteams_start_service import AgentTeamsStartService
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
@@ -570,7 +571,9 @@ class AgentTeamsLaunchIntentService:
                 return False
             intent = owned_intent
         embed_path = result.get("embed_path")
-        external_conversation_id = result.get("agentteams_conversation_id")
+        external_conversation_id = contract.first_present(
+            result, "remote_conversation_id", "agentteams_conversation_id"
+        )
         if not embed_path and intent.embed_url:
             # 只读对账复用原始 launch 铸造的地址；绝不可铸造替代品。
             embed_path = intent.embed_url
@@ -584,14 +587,14 @@ class AgentTeamsLaunchIntentService:
             return True
 
         intent.external_conversation_id = str(external_conversation_id)
-        if result.get("agentteams_session_id") is not None:
-            intent.external_session_id = self.agentteams._optional_str(
-                result.get("agentteams_session_id")
-            )
-        if result.get("agentteams_share_token") is not None:
-            intent.external_share_token = self.agentteams._optional_str(
-                result.get("agentteams_share_token")
-            )
+        remote_session_id = contract.first_present(
+            result, "remote_session_id", "agentteams_session_id"
+        )
+        if remote_session_id is not None:
+            intent.external_session_id = self.agentteams._optional_str(remote_session_id)
+        remote_share_token = contract.first_present(result, "agentteams_share_token")
+        if remote_share_token is not None:
+            intent.external_share_token = self.agentteams._optional_str(remote_share_token)
         if base_url:
             intent.embed_url = self.agentteams._build_embed_url(base_url, str(embed_path))
         intent.remote_status = str(result.get("status") or "created")

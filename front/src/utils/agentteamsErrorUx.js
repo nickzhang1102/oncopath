@@ -2,11 +2,6 @@
 export const AGENTTEAMS_REPO_URL = 'https://github.com/nickzhang1102/agentTeams'
 
 const ERROR_COPY = {
-  agentteams_quota_exceeded: {
-    title: 'AgentTeams 会诊服务不可用',
-    message: '当前部署返回了旧版服务错误，请检查两端 AgentTeams 版本和集成配置。开源自部署不需要额外购买服务。',
-    cta_label: '查看配置说明',
-  },
   agentteams_service_account_not_configured: {
     title: 'AgentTeams 服务账户未配置',
     message: '当前 AgentTeams 尚未配置 OncoPath 集成账户，请在 AgentTeams 管理后台完成配置后继续使用虚拟会诊。',
@@ -19,7 +14,7 @@ const ERROR_COPY = {
   },
   agentteams_unsupported_version: {
     title: 'AgentTeams 版本不兼容',
-    message: '当前 AgentTeams 版本不支持 OncoPath 集成，请升级 AgentTeams 后继续使用虚拟会诊。',
+    message: '当前 AgentTeams 版本与 OncoPath 集成协议不兼容，请升级 AgentTeams 后继续使用虚拟会诊。',
     cta_label: '查看升级说明',
   },
   agentteams_not_configured: {
@@ -31,6 +26,21 @@ const ERROR_COPY = {
     title: 'AgentTeams 集成密钥无效',
     message: '当前 OncoPath 与 AgentTeams 的集成密钥不匹配，请检查两端配置后重试。',
     cta_label: '查看配置说明',
+  },
+  agentteams_invalid_client_key: {
+    title: 'AgentTeams 集成客户端未注册',
+    message: 'AgentTeams 部署未注册当前 OncoPath 的集成客户端，请核对两端 client_key 与集成配置。',
+    cta_label: '查看配置说明',
+  },
+  agentteams_payload_rejected: {
+    title: 'AgentTeams 拒绝了会诊请求',
+    message: '会诊请求内容不符合 AgentTeams 集成契约（如字段超长或格式有误），请检查后重试。',
+    cta_label: '查看配置说明',
+  },
+  agentteams_payload_too_large: {
+    title: '会诊材料超出限制',
+    message: '会诊材料或附件信息超过 AgentTeams 单次承载上限，请精简材料后重新发起。',
+    cta_label: '重新发起',
   },
   agentteams_unavailable: {
     title: 'AgentTeams 暂时不可用',

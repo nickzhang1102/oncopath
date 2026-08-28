@@ -19,6 +19,7 @@ from app.schemas.agentteams import (
     AgentTeamsStartRequest,
     AgentTeamsStartResponse,
 )
+from app.services import agentteams_contract as contract
 from app.services.agentteams_config_service import AgentTeamsConfigService
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
 from app.services.conversation_service import ConversationService
@@ -30,13 +31,13 @@ logger = logging.getLogger(__name__)
 class AgentTeamsStartService:
     """编排 OncoPath 到 AgentTeams 的外部会诊启动。"""
 
-    PROVIDER = "agentteams"
-    CLIENT_LOCALE = "zh-CN"
+    PROVIDER = contract.PROVIDER
+    CLIENT_LOCALE = contract.CLIENT_LOCALE
     REQUEST_TIMEOUT_SECONDS = 20.0
     MAX_TITLE_LENGTH = 32
     TITLE_SUMMARY_LENGTH = 10
     GENERIC_TITLES = {"", "待生成会诊标题", "虚拟会诊", "AgentTeams 会诊"}
-    TERMINAL_STATUSES = {"completed", "failed", "stopped"}
+    TERMINAL_STATUSES = contract.TERMINAL_STATUSES
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -160,10 +161,16 @@ class AgentTeamsStartService:
             conversation_id=conversation.id,
             provider=self.PROVIDER,
             launch_request_id=launch_request_id,
-            external_conversation_id=str(launch_result["agentteams_conversation_id"]),
-            external_session_id=self._optional_str(launch_result.get("agentteams_session_id")),
-            external_share_token=self._optional_str(launch_result.get("agentteams_share_token")),
-            embed_url=self._build_embed_url(config.base_url, str(launch_result["embed_path"])),
+            external_conversation_id=str(
+                contract.first_present(launch_result, "remote_conversation_id", "agentteams_conversation_id")
+            ),
+            external_session_id=self._optional_str(
+                contract.first_present(launch_result, "remote_session_id", "agentteams_session_id")
+            ),
+            external_share_token=self._optional_str(
+                contract.first_present(launch_result, "agentteams_share_token")
+            ),
+            embed_url=contract.build_embed_url(config.base_url, str(launch_result.get("embed_path") or "")),
             status=str(launch_result.get("status") or "created"),
         )
         self.db.add(mapping)
@@ -382,12 +389,17 @@ class AgentTeamsStartService:
         candidate = candidate[: cls.TITLE_SUMMARY_LENGTH]
         return candidate or "病情分析"
 
+    @staticmethod
+    def _client_key() -> str:
+        """部署级集成客户端身份（归一化逻辑收敛在 contract）。"""
+        return contract.effective_client_key()
+
     def _integration_launch_url(self, base_url: str) -> str:
-        """AgentTeams 通用 v1 启动端点。"""
-        return f"{self._build_agentteams_api_base(base_url)}/api/integrations/v1/agentteams/consultation-launches"
+        """AgentTeams 通用 v1 启动端点（client 身份来自配置，不再写死）。"""
+        return contract.integration_launch_url(base_url, self._client_key())
 
     def _integration_launch_status_url(self, base_url: str, request_id: str) -> str:
-        return f"{self._build_agentteams_api_base(base_url)}/api/integrations/v1/agentteams/consultation-launches/{request_id}"
+        return contract.integration_launch_status_url(base_url, self._client_key(), request_id)
 
     async def _call_agentteams_launch(
         self,
@@ -397,10 +409,15 @@ class AgentTeamsStartService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         url = self._integration_launch_url(base_url)
-        headers = {
-            "X-Integration-Key": integration_secret,
-            "X-Request-Id": request_id,
-        }
+        # 发送前按远端宣告限额预校验；超限返回明确业务错误，不送远端换 400。
+        await contract.validate_launch_payload(
+            base_url,
+            integration_secret,
+            self._client_key(),
+            payload,
+            request_id,
+        )
+        headers = contract.integration_headers(integration_secret, request_id=request_id)
         try:
             async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
                 response = await client.post(url, json=payload, headers=headers)
@@ -422,8 +439,9 @@ class AgentTeamsStartService:
                 detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回格式异常"},
             ) from exc
 
-        required = {"agentteams_conversation_id", "embed_path"}
-        if not required.issubset(result):
+        if not result.get("embed_path") or contract.first_present(
+            result, "remote_conversation_id", "agentteams_conversation_id"
+        ) is None:
             raise HTTPException(
                 status_code=502,
                 detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回字段不完整"},
@@ -437,7 +455,7 @@ class AgentTeamsStartService:
         request_id: str,
     ) -> dict[str, Any]:
         url = self._integration_launch_status_url(base_url, request_id)
-        headers = {"X-Integration-Key": integration_secret}
+        headers = contract.integration_headers(integration_secret)
         try:
             async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
                 response = await client.get(url, headers=headers)
@@ -457,31 +475,11 @@ class AgentTeamsStartService:
             ) from exc
 
     def _build_agentteams_api_base(self, base_url: str) -> str:
-        base = base_url.rstrip("/")
-        if base.startswith("https://"):
-            return base
-        if base.startswith("http://"):
-            from urllib.parse import urlparse
-            if urlparse(base).hostname in {"localhost", "127.0.0.1", "::1"}:
-                return base
-            raise HTTPException(
-                status_code=503,
-                detail={"error": "agentteams_not_configured", "message": "AgentTeams 地址必须使用 HTTPS"},
-            )
-        if base.startswith("/"):
-            origin = settings.AGENTTEAMS_INTERNAL_ORIGIN.rstrip("/")
-            if origin:
-                return f"{origin}{base}"
-        raise HTTPException(
-            status_code=503,
-            detail={"error": "agentteams_not_configured", "message": "AgentTeams 地址配置无效"},
-        )
+        return contract.build_agentteams_api_base(base_url)
 
     @staticmethod
     def _build_embed_url(base_url: str, embed_path: str) -> str:
-        base = base_url.rstrip("/")
-        path = embed_path if embed_path.startswith("/") else f"/{embed_path}"
-        return f"{base}{path}"
+        return contract.build_embed_url(base_url, embed_path)
 
     @staticmethod
     def _build_remote_request_id(request_id: str | None, conversation_id: int) -> str:
@@ -489,32 +487,26 @@ class AgentTeamsStartService:
             return f"oncopath-launch-{request_id}"
         return f"oncopath-conversation-{conversation_id}"
 
-    @staticmethod
-    def _raise_agentteams_error(response: httpx.Response) -> None:
+    @classmethod
+    def _raise_agentteams_error(cls, response: httpx.Response) -> None:
         error_code = ""
+        message = ""
         try:
             body = response.json()
             detail = body.get("detail", {})
             if isinstance(detail, dict):
                 error_code = str(detail.get("error") or "")
+                message = str(detail.get("message") or "")
         except ValueError:
             error_code = ""
-
-        mapping = {
-            "invalid_integration_key": (502, "agentteams_invalid_integration_key", "AgentTeams 集成密钥无效"),
-            "service_account_quota_exceeded": (402, "agentteams_quota_exceeded", "AgentTeams 会诊额度不足"),
-            "service_account_not_configured": (403, "agentteams_service_account_not_configured", "AgentTeams 服务账户未配置"),
-            "integration_disabled": (403, "agentteams_integration_disabled", "AgentTeams 集成未启用"),
-            "unsupported_version": (426, "agentteams_unsupported_version", "AgentTeams 版本不兼容"),
-            "idempotency_conflict": (409, "agentteams_idempotency_conflict", "该启动标识已用于其他会诊，请重新发起"),
-        }
-        status_code, mapped_error, message = mapping.get(
+        status_code, mapped_error, mapped_message = contract.map_remote_error(
+            response.status_code,
             error_code,
-            (502, "agentteams_unavailable", "AgentTeams 服务暂时不可用"),
+            message,
         )
         raise HTTPException(
             status_code=status_code,
-            detail={"error": mapped_error, "message": message},
+            detail={"error": mapped_error, "message": mapped_message},
         )
 
     @staticmethod

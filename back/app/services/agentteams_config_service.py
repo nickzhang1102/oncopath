@@ -15,6 +15,7 @@ from app.schemas.agentteams import (
     AgentTeamsConfigUpdate,
     AgentTeamsUpsell,
 )
+from app.services import agentteams_contract as contract
 from app.services.encryption_service import encryption_service
 
 
@@ -82,6 +83,8 @@ class AgentTeamsConfigService:
 
         await self.db.commit()
         await self.db.refresh(config)
+        # 地址/密钥可能已变更：作废能力探测缓存，避免旧宣告存活到 TTL 自然过期。
+        contract.clear_capabilities_cache()
         return self._to_admin_response(config)
 
     async def get_availability(self) -> AgentTeamsAvailabilityResponse:
@@ -92,11 +95,27 @@ class AgentTeamsConfigService:
             and admin_response.enabled
             and self._has_trusted_api_origin(admin_response.base_url)
         )
+        base_url = admin_response.base_url if admin_response.configured else ""
+        capabilities = None
+        if enabled and config is not None:
+            # 真实能力探测：可达性 + 协议版本 + 限额，取代硬编码的 capacity。
+            capabilities = await contract.fetch_agentteams_capabilities(
+                config.base_url,
+                self._decrypt_secret(config.integration_secret),
+                contract.effective_client_key(),
+            )
         return AgentTeamsAvailabilityResponse(
             configured=admin_response.configured,
             enabled=enabled,
-            base_url=admin_response.base_url if admin_response.configured else "",
-            capacity=None,
+            base_url=base_url,
+            reachable=bool(capabilities),
+            protocol_version=(
+                int(capabilities["protocol_version"])
+                if capabilities and capabilities.get("protocol_version") is not None
+                else None
+            ),
+            limits=capabilities.get("limits") if capabilities else None,
+            client_key=contract.effective_client_key(),
             upsell=admin_response.upsell,
         )
 

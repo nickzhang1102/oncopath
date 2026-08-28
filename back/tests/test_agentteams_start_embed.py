@@ -19,6 +19,7 @@ from app.models.patient import Patient
 from app.models.prompt import PromptConfig
 from app.models.user import LoginAccount
 from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
+from app.services import agentteams_contract as contract
 from app.services.agentteams_start_service import AgentTeamsStartService
 from app.services.agentteams_launch_intent_service import AgentTeamsLaunchIntentService
 from app.utils.time_utils import get_utc_now
@@ -42,9 +43,11 @@ class FakeEncryptionService:
     ("agentteams_error", "expected_status", "expected_error", "expected_message"),
     [
         ("invalid_integration_key", 502, "agentteams_invalid_integration_key", "AgentTeams 集成密钥无效"),
-        ("service_account_quota_exceeded", 402, "agentteams_quota_exceeded", "AgentTeams 会诊额度不足"),
+        ("invalid_payload", 400, "agentteams_payload_rejected", "AgentTeams 拒绝了本次请求载荷"),
+        ("integration_client_not_found", 503, "agentteams_invalid_client_key", "AgentTeams 部署未注册该集成客户端"),
         ("service_account_not_configured", 403, "agentteams_service_account_not_configured", "AgentTeams 服务账户未配置"),
         ("integration_disabled", 403, "agentteams_integration_disabled", "AgentTeams 集成未启用"),
+        ("integration_capability_disabled", 403, "agentteams_integration_disabled", "AgentTeams 集成能力未启用"),
         ("unsupported_version", 426, "agentteams_unsupported_version", "AgentTeams 版本不兼容"),
         ("idempotency_conflict", 409, "agentteams_idempotency_conflict", "该启动标识已用于其他会诊，请重新发起"),
     ],
@@ -134,6 +137,71 @@ def test_relative_agentteams_api_base_rejects_missing_internal_origin(monkeypatc
 
     assert exc_info.value.status_code == 503
     assert exc_info.value.detail["error"] == "agentteams_not_configured"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "field",
+    ["title", "user_ref", "subject_ref", "conversation_ref"],
+)
+async def test_validate_launch_payload_rejects_overlong_fields_without_remote_call(
+    monkeypatch, field
+):
+    """发送前预校验应在本地拦截超限字段，不把请求送到远端换 400。"""
+    fetched = []
+
+    async def fake_capabilities(base_url, integration_secret, client_key):
+        fetched.append(base_url)
+        return None  # 探测失败时按 DEFAULT_LIMITS 兜底
+
+    monkeypatch.setattr(contract, "fetch_agentteams_capabilities", fake_capabilities)
+
+    payload = {
+        "user_ref": "oncopath:1",
+        "subject_ref": "42",
+        "conversation_ref": "9",
+        "title": "病情分析",
+        "message": "会诊材料",
+    }
+    limits = contract.DEFAULT_LIMITS
+    limit_key = "title_max_length" if field == "title" else "ref_max_length"
+    payload[field] = "x" * (int(limits[limit_key]) + 1)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await contract.validate_launch_payload(
+            "/agentteams", "secret", "agentteams", payload, "req-1"
+        )
+
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.detail["error"] == "agentteams_payload_too_large"
+    # 预校验发生在远端探测之后（limits 需要 capabilities），但绝不应发起启动调用
+    assert fetched == ["/agentteams"]
+
+
+@pytest.mark.asyncio
+async def test_validate_launch_payload_accepts_contract_compliant_payload(monkeypatch):
+    async def fake_capabilities(base_url, integration_secret, client_key):
+        return {
+            "protocol_version": 1,
+            "limits": {"title_max_length": 500, "ref_max_length": 100},
+        }
+
+    monkeypatch.setattr(contract, "fetch_agentteams_capabilities", fake_capabilities)
+
+    await contract.validate_launch_payload(
+        "/agentteams",
+        "secret",
+        "agentteams",
+        {
+            "user_ref": "oncopath:1",
+            "subject_ref": "42",
+            "conversation_ref": "9",
+            "title": "病情分析",
+            "message": "会诊材料",
+            "metadata": {"created_from": "oncopath"},
+        },
+        "req-1",
+    )
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -863,16 +931,17 @@ async def test_agentteams_start_unconfigured_does_not_create_conversation(
 
 
 @pytest.mark.asyncio
-async def test_agentteams_capacity_error_preserves_rejected_intent_without_mapping(
+async def test_agentteams_payload_error_rejects_intent_without_mapping(
     client, db_session, current_user_override, patient, monkeypatch
 ):
     await save_enabled_config(db_session)
     patch_prompt(monkeypatch)
 
     async def fake_launch_error(self, base_url, integration_secret, request_id, payload):
+        # 与真实链路一致：_raise_agentteams_error 已把远端码映射为产品化错误码
         raise HTTPException(
-            status_code=402,
-            detail={"error": "agentteams_quota_exceeded", "message": "AgentTeams 会诊额度不足"},
+            status_code=400,
+            detail={"error": "agentteams_payload_rejected", "message": "AgentTeams 拒绝了本次请求载荷"},
         )
 
     monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch_error)
@@ -882,8 +951,8 @@ async def test_agentteams_capacity_error_preserves_rejected_intent_without_mappi
         json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
     )
 
-    assert response.status_code == 402
-    assert response.json()["detail"]["error"] == "agentteams_quota_exceeded"
+    assert response.status_code == 400
+    assert response.json()["detail"]["error"] == "agentteams_payload_rejected"
 
     conversations = await db_session.execute(select(Conversation))
     mappings = await db_session.execute(select(ConsultationExternalSession))
@@ -892,8 +961,8 @@ async def test_agentteams_capacity_error_preserves_rejected_intent_without_mappi
     assert mappings.scalars().all() == []
     intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
     assert intent.status == "rejected"
-    assert intent.last_error_status == 402
-    assert intent.last_error_code == "agentteams_quota_exceeded"
+    assert intent.last_error_status == 400
+    assert intent.last_error_code == "agentteams_payload_rejected"
 
 
 @pytest.mark.asyncio

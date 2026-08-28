@@ -161,6 +161,9 @@ class Settings(BaseSettings):
     # 当后台 AgentTeams base_url 配置为 /agentteams 这类同站路径时，
     # 后端容器用该 origin 访问当前站点的反代入口。
     AGENTTEAMS_INTERNAL_ORIGIN: str = ""
+    # 集成客户端身份（对应 agentTeams integration_clients.client_key）。
+    # 默认 agentteams 走兼容客户端；部署多租户时改为已注册的 client_key。
+    AGENTTEAMS_CLIENT_KEY: str = "agentteams"
 
     # 文件存储配置
     STORAGE_TYPE: str = "local"  # local / minio (未来扩展)

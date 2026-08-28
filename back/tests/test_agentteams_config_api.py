@@ -205,7 +205,8 @@ async def test_availability_returns_unconfigured_for_logged_in_user(client, db_s
     data = response.json()
     assert data["configured"] is False
     assert data["enabled"] is False
-    assert data["capacity"] is None
+    assert data["reachable"] is False
+    assert data["protocol_version"] is None
     assert "integration_secret" not in data
 
 
@@ -225,18 +226,42 @@ async def test_availability_returns_configured_disabled(client, db_session):
     data = response.json()
     assert data["configured"] is True
     assert data["enabled"] is False
-    assert data["capacity"] is None
+    assert data["reachable"] is False
+    assert data["protocol_version"] is None
     assert "integration_secret" not in data
 
 
 @pytest.mark.asyncio
-async def test_availability_returns_configured_enabled(client, db_session):
+async def test_availability_returns_configured_enabled(client, db_session, monkeypatch):
     override_current_user("admin")
     saved = await client.put(
         "/api/v1/admin/agentteams-config",
         json=full_payload(enabled=True),
     )
     assert saved.status_code == 200
+
+    async def fake_fetch(base_url, integration_secret, client_key):
+        return {
+            "protocol_version": 1,
+            "min_protocol_version": 1,
+            "api_version": "v1",
+            "capabilities": {"launch": True, "status_query": True, "reconcile": True},
+            "limits": {"message_max_length": 100000},
+            "locales": ["zh-CN", "en-US"],
+            "statuses": ["created", "running", "completed", "failed", "stopped", "not_found"],
+            "error_codes": ["invalid_integration_key", "invalid_payload"],
+            "client": {
+                "client_key": "agentteams",
+                "display_name": "Agent Teams",
+                "enabled": True,
+                "legacy_fallback": True,
+            },
+        }
+
+    monkeypatch.setattr(
+        "app.services.agentteams_config_service.contract.fetch_agentteams_capabilities",
+        fake_fetch,
+    )
 
     override_current_user("user")
     response = await client.get("/api/v1/consultation/agentteams/availability")
@@ -246,8 +271,11 @@ async def test_availability_returns_configured_enabled(client, db_session):
     assert data["configured"] is True
     assert data["enabled"] is True
     assert data["base_url"] == "https://agentteams.example.com"
+    assert data["reachable"] is True
+    assert data["protocol_version"] == 1
+    assert data["limits"]["message_max_length"] == 100000
+    assert data["client_key"] == "agentteams"
     assert data["upsell"]["demo_asset_url"] == ""
     assert data["upsell"]["cta_url"] == "https://github.com/nickzhang1102/agentTeams"
-    assert data["capacity"] is None
     assert data["upsell"]["title"]
     assert "integration_secret" not in data

@@ -165,7 +165,8 @@ test('starts AgentTeams flow when AgentTeams is enabled', async ({ page }) => {
 
 const agentTeamsStartErrors = [
   { status: 502, error: 'agentteams_invalid_integration_key', title: 'AgentTeams 集成密钥无效' },
-  { status: 402, error: 'agentteams_quota_exceeded', title: 'AgentTeams 会诊服务不可用' },
+  { status: 503, error: 'agentteams_invalid_client_key', title: 'AgentTeams 集成客户端未注册' },
+  { status: 400, error: 'agentteams_payload_rejected', title: 'AgentTeams 拒绝了会诊请求' },
   { status: 403, error: 'agentteams_service_account_not_configured', title: 'AgentTeams 服务账户未配置' },
   { status: 403, error: 'agentteams_integration_disabled', title: 'AgentTeams 集成未启用' },
   { status: 426, error: 'agentteams_unsupported_version', title: 'AgentTeams 版本不兼容' },
@@ -184,7 +185,8 @@ for (const scenario of agentTeamsStartErrors) {
           configured: true,
           enabled: true,
           base_url: 'https://agentteams.example.com',
-          capacity: null,
+          reachable: true,
+          protocol_version: 1,
           upsell: {
             title: '',
             message: '',

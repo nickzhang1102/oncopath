@@ -40,7 +40,11 @@ class AgentTeamsAvailabilityResponse(BaseModel):
     configured: bool
     enabled: bool
     base_url: str
-    capacity: None = None
+    # 运行时能力宣告（来自 agentTeams capabilities 端点；未配置或探测失败时为空）
+    reachable: bool = False
+    protocol_version: Optional[int] = None
+    limits: Optional[dict] = None
+    client_key: str = "agentteams"
     upsell: AgentTeamsUpsell
 
 
