@@ -1722,3 +1722,136 @@ async def test_delete_conversation_is_blocked_while_launch_result_is_unresolved(
     assert response.status_code == 409
     assert response.json()["detail"]["error"] == "agentteams_launch_pending"
     assert await db_session.get(Conversation, conversation.id) is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_conversation_cleans_related_notifications(
+    client, db_session, current_user_override, patient, test_user
+):
+    """删除会诊应同步清理引用该会诊的消息通知，避免消息通知点击 404。"""
+    from app.models.notification import Notification
+
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="待删除会诊",
+        share_token="delete-conv-notif",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+
+    related_notification = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="会诊已完成",
+        extra_data={"conversation_id": conversation.id},
+    )
+    admin_notification = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="其他会诊通知",
+        extra_data={"conversation_id": conversation.id + 100000},
+    )
+    system_notification = Notification(
+        account_id=test_user.account_id,
+        type="system",
+        title="系统通知",
+        extra_data={"conversation_id": conversation.id},
+    )
+    # 历史脏数据：extra_data 非对象（JSON 标量字符串），清理逻辑应跳过而非报错
+    corrupted_notification = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="脏数据通知",
+        extra_data="not-a-dict",
+    )
+    # related_id 引用风格（旧字段）同样命中清理
+    legacy_ref_notification = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="旧引用风格通知",
+        extra_data={"related_id": conversation.id},
+    )
+    db_session.add_all([
+        related_notification,
+        admin_notification,
+        system_notification,
+        corrupted_notification,
+        legacy_ref_notification,
+    ])
+    await db_session.commit()
+
+    response = await client.delete(f"/api/v1/consultation/conversations/{conversation.id}")
+
+    assert response.status_code == 200
+
+    remaining = (await db_session.execute(select(Notification))).scalars().all()
+    remaining_ids = {n.notification_id for n in remaining}
+    assert related_notification.notification_id not in remaining_ids
+    assert legacy_ref_notification.notification_id not in remaining_ids
+    # 未引用该会诊的通知（其他会诊/系统类型/脏数据）不受影响
+    assert admin_notification.notification_id in remaining_ids
+    assert system_notification.notification_id in remaining_ids
+    assert corrupted_notification.notification_id in remaining_ids
+
+
+@pytest.mark.asyncio
+async def test_delete_patient_cleans_related_notifications(
+    client, db_session, current_user_override, patient, test_user
+):
+    """删除患者级联删除其会诊时，应同步清理引用这些会诊的消息通知。"""
+    from app.models.notification import Notification
+
+    conversation_a = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="患者会诊A",
+        share_token="delete-patient-notif-a",
+        status="completed",
+        category="medical",
+    )
+    conversation_b = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="患者会诊B",
+        share_token="delete-patient-notif-b",
+        status="completed",
+        category="medical",
+    )
+    db_session.add_all([conversation_a, conversation_b])
+    await db_session.flush()
+
+    notification_a = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="会诊A已完成",
+        extra_data={"conversation_id": conversation_a.id},
+    )
+    notification_b = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="会诊B需人工复核",
+        extra_data={"related_id": conversation_b.id},
+    )
+    # 引用不存在会诊的通知不应被误删
+    other_notification = Notification(
+        account_id=test_user.account_id,
+        type="consultation",
+        title="其他会诊通知",
+        extra_data={"conversation_id": conversation_a.id + 100000},
+    )
+    db_session.add_all([notification_a, notification_b, other_notification])
+    await db_session.commit()
+
+    response = await client.delete(f"/api/v1/patients/{patient.patient_id}")
+
+    assert response.status_code == 200
+
+    remaining = (await db_session.execute(select(Notification))).scalars().all()
+    remaining_ids = {n.notification_id for n in remaining}
+    assert notification_a.notification_id not in remaining_ids
+    assert notification_b.notification_id not in remaining_ids
+    # 未引用被删会诊的通知不受影响
+    assert other_notification.notification_id in remaining_ids

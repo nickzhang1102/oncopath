@@ -4,7 +4,7 @@
     <DesktopSidebar v-if="isDesktop" v-model="sidebarCollapsed" />
 
     <!-- 主要内容区 -->
-    <div class="content-area" :class="{ 'sidebar-expanded': isDesktop && !sidebarCollapsed, 'sidebar-collapsed': isDesktop && sidebarCollapsed }">
+    <div class="content-area" :class="{ 'sidebar-expanded': isDesktop && !sidebarCollapsed, 'sidebar-collapsed': isDesktop && sidebarCollapsed, 'full-bleed': isDesktop && isConsultationEmbed }">
       <router-view v-slot="{ Component }">
         <keep-alive :include="cachedViews">
           <component :is="Component" :key="$route.fullPath" />
@@ -64,6 +64,9 @@ const notificationStore = useNotificationStore()
 const activeTab = ref(0)
 const cachedViews = ['Main', 'Timeline', 'ConsultationList', 'Knowledge', 'IndexView', 'AbnormalIndicators']
 const showDrawerTrigger = computed(() => !isDesktop.value && route.path === '/home/main')
+
+// 会诊嵌入详情：桌面端取消内容区居中限宽，让 iframe 铺满侧边栏右侧整块区域
+const isConsultationEmbed = computed(() => route.name === 'ConsultationDetail')
 
 // Drawer 状态
 const showDrawer = ref(false)

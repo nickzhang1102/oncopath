@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func, and_, desc, delete as sa_delete
+from sqlalchemy import select, update, func, and_, or_, desc, delete as sa_delete
 from sqlalchemy.orm import selectinload
 
 from app.models.conversation import (
@@ -18,6 +18,7 @@ from app.models.conversation import (
     LeaderAgentResult, LeaderFinalReport,
 )
 from app.models.agentteams_launch_intent import AgentTeamsLaunchIntent
+from app.models.notification import Notification
 from app.utils.time_utils import get_utc_now
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,8 @@ class ConversationService:
         4. LeaderFinalReport (依赖 leader_session_id)
         5. LeaderSession (依赖 conversation_id)
         6. Message (依赖 conversation_id)
-        7. Conversation (主表)
+        7. Notification (extra_data 引用 conversation_id, 无外键)
+        8. Conversation (主表)
         """
         result = await self.db.execute(
             select(Conversation).where(
@@ -209,10 +211,41 @@ class ConversationService:
             sa_delete(Message).where(Message.conversation_id == conversation_id)
         )
 
-        # 7. 删除 Conversation 主表
+        # 7. 同步清理引用该会诊的通知（type=consultation），避免删除后消息通知点击 404
+        await self.delete_related_notifications([conversation_id])
+
+        # 8. 删除 Conversation 主表
         await self.db.delete(conversation)
         await self.db.flush()
         return True
+
+    async def delete_related_notifications(self, conversation_ids: List[int]) -> None:
+        """删除引用给定会诊的消息通知（type=consultation）。
+
+        通知通过 extra_data JSON（conversation_id / related_id）引用会诊，没有
+        外键约束；会诊删除后这些通知会变成死链接（点击 404），需同步清理。
+        匹配通过 JSON 的 ->> 提取下推到 SQL 完成，避免全表拉取后在 Python
+        侧过滤；对非对象 extra_data（脏数据）->> 返回 NULL，天然不匹配不报错。
+        """
+        if not conversation_ids:
+            return
+        target_ids = [str(conversation_id) for conversation_id in conversation_ids]
+        result = await self.db.execute(
+            sa_delete(Notification).where(
+                Notification.type == "consultation",
+                or_(
+                    Notification.extra_data["conversation_id"].as_string().in_(target_ids),
+                    Notification.extra_data["related_id"].as_string().in_(target_ids),
+                ),
+            )
+        )
+        deleted_count = result.rowcount or 0
+        if deleted_count:
+            logger.info(
+                "Cleaned %d consultation notification(s) referencing conversation(s) %s",
+                deleted_count,
+                sorted(conversation_ids),
+            )
 
     async def update_conversation_status(
         self, conversation_id: int, status: str

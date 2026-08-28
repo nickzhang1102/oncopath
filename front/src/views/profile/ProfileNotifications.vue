@@ -55,8 +55,14 @@ import { ref, onMounted } from 'vue'
 import { showToast, showSuccessToast } from 'vant'
 import { useRouter } from 'vue-router'
 import { userApi } from '@/api/user'
+import { useNotificationStore } from '@/stores/notification'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+// 未读数与全局通知 store 同步，保证底部导航「我的」按钮角标与列表一致
+const notificationStore = useNotificationStore()
+// 判定管理员身份，用于「会诊启动需人工复核」通知跳转管理后台复核页
+const userStore = useUserStore()
 
 // 通知列表
 const activeTab = ref('all')
@@ -87,6 +93,9 @@ async function onLoad() {
     } else {
       notifications.value.push(...res.items)
     }
+
+    // 同步全局未读数（底部导航角标数据源）
+    notificationStore.unreadCount = res.unread_count || 0
 
     if (notifications.value.length >= res.total) {
       finished.value = true
@@ -121,17 +130,28 @@ async function handleItemClick(item) {
     try {
       await userApi.markNotificationRead(item.notification_id)
       item.is_read = true
+      notificationStore.unreadCount = Math.max(0, notificationStore.unreadCount - 1)
     } catch (error) {
       console.error('标记已读失败', error)
     }
   }
 
-  // 根据通知类型跳转
-  const routeMap = {
-    consultation: item.related_id ? `/conversation/${item.related_id}` : '/consultation/list',
-    report: item.related_id ? `/report/${item.related_id}` : '/home/reports',
+  // 根据通知类型跳转。
+  // 会诊消息通知会随会诊删除被后端同步清理；对仍存在的通知统一跳转会诊列表
+  // （嵌入页需要患者上下文，通知体里没有），避免指向无效页面 404。
+  // 例外：管理员的「会诊启动需人工复核」通知（带 intent_id）跳管理后台复核页。
+  const extra = item.extra_data || {}
+  let target = null
+  if (item.type === 'consultation') {
+    if (extra.intent_id && userStore.userInfo?.account_type === 'admin') {
+      target = '/admin/agentteams-launch-reviews'
+    } else {
+      target = '/home/consultation'
+    }
+  } else if (item.type === 'report') {
+    const relatedId = item.related_id || extra.related_id || extra.report_id
+    target = relatedId ? `/home/report/${relatedId}` : '/home/reports'
   }
-  const target = routeMap[item.type]
   if (target) {
     router.push(target)
   }
@@ -142,6 +162,8 @@ async function handleReadAll() {
     const res = await userApi.markAllNotificationsRead()
     showSuccessToast(`已标记 ${res.updated_count} 条通知为已读`)
     notifications.value.forEach(item => { item.is_read = true })
+    // 同步全局未读数（底部导航角标数据源）
+    notificationStore.unreadCount = 0
   } catch (error) {
     showToast('操作失败')
   }

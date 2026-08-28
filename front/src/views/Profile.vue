@@ -61,7 +61,14 @@
             <van-cell title="个人信息" icon="user-o" is-link to="/home/profile/info" />
             <van-cell title="修改密码" icon="lock" is-link to="/home/profile/password" />
             <van-cell :title="`外观模式 · ${themeLabel}`" icon="brush-o" is-link @click="showThemePicker = true" />
-            <van-cell title="消息通知" icon="bell" is-link to="/home/profile/notifications" />
+            <van-cell title="消息通知" icon="bell" is-link to="/home/profile/notifications">
+              <!-- 数字角标呼应底部导航「我的」按钮的未读角标 -->
+              <template #value>
+                <span v-if="notificationStore.unreadCount > 0" class="notify-count">
+                  {{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}
+                </span>
+              </template>
+            </van-cell>
             <van-cell title="隐私设置" icon="shield-o" is-link to="/home/profile/privacy" />
             <van-cell title="帮助中心" icon="question-o" is-link to="/home/profile/help" />
             <van-cell title="关于我们" icon="info-o" is-link to="/home/profile/about" />
@@ -123,6 +130,7 @@ import { useRouter } from 'vue-router'
 import { showDialog } from 'vant'
 import { useUserStore } from '@/stores/user'
 import { usePatientStore } from '@/stores/patient'
+import { useNotificationStore } from '@/stores/notification'
 import { useTheme } from '@/composables/useTheme'
 import { useResponsive } from '@/composables/useResponsive'
 import SponsorPopup from '@/components/common/SponsorPopup.vue'
@@ -130,6 +138,7 @@ import SponsorPopup from '@/components/common/SponsorPopup.vue'
 const router = useRouter()
 const userStore = useUserStore()
 const patientStore = usePatientStore()
+const notificationStore = useNotificationStore()
 
 const { currentTheme, setTheme } = useTheme()
 const { isDesktop } = useResponsive()
@@ -294,6 +303,21 @@ async function handleLogout() {
 
 .function-list {
   margin-bottom: var(--space-4);
+}
+
+/* 消息通知未读数角标（与底部导航「我的」按钮角标呼应） */
+.notify-count {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 16px;
+  padding: 0 4px;
+  color: var(--bg-surface);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  background: var(--danger-color);
+  border-radius: 999px;
 }
 
 .theme-label {

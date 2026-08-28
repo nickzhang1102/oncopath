@@ -325,6 +325,9 @@ async def delete_patient(
             await db.execute(LeaderSession.__table__.delete().where(LeaderSession.id.in_(leader_session_ids)))
         await db.execute(Message.__table__.delete().where(Message.conversation_id.in_(conv_ids)))
         await db.execute(Conversation.__table__.delete().where(Conversation.id.in_(conv_ids)))
+        # 同步清理引用这些会诊的消息通知（type=consultation），避免删除后消息通知点击 404
+        from app.services.conversation_service import ConversationService
+        await ConversationService(db).delete_related_notifications(conv_ids)
 
     # ORM cascade 删除 patient（覆盖: MedicalCheck, MedicalExam, PathologyReport, MedicalRecord, TimelineEvent, Medication, PromptConfig）
     await db.delete(patient)

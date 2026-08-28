@@ -16,6 +16,13 @@
     max-width: 1280px;
     margin: 0 auto;
   }
+
+  /* 会诊嵌入详情：取消居中限宽，铺满侧边栏右侧整块区域（不残留左右空白） */
+  .has-sidebar .content-area.full-bleed {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 /* 桌面端安全区域取消（无 Tabbar） */

@@ -54,6 +54,10 @@
                 <van-icon name="link-o" />
               </template>
             </van-field>
+            <div class="field-hint">
+              <van-icon name="question-o" />
+              <span>访问地址 = AgentTeams 部署后本系统访问它的入口。<br />本地 Docker 同站部署请填写 <code>/agentteams</code>；外部单独部署请填写完整 HTTPS 地址。<br />请勿留空，否则普通用户从会诊入口无法连接 AgentTeams。</span>
+            </div>
             <van-field
               v-model="form.integration_secret"
               label="集成密钥"
@@ -93,7 +97,7 @@
 
           <div class="deploy-note">
             <van-icon name="info-o" />
-            <span>同站 Docker 部署可填写 `/agentteams`；外部部署填写完整 HTTPS 地址。服务账户和令牌有效期由 AgentTeams 部署默认值管理。</span>
+            <span>本地 Docker 同站部署：填写 <code>/agentteams</code>（必填，否则无法连接）；外部部署填写完整 HTTPS 地址。服务账户和令牌有效期由 AgentTeams 部署默认值管理。</span>
           </div>
         </section>
       </div>
@@ -152,8 +156,23 @@ function applyConfig(data) {
   })
 
   form.enabled = config.enabled
-  form.base_url = config.base_url
+  // 本地 Docker 同站部署默认访问地址为 /agentteams（未配置时预填，避免漏填导致无法连接）。
+  form.base_url = config.base_url || (isLocalDockerDeploy() ? '/agentteams' : '')
   form.integration_secret = ''
+}
+
+// 判断是否为本地 Docker 同站部署（本机/localhost 或局域网 IP 访问即采用
+// 同站 /agentteams 默认值，避免局域网访问时漏填导致无法连接）。
+function isLocalDockerDeploy() {
+  const host = window.location.hostname
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+    return true
+  }
+  // 私有网段：10.0.0.0/8、172.16.0.0/12、192.168.0.0/16
+  const match = host.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/)
+  if (!match) return false
+  const [a, b] = [Number(match[1]), Number(match[2])]
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
 }
 
 async function loadConfig() {
@@ -379,6 +398,31 @@ onMounted(() => {
   color: var(--info-color);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.field-hint {
+  display: flex;
+  gap: 8px;
+  margin: 2px 18px 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--status-info-bg);
+  color: var(--info-color);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.field-hint .van-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.field-hint code {
+  font-family: monospace;
+  background: var(--primary-alpha-10);
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--primary-color);
 }
 
 @media (max-width: 768px) {

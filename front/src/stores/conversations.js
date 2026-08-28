@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { consultationApi } from '@/api/consultation'
+import { useNotificationStore } from '@/stores/notification'
 
 export const useConversationsStore = defineStore('conversations', () => {
   const conversations = ref([])
@@ -84,6 +85,8 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (currentConversation.value?.id === id) {
         currentConversation.value = null
       }
+      // 后端删除会诊时同步清理了其消息通知，立即刷新未读数保持角标一致
+      await useNotificationStore().fetchUnreadCount()
       return { success: true }
     } catch (error) {
       return {
