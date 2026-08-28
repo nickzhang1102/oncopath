@@ -50,12 +50,18 @@ class AgentTeamsAvailabilityResponse(BaseModel):
 
 class AgentTeamsStartRequest(BaseModel):
     patient_id: int
+    # Deprecated: 恢复历史会诊请使用 embed 刷新接口，conversation_id 启动旁路
+    # 已被移除（绕过持久化状态机，网络超时时缺少可靠恢复记录）。
     conversation_id: Optional[int] = None
     request_id: Optional[UUID] = None
 
     @model_validator(mode="after")
     def require_request_id_for_new_launch(self):
-        if self.conversation_id is None and self.request_id is None:
+        if self.conversation_id is not None:
+            raise ValueError(
+                "conversation_id is not supported; restart a launch with request_id"
+            )
+        if self.request_id is None:
             raise ValueError("request_id is required when starting a new consultation")
         return self
 
@@ -68,11 +74,6 @@ class AgentTeamsExternalSessionResponse(BaseModel):
     external_share_token: Optional[str] = None
     embed_url: str
     status: str = "created"
-
-
-class AgentTeamsStartResponse(AgentTeamsExternalSessionResponse):
-    request_id: Optional[UUID] = None
-    launch_status: Literal["accepted"] = "accepted"
 
 
 class AgentTeamsLaunchIntentResponse(BaseModel):

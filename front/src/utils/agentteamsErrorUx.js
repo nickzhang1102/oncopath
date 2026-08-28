@@ -52,6 +52,21 @@ const ERROR_COPY = {
     message: '本次启动标识已用于其他会诊，请关闭提示后重新发起。',
     cta_label: '重新发起',
   },
+  agentteams_launch_not_found: {
+    title: '会诊启动记录不存在',
+    message: 'AgentTeams 侧没有找到该会诊的启动记录，可能是历史数据被清理或客户端配置变更所致，请从会诊历史重新发起。',
+    cta_label: '重新发起',
+  },
+  agentteams_launch_failed: {
+    title: '会诊执行失败',
+    message: '该会诊已在 AgentTeams 侧执行失败，无法打开查看，请检查后重新发起。',
+    cta_label: '查看说明',
+  },
+  agentteams_launch_stopped: {
+    title: '会诊已停止',
+    message: '该会诊已在 AgentTeams 侧停止运行，无法打开查看。',
+    cta_label: '查看说明',
+  },
   launch_failed: {
     title: '会诊启动失败',
     message: '当前未能启动 AgentTeams 会诊，请稍后重试；如果问题持续存在，请检查 AgentTeams 集成配置。',

@@ -88,6 +88,21 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
       body: JSON.stringify(options.activeLaunchIntent || null),
     })
   })
+  await page.route('**/api/v1/consultation/agentteams/sessions/900/embed/refresh**', route => {
+    counters.externalSessionRefreshCalls = (counters.externalSessionRefreshCalls || 0) + 1
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(options.refreshSessionResponse || {
+        conversation_id: 900,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        external_share_token: 'share-token',
+        embed_url: '/agentteams/embed/conversation/embed-token',
+        status: 'created',
+      }),
+    })
+  })
   await page.route('**/api/v1/consultation/agentteams/sessions/900**', route => {
     counters.externalSessionCalls = (counters.externalSessionCalls || 0) + 1
     route.fulfill({
@@ -125,7 +140,7 @@ async function mockEmbedApis(page, counters = {}, options = {}) {
       body: `<html><body style="margin:0"><main style="min-height:100vh">AgentTeams embed</main><script>
         const statuses = ${embedStatuses}
         statuses.forEach((status, index) => setTimeout(() => {
-          window.parent.postMessage({ type: 'oncopath:embed-status', status, version: 'e2e-' + status }, window.location.origin)
+          window.parent.postMessage({ type: 'agentteams:embed-status', status, version: 'e2e-' + status }, window.location.origin)
           if (index === statuses.length - 1) document.body.dataset.statusSequenceDone = 'true'
         }, index * 25))
       </script></body></html>`,
@@ -214,6 +229,8 @@ test('AgentTeams history is scoped to the current patient and opens numeric deta
 
   await expect(page).toHaveURL(/\/home\/consultation\/900\?patient_id=1$/)
   await expect(page.getByText('AgentTeams')).toBeVisible()
+  // 方案 A：打开历史会诊时自动重签嵌入令牌（后端 POST /embed/refresh），
+  // iframe 使用生效的 embed URL 而非报 Invalid embed token
   await expect(page.locator('iframe.embed-iframe')).toHaveAttribute('src', '/agentteams/embed/conversation/embed-token')
 })
 
@@ -508,7 +525,7 @@ test('AgentTeams detail error uses productized copy without raw details', async 
   await page.goto(`${baseURL}/home/consultation/902?patient_id=1`, { waitUntil: 'domcontentloaded' })
 
   await expect(page.getByText('AgentTeams 版本不兼容')).toBeVisible()
-  await expect(page.getByText('当前 AgentTeams 版本不支持 OncoPath 集成，请升级 AgentTeams 后继续使用虚拟会诊。')).toBeVisible()
+  await expect(page.getByText('当前 AgentTeams 版本与 OncoPath 集成协议不兼容，请升级 AgentTeams 后继续使用虚拟会诊。')).toBeVisible()
   await expect(page.getByText('agentteams.internal')).toHaveCount(0)
 
   await page.getByRole('button', { name: '查看处理方式' }).click()
@@ -516,7 +533,7 @@ test('AgentTeams detail error uses productized copy without raw details', async 
   await expect(page.getByRole('heading', { name: 'AgentTeams 版本不兼容' })).toBeVisible()
 })
 
-test('expired embed notification does not trigger token renewal', async ({ page }) => {
+test('opening an expired embed reissues a fresh token instead of showing stale URL', async ({ page }) => {
   const counters = {}
   await mockEmbedApis(page, counters)
   let sessionReads = 0
@@ -534,17 +551,32 @@ test('expired embed notification does not trigger token renewal', async ({ page 
       }),
     })
   })
-  await page.route('**/agentteams/embed/conversation/expired-token', route => {
+  // 重签成功后返回新令牌 URL，前端应予采用（方案 A）
+  await page.route('**/api/v1/consultation/agentteams/sessions/900/embed/refresh**', route => {
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversation_id: 900,
+        provider: 'agentteams',
+        external_conversation_id: '1001',
+        external_session_id: '2001',
+        embed_url: '/agentteams/embed/conversation/fresh-token',
+        status: 'monitoring',
+      }),
+    })
+  })
+  await page.route('**/agentteams/embed/conversation/fresh-token', route => {
     route.fulfill({
       contentType: 'text/html',
-      body: '<main>expired embed</main>',
+      body: '<main>fresh embed</main>',
     })
   })
   await page.goto(`${baseURL}/home/consultation/900?patient_id=1`, { waitUntil: 'domcontentloaded' })
 
+  // 重签后前端采用新令牌 URL（不再展示过期的 expired-token）
   await expect(page.locator('iframe.embed-iframe')).toHaveAttribute(
     'src',
-    '/agentteams/embed/conversation/expired-token',
+    '/agentteams/embed/conversation/fresh-token',
   )
   expect(sessionReads).toBe(1)
 })

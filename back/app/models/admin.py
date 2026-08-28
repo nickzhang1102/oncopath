@@ -1,6 +1,6 @@
 """Admin 管理相关模型"""
 
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, UniqueConstraint
 from app.core.database import Base
 from app.utils.time_utils import get_utc_now
 
@@ -33,13 +33,24 @@ class AgentTeamsIntegrationConfig(Base):
 
     存储 OncoPath 调用 AgentTeams 所需的部署地址、启用状态、集成密钥
     以及未配置状态下的展示文案。集成密钥加密存储。
+
+    该表为全局单例：singleton 列上的唯一约束保证至多一行配置，
+    避免并发首次保存或历史脏数据导致运行时读到旧配置。
     """
     __tablename__ = 'agentteams_integration_configs'
+    __table_args__ = (
+        UniqueConstraint(
+            'singleton',
+            name='uq_agentteams_integration_configs_singleton',
+        ),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     base_url = Column(String(500), nullable=False, comment="AgentTeams 部署地址或同站反代路径")
     integration_secret = Column(Text, nullable=False, comment="加密存储的 AgentTeams 集成密钥")
     enabled = Column(Boolean, default=False, nullable=False, comment="是否启用 AgentTeams 集成")
+    # 单例哨兵列：恒为 True，仅用于承载唯一约束。
+    singleton = Column(Boolean, nullable=False, default=True, server_default="true")
     upsell_title = Column(String(100), nullable=True, comment="未配置提示标题")
     upsell_message = Column(Text, nullable=True, comment="未配置提示说明")
     demo_asset_url = Column(String(500), nullable=True, comment="演示资源 URL")

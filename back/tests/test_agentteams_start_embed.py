@@ -5,7 +5,7 @@ import pytest
 import pytest_asyncio
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.api.auth import get_current_admin_user, get_current_user
 from app.main import app
@@ -548,9 +548,10 @@ async def test_agentteams_new_start_requires_stable_request_id(
 
 
 @pytest.mark.asyncio
-async def test_agentteams_start_rejects_mismatched_request_and_conversation_ids(
+async def test_agentteams_start_rejects_conversation_id_restart(
     client, db_session, current_user_override, patient, monkeypatch
 ):
+    """conversation_id 启动旁路已移除：该路径绕过持久化状态机，必须返回 422。"""
     await save_enabled_config(db_session)
     patch_prompt(monkeypatch)
     patch_launch_success(monkeypatch, [])
@@ -562,27 +563,15 @@ async def test_agentteams_start_rejects_mismatched_request_and_conversation_ids(
     assert started.status_code == 200
     conversation_id = started.json()["conversation_id"]
 
-    wrong_conversation = await client.post(
-        "/api/v1/consultation/agentteams/start",
-        json={
-            "patient_id": patient.patient_id,
-            "conversation_id": conversation_id + 999,
-            "request_id": LAUNCH_REQUEST_ID,
-        },
-    )
-    assert wrong_conversation.status_code == 409
-    assert wrong_conversation.json()["detail"]["error"] == "agentteams_idempotency_conflict"
-
-    wrong_request = await client.post(
+    bypassed = await client.post(
         "/api/v1/consultation/agentteams/start",
         json={
             "patient_id": patient.patient_id,
             "conversation_id": conversation_id,
-            "request_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "request_id": LAUNCH_REQUEST_ID,
         },
     )
-    assert wrong_request.status_code == 409
-    assert wrong_request.json()["detail"]["error"] == "agentteams_idempotency_conflict"
+    assert bypassed.status_code == 422
 
 
 def test_conversation_title_is_bounded_and_rejects_ciphertext_as_label():
@@ -814,13 +803,6 @@ async def test_agentteams_external_session_can_be_read_and_deleted(
     )
     conversation_id = started.json()["conversation_id"]
 
-    restarted = await client.post(
-        "/api/v1/consultation/agentteams/start",
-        json={"patient_id": patient.patient_id, "conversation_id": conversation_id},
-    )
-    assert restarted.status_code == 200
-    assert restarted.json()["embed_url"] == "/agentteams/embed/conversation/embed-token"
-
     read_response = await client.get(
         f"/api/v1/consultation/agentteams/sessions/{conversation_id}",
         params={"patient_id": patient.patient_id},
@@ -873,48 +855,6 @@ async def test_agentteams_start_rejects_non_owned_patient_with_403(
 
 
 @pytest.mark.asyncio
-async def test_agentteams_restart_refreshes_legacy_title_without_renew(
-    client, db_session, current_user_override, patient, test_user, monkeypatch
-):
-    await save_enabled_config(db_session)
-    patch_prompt(monkeypatch, "诊断：胰腺癌肝转移")
-    conversation = Conversation(
-        user_id=test_user.account_id,
-        patient_id=patient.patient_id,
-        title="测试患者 · 2026-08-11 · 会诊#321",
-        status="completed",
-        category="medical",
-    )
-    db_session.add(conversation)
-    await db_session.flush()
-    mapping = ConsultationExternalSession(
-        conversation_id=conversation.id,
-        provider=AgentTeamsStartService.PROVIDER,
-        external_conversation_id="1001",
-        external_session_id="2001",
-        embed_url="https://agentteams.example.com/embed/conversation/token",
-        status="completed",
-    )
-    db_session.add(mapping)
-    await db_session.commit()
-    response = await client.post(
-        "/api/v1/consultation/agentteams/start",
-        json={
-            "patient_id": patient.patient_id,
-            "conversation_id": conversation.id,
-        },
-    )
-
-    assert response.status_code == 200
-    assert response.json()["status"] == "completed"
-    await db_session.refresh(conversation)
-    await db_session.refresh(mapping)
-    assert conversation.title == f"胰腺癌肝转移病情分析-#{conversation.id}"
-    assert mapping.status == "completed"
-    assert response.json()["embed_url"] == "https://agentteams.example.com/embed/conversation/token"
-
-
-@pytest.mark.asyncio
 async def test_agentteams_start_unconfigured_does_not_create_conversation(
     client, db_session, current_user_override, patient
 ):
@@ -963,6 +903,57 @@ async def test_agentteams_payload_error_rejects_intent_without_mapping(
     assert intent.status == "rejected"
     assert intent.last_error_status == 400
     assert intent.last_error_code == "agentteams_payload_rejected"
+
+
+@pytest.mark.asyncio
+async def test_active_launch_intent_exposes_recent_rejection_then_expires(
+    client, db_session, current_user_override, patient, monkeypatch
+):
+    """轮询中的前端必须能读到最终拒绝结果，过期后不再作为活动意图返回。"""
+    await save_enabled_config(db_session)
+    patch_prompt(monkeypatch)
+
+    async def fake_launch_error(self, base_url, integration_secret, request_id, payload):
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "agentteams_payload_rejected", "message": "AgentTeams 拒绝了本次请求载荷"},
+        )
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_launch", fake_launch_error)
+
+    start_response = await client.post(
+        "/api/v1/consultation/agentteams/start",
+        json={"patient_id": patient.patient_id, "request_id": LAUNCH_REQUEST_ID},
+    )
+    assert start_response.status_code == 400
+
+    active = await client.get(
+        "/api/v1/consultation/agentteams/launch-intents/active",
+        params={"patient_id": patient.patient_id},
+    )
+    assert active.status_code == 200
+    active_data = active.json()
+    assert active_data["launch_status"] == "rejected"
+    assert active_data["error"] == "agentteams_payload_rejected"
+
+    # 超出可见窗口的旧拒绝不应在页面加载时再次浮现
+    intent = (await db_session.execute(select(AgentTeamsLaunchIntent))).scalar_one()
+    stale = get_utc_now() - timedelta(
+        seconds=AgentTeamsLaunchIntentService.REJECTED_VISIBILITY_SECONDS + 60
+    )
+    await db_session.execute(
+        update(AgentTeamsLaunchIntent)
+        .where(AgentTeamsLaunchIntent.id == intent.id)
+        .values(updated_at=stale)
+    )
+    await db_session.commit()
+
+    expired = await client.get(
+        "/api/v1/consultation/agentteams/launch-intents/active",
+        params={"patient_id": patient.patient_id},
+    )
+    assert expired.status_code == 200
+    assert expired.json() is None
 
 
 @pytest.mark.asyncio
@@ -1855,3 +1846,309 @@ async def test_delete_patient_cleans_related_notifications(
     assert notification_b.notification_id not in remaining_ids
     # 未引用被删会诊的通知不受影响
     assert other_notification.notification_id in remaining_ids
+
+
+@pytest.mark.parametrize(
+    ("code", "expected_status", "expected_error", "expected_message"),
+    [
+        ("agentteams_launch_not_found", 404, "agentteams_launch_not_found", "该会诊在 AgentTeams 侧无启动记录，请从会诊历史重新发起或联系管理员"),
+        ("agentteams_launch_failed", 409, "agentteams_launch_failed", "该会诊已在 AgentTeams 侧执行失败，无法打开"),
+        ("agentteams_launch_stopped", 409, "agentteams_launch_stopped", "该会诊已在 AgentTeams 侧停止运行，无法打开"),
+    ],
+)
+def test_agentteams_reissue_error_mapping_is_productized(
+    code, expected_status, expected_error, expected_message
+):
+    response = httpx.Response(
+        status_code=404,
+        json={"detail": {"error": code, "message": "raw internal detail"}},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        AgentTeamsStartService._raise_agentteams_error(response)
+
+    assert exc_info.value.status_code == expected_status
+    assert exc_info.value.detail == {
+        "error": expected_error,
+        "message": expected_message,
+    }
+    assert "internal" not in str(exc_info.value.detail)
+
+
+def test_integration_embed_reissue_url_targets_embed_token_subresource(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.agentteams_contract.settings.AGENTTEAMS_INTERNAL_ORIGIN",
+        "http://frontend",
+    )
+
+    assert (
+        contract.integration_embed_reissue_url("/agentteams", "agentteams", "req-1")
+        == "http://frontend/agentteams/api/integrations/v1/agentteams/consultation-launches/req-1/embed-token"
+    )
+
+
+@pytest.mark.asyncio
+async def test_agentteams_refresh_embed_reacquires_fresh_url_and_updates_mapping(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="历史会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    mapping = ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        launch_request_id=LAUNCH_REQUEST_ID,
+        external_conversation_id="1001",
+        external_session_id="2001",
+        embed_url="https://agentteams.example.com/embed/conversation/expired-token",
+        status="completed",
+    )
+    db_session.add(mapping)
+    await db_session.commit()
+
+    reissue_calls = []
+
+    async def fake_reissue(self, base_url, integration_secret, request_id):
+        reissue_calls.append({
+            "base_url": base_url,
+            "integration_secret": integration_secret,
+            "request_id": request_id,
+        })
+        return {
+            "remote_conversation_id": "1001",
+            "remote_session_id": "2001",
+            "embed_path": "/embed/conversation/fresh-token",
+            "status": "completed",
+        }
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_embed_reissue", fake_reissue)
+
+    response = await client.post(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}/embed/refresh",
+        params={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["embed_url"].endswith("/embed/conversation/fresh-token")
+    assert data["status"] == "completed"
+    assert reissue_calls[0]["integration_secret"] == "secret-1234"
+    assert reissue_calls[0]["request_id"] == f"oncopath-launch-{LAUNCH_REQUEST_ID}"
+
+    await db_session.refresh(mapping)
+    assert mapping.embed_url.endswith("/fresh-token")
+    assert mapping.status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_agentteams_refresh_embed_surfaces_remote_launch_not_found(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="历史会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    mapping = ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id="1001",
+        embed_url="https://agentteams.example.com/embed/conversation/expired-token",
+        status="completed",
+    )
+    db_session.add(mapping)
+    await db_session.commit()
+
+    async def fake_reissue(self, base_url, integration_secret, request_id):
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "agentteams_launch_not_found", "message": "无启动记录"},
+        )
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_embed_reissue", fake_reissue)
+
+    response = await client.post(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}/embed/refresh",
+        params={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["error"] == "agentteams_launch_not_found"
+    await db_session.refresh(mapping)
+    assert mapping.embed_url.endswith("/expired-token")
+
+
+@pytest.mark.asyncio
+async def test_agentteams_refresh_embed_rejects_conversation_drift_without_write(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="历史会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    mapping = ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id="1001",
+        embed_url="https://agentteams.example.com/embed/conversation/expired-token",
+        status="completed",
+    )
+    db_session.add(mapping)
+    await db_session.commit()
+
+    async def fake_reissue(self, base_url, integration_secret, request_id):
+        return {
+            "remote_conversation_id": "9999",
+            "remote_session_id": "2001",
+            "embed_path": "/embed/conversation/fresh-token",
+            "status": "created",
+        }
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_embed_reissue", fake_reissue)
+
+    response = await client.post(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}/embed/refresh",
+        params={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "agentteams_idempotency_conflict"
+    await db_session.refresh(mapping)
+    assert mapping.embed_url.endswith("/expired-token")
+
+
+@pytest.mark.asyncio
+async def test_agentteams_refresh_embed_unavailable_leaves_mapping_unchanged(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    await save_enabled_config(db_session)
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="历史会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    mapping = ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id="1001",
+        embed_url="https://agentteams.example.com/embed/conversation/expired-token",
+        status="completed",
+    )
+    db_session.add(mapping)
+    await db_session.commit()
+
+    async def fake_reissue(self, base_url, integration_secret, request_id):
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "agentteams_unavailable", "message": "AgentTeams 服务暂时不可用"},
+        )
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_embed_reissue", fake_reissue)
+
+    response = await client.post(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}/embed/refresh",
+        params={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["error"] == "agentteams_unavailable"
+    await db_session.refresh(mapping)
+    assert mapping.embed_url.endswith("/expired-token")
+
+
+@pytest.mark.asyncio
+async def test_agentteams_refresh_embed_rejects_unconfigured_without_remote_call(
+    client, db_session, current_user_override, patient, test_user, monkeypatch
+):
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="历史会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add(conversation)
+    await db_session.flush()
+    db_session.add(ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id="1001",
+        embed_url="https://agentteams.example.com/embed/conversation/expired-token",
+        status="completed",
+    ))
+    await db_session.commit()
+
+    called = []
+
+    async def fake_reissue(self, base_url, integration_secret, request_id):
+        called.append(request_id)
+        return {"remote_conversation_id": "1001", "embed_path": "/embed/x", "status": "created"}
+
+    monkeypatch.setattr(AgentTeamsStartService, "_call_agentteams_embed_reissue", fake_reissue)
+
+    response = await client.post(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}/embed/refresh",
+        params={"patient_id": patient.patient_id},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["error"] == "agentteams_not_configured"
+    assert called == []
+
+
+@pytest.mark.asyncio
+async def test_agentteams_refresh_embed_requires_owned_patient(
+    client, db_session, current_user_override, patient, test_user
+):
+    await save_enabled_config(db_session)
+    other_patient = Patient(
+        account_id=test_user.account_id,
+        patient_name="另一个患者",
+        gender="unknown",
+    )
+    conversation = Conversation(
+        user_id=test_user.account_id,
+        patient_id=patient.patient_id,
+        title="历史会诊",
+        status="completed",
+        category="medical",
+    )
+    db_session.add_all([other_patient, conversation])
+    await db_session.flush()
+    db_session.add(ConsultationExternalSession(
+        conversation_id=conversation.id,
+        provider=AgentTeamsStartService.PROVIDER,
+        external_conversation_id="1001",
+        embed_url="https://agentteams.example.com/embed/conversation/expired-token",
+        status="completed",
+    ))
+    await db_session.commit()
+
+    response = await client.post(
+        f"/api/v1/consultation/agentteams/sessions/{conversation.id}/embed/refresh",
+        params={"patient_id": other_patient.patient_id},
+    )
+
+    assert response.status_code == 404

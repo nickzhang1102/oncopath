@@ -450,7 +450,9 @@ async function confirmStartConsultation() {
     if (!result || result.launch_status !== 'accepted' || !result.embed_url) {
       if (result?.launch_status === 'rejected') {
         activeLaunchIntent.value = null
-        showToast('虚拟会诊未创建，请检查 AgentTeams 配置后重新发起')
+        const ux = getAgentTeamsErrorUx(result.error || null)
+        agentTeamsError.value = { ...ux, cta_url: agentTeamsCtaUrl.value }
+        showAgentTeamsError.value = true
       } else if (result?.launch_status === 'manual_review') {
         showToast('会诊启动结果待人工确认，管理员处理完成后即可正常查看，请勿重复发起')
       } else {

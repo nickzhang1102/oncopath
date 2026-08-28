@@ -5,6 +5,7 @@ import ipaddress
 from urllib.parse import urlparse
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin import AgentTeamsIntegrationConfig
@@ -72,16 +73,31 @@ class AgentTeamsConfigService:
                 integration_secret=encryption_service.encrypt(secret),
             )
             self.db.add(config)
-        else:
-            config.base_url = base_url
-            if not should_keep_secret:
-                config.integration_secret = encryption_service.encrypt(secret)
 
+        config.base_url = base_url
+        if not should_keep_secret or config.integration_secret is None:
+            config.integration_secret = encryption_service.encrypt(secret)
         config.enabled = data.enabled
         if data.upsell is not None:
             self._apply_upsell(config, data.upsell)
 
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            # 单例唯一约束下的并发首次保存：另一个请求已插入配置行。
+            # 回滚后改写已存在的那一行，保证两次保存收敛到同一条配置。
+            await self.db.rollback()
+            winner = await self._get_config_row()
+            if winner is None:
+                raise
+            config = winner
+            config.base_url = base_url
+            if not should_keep_secret:
+                config.integration_secret = encryption_service.encrypt(secret)
+            config.enabled = data.enabled
+            if data.upsell is not None:
+                self._apply_upsell(config, data.upsell)
+            await self.db.commit()
         await self.db.refresh(config)
         # 地址/密钥可能已变更：作废能力探测缓存，避免旧宣告存活到 TTL 自然过期。
         contract.clear_capabilities_cache()

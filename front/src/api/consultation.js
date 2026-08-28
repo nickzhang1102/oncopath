@@ -61,11 +61,10 @@ export const consultationApi = {
     return request.get('/consultation/agentteams/availability')
   },
 
-  async startAgentTeamsConsultation(patientId, conversationId = null) {
+  async startAgentTeamsConsultation(patientId) {
     return request.post('/consultation/agentteams/start', {
       patient_id: patientId,
-      conversation_id: conversationId,
-      request_id: conversationId == null ? createUuid() : null,
+      request_id: createUuid(),
     }, { silentError: true })
   },
 
@@ -87,6 +86,13 @@ export const consultationApi = {
     return request.patch(`/consultation/agentteams/sessions/${conversationId}/status`, {
       status,
     }, {
+      params: { patient_id: patientId },
+      silentError: true,
+    })
+  },
+
+  refreshAgentTeamsEmbed(conversationId, patientId) {
+    return request.post(`/consultation/agentteams/sessions/${conversationId}/embed/refresh`, {}, {
       params: { patient_id: patientId },
       silentError: true,
     })

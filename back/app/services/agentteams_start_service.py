@@ -7,23 +7,15 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.conversation import Conversation, ConsultationExternalSession
 from app.models.patient import Patient
 from app.models.prompt import PromptConfig
-from app.schemas.agentteams import (
-    AgentTeamsExternalSessionResponse,
-    AgentTeamsStartRequest,
-    AgentTeamsStartResponse,
-)
+from app.schemas.agentteams import AgentTeamsExternalSessionResponse
 from app.services import agentteams_contract as contract
 from app.services.agentteams_config_service import AgentTeamsConfigService
-from app.services.consultation.medical_prompt_builder import MedicalPromptBuilder
-from app.services.conversation_service import ConversationService
-from app.services.patient_service import PatientService
 
 logger = logging.getLogger(__name__)
 
@@ -34,173 +26,14 @@ class AgentTeamsStartService:
     PROVIDER = contract.PROVIDER
     CLIENT_LOCALE = contract.CLIENT_LOCALE
     REQUEST_TIMEOUT_SECONDS = 20.0
+    # 打开历史会诊时的重签调用：短超时以收敛页面等待时间。
+    REFRESH_EMBED_TIMEOUT_SECONDS = 10.0
     MAX_TITLE_LENGTH = 32
     TITLE_SUMMARY_LENGTH = 10
-    GENERIC_TITLES = {"", "待生成会诊标题", "虚拟会诊", "AgentTeams 会诊"}
     TERMINAL_STATUSES = contract.TERMINAL_STATUSES
 
     def __init__(self, db: AsyncSession):
         self.db = db
-
-    async def start(
-        self,
-        data: AgentTeamsStartRequest,
-        account_id: int,
-    ) -> AgentTeamsStartResponse:
-        config = await AgentTeamsConfigService(self.db).get_runtime_config()
-        if not config.configured or not config.enabled:
-            raise HTTPException(
-                status_code=503,
-                detail={"error": "agentteams_not_configured", "message": "AgentTeams 未配置或未启用"},
-            )
-
-        await PatientService.verify_ownership(self.db, data.patient_id, account_id)
-        if data.request_id is not None:
-            existing_request_mapping = await self._get_external_session_by_request_id(
-                str(data.request_id), account_id, data.patient_id
-            )
-            if existing_request_mapping is not None:
-                if (
-                    data.conversation_id is not None
-                    and existing_request_mapping.conversation_id != data.conversation_id
-                ):
-                    raise HTTPException(
-                        status_code=409,
-                        detail={
-                            "error": "agentteams_idempotency_conflict",
-                            "message": "启动标识与会诊记录不匹配，请重新发起",
-                        },
-                    )
-                return AgentTeamsStartResponse(**self._to_response(existing_request_mapping).model_dump())
-        conversation = await self._resolve_conversation(data, account_id)
-        existing_mapping = await self.get_external_session(conversation.id, account_id, raise_not_found=False)
-        if (
-            existing_mapping is not None
-            and data.request_id is not None
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": "agentteams_idempotency_conflict",
-                    "message": "启动标识与会诊记录不匹配，请重新发起",
-                },
-            )
-        if existing_mapping and not self._needs_title_refresh(conversation.title):
-            existing_session = await self.get_external_session(
-                conversation.id,
-                account_id,
-                raise_not_found=True,
-            )
-            return AgentTeamsStartResponse(**existing_session.model_dump())
-
-        prompt_config = await self._load_prompt_config(data.patient_id, account_id)
-        prompt = await MedicalPromptBuilder().build_consultation_prompt(
-            patient_id=data.patient_id,
-            db=self.db,
-            prompt_config=prompt_config,
-        )
-        if not prompt.strip():
-            raise HTTPException(
-                status_code=500,
-                detail={"error": "launch_failed", "message": "无法生成会诊提示词"},
-            )
-
-        if self._needs_title_refresh(conversation.title):
-            conversation.title = self._build_conversation_title(prompt, conversation)
-            await self.db.flush()
-
-        if existing_mapping:
-            existing_session = await self.get_external_session(
-                conversation.id,
-                account_id,
-                raise_not_found=True,
-            )
-            return AgentTeamsStartResponse(**existing_session.model_dump())
-
-        logger.info(
-            "AgentTeams launch prompt prepared: conversation_id=%s patient_id=%s "
-            "prompt_config_id=%s prompt_chars=%s",
-            conversation.id,
-            data.patient_id,
-            prompt_config.get("config_id") if prompt_config else None,
-            len(prompt),
-        )
-
-        conversation.status = "analyzing"
-        await self.db.flush()
-
-        launch_request_id = str(data.request_id) if data.request_id is not None else None
-        request_id = self._build_remote_request_id(launch_request_id, conversation.id)
-        try:
-            launch_result = await self._call_agentteams_launch(
-                base_url=config.base_url,
-                integration_secret=config.integration_secret,
-                request_id=request_id,
-                payload={
-                    "user_ref": f"oncopath:{account_id}",
-                    "subject_ref": str(data.patient_id),
-                    "conversation_ref": str(conversation.id),
-                    "title": conversation.title,
-                    "message": prompt,
-                    "locale": self.CLIENT_LOCALE,
-                    "metadata": {"created_from": "oncopath"},
-                },
-            )
-        except HTTPException:
-            await self.db.rollback()
-            raise
-        except Exception as exc:
-            logger.error("AgentTeams launch failed: conversation_id=%s error=%s", conversation.id, exc)
-            await self.db.rollback()
-            raise HTTPException(
-                status_code=500,
-                detail={"error": "launch_failed", "message": "启动 AgentTeams 会诊失败"},
-            ) from exc
-
-        mapping = ConsultationExternalSession(
-            conversation_id=conversation.id,
-            provider=self.PROVIDER,
-            launch_request_id=launch_request_id,
-            external_conversation_id=str(
-                contract.first_present(launch_result, "remote_conversation_id", "agentteams_conversation_id")
-            ),
-            external_session_id=self._optional_str(
-                contract.first_present(launch_result, "remote_session_id", "agentteams_session_id")
-            ),
-            external_share_token=self._optional_str(
-                contract.first_present(launch_result, "agentteams_share_token")
-            ),
-            embed_url=contract.build_embed_url(config.base_url, str(launch_result.get("embed_path") or "")),
-            status=str(launch_result.get("status") or "created"),
-        )
-        self.db.add(mapping)
-        try:
-            await self.db.commit()
-        except IntegrityError as exc:
-            await self.db.rollback()
-            if launch_request_id is not None:
-                winner = await self._get_external_session_by_request_id(
-                    launch_request_id,
-                    account_id,
-                    data.patient_id,
-                )
-                if winner is not None:
-                    logger.info(
-                        "AgentTeams launch converged to concurrent winner: request_id=%s conversation_id=%s",
-                        launch_request_id,
-                        winner.conversation_id,
-                    )
-                    return AgentTeamsStartResponse(**self._to_response(winner).model_dump())
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "error": "agentteams_idempotency_conflict",
-                        "message": "该启动标识已用于其他会诊，请重新发起",
-                    },
-                ) from exc
-            raise
-        await self.db.refresh(mapping)
-        return self._to_response(mapping)
 
     async def _load_prompt_config(self, patient_id: int, account_id: int) -> dict[str, Any] | None:
         """Load the same saved configuration used by the prompt preview page."""
@@ -307,36 +140,96 @@ class AgentTeamsStartService:
         await self.db.refresh(mapping)
         return self._to_response(mapping)
 
-    async def _resolve_conversation(
+    async def refresh_embed(
         self,
-        data: AgentTeamsStartRequest,
+        conversation_id: int,
         account_id: int,
-    ) -> Conversation:
-        service = ConversationService(self.db)
-        if data.conversation_id:
-            conversation = await service.get_conversation_by_id(data.conversation_id)
-            if not conversation or conversation.user_id != account_id or conversation.patient_id != data.patient_id:
-                raise HTTPException(status_code=404, detail="会诊记录不存在或无权访问")
-            return conversation
+        patient_id: int,
+    ) -> AgentTeamsExternalSessionResponse:
+        """为既有外部会诊重新获取一个有效的嵌入令牌。
 
-        conversation = await service.create_conversation(
-            user_id=account_id,
-            patient_id=data.patient_id,
-            title="待生成会诊标题",
+        历史会诊里保存的 embed URL 中的令牌会过期（远端 TTL 默认 3600s），
+        也可能被同一会话的新令牌吊销；本方法调用远端契约 v1 的重签端点
+        （``POST .../consultation-launches/{request_id}/embed-token``）铸造新令牌并
+        回写映射，使历史会诊能再次打开。重签只铸造令牌，不会新建会话，也不会
+        重启远端工作流（无额外计费副作用）。
+        """
+        row = await self._get_external_session_row(conversation_id, account_id, patient_id)
+        config = await AgentTeamsConfigService(self.db).get_runtime_config()
+        if not config.configured or not config.enabled:
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "agentteams_not_configured", "message": "AgentTeams 未配置或未启用"},
+            )
+
+        request_id = self._build_remote_request_id(row.launch_request_id, conversation_id)
+        try:
+            result = await self._call_agentteams_embed_reissue(
+                base_url=config.base_url,
+                integration_secret=config.integration_secret,
+                request_id=request_id,
+            )
+        except HTTPException:
+            raise
+
+        embed_path = result.get("embed_path")
+        external_conversation_id = contract.first_present(
+            result, "remote_conversation_id", "agentteams_conversation_id"
         )
-        return conversation
+        if not embed_path or external_conversation_id in (None, ""):
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回字段不完整"},
+            )
+        remote_ext_id = str(external_conversation_id)
+        if row.external_conversation_id and row.external_conversation_id != remote_ext_id:
+            logger.warning(
+                "AgentTeams embed reissue returned a different conversation: "
+                "conversation_id=%s expected=%s got=%s request_id=%s",
+                conversation_id,
+                row.external_conversation_id,
+                remote_ext_id,
+                request_id,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "agentteams_idempotency_conflict",
+                    "message": "会诊记录与 AgentTeams 启动不匹配，请从会诊历史重新发起",
+                },
+            )
 
-    @classmethod
-    def _is_generic_title(cls, title: str | None) -> bool:
-        return (title or "").strip() in cls.GENERIC_TITLES
+        row.embed_url = contract.build_embed_url(config.base_url, str(embed_path))
+        # 仅在尚未进入终态时合并远端当前状态，避免用回退状态覆盖已完成。
+        row.status = self._merge_external_status(row.status, str(result.get("status") or "created"))
+        await self.db.commit()
+        await self.db.refresh(row)
+        return self._to_response(row)
 
-    @classmethod
-    def _needs_title_refresh(cls, title: str | None) -> bool:
-        normalized = (title or "").strip()
-        # 兼容 2026-08-11 前使用的“患者标识 · 创建时间 · 会诊#编号”标题。
-        return cls._is_generic_title(normalized) or bool(
-            re.search(r"·\s*(?:会诊\s*)?#\d+", normalized)
+    async def _get_external_session_row(
+        self,
+        conversation_id: int,
+        account_id: int,
+        patient_id: int,
+    ) -> ConsultationExternalSession:
+        """按患者隔离与账号归属校验后返回外部映射 ORM 行。"""
+        stmt = (
+            select(ConsultationExternalSession)
+            .join(Conversation, Conversation.id == ConsultationExternalSession.conversation_id)
+            .join(Patient, Patient.patient_id == Conversation.patient_id)
+            .where(
+                ConsultationExternalSession.conversation_id == conversation_id,
+                ConsultationExternalSession.provider == self.PROVIDER,
+                Conversation.user_id == account_id,
+                Conversation.patient_id == patient_id,
+                Patient.account_id == account_id,
+            )
         )
+        result = await self.db.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail="外部会诊映射不存在")
+        return row
 
     @classmethod
     def _build_conversation_title(
@@ -476,6 +369,34 @@ class AgentTeamsStartService:
 
     def _build_agentteams_api_base(self, base_url: str) -> str:
         return contract.build_agentteams_api_base(base_url)
+
+    async def _call_agentteams_embed_reissue(
+        self,
+        base_url: str,
+        integration_secret: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        url = contract.integration_embed_reissue_url(base_url, self._client_key(), request_id)
+        headers = contract.integration_headers(integration_secret)
+        try:
+            async with httpx.AsyncClient(timeout=self.REFRESH_EMBED_TIMEOUT_SECONDS) as client:
+                response = await client.post(url, headers=headers)
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
+            logger.warning("AgentTeams embed reissue unavailable: request_id=%s error=%s", request_id, exc)
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "agentteams_unavailable", "message": "AgentTeams 服务暂时不可用"},
+            ) from exc
+
+        if response.status_code >= 400:
+            self._raise_agentteams_error(response)
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "agentteams_unavailable", "message": "AgentTeams 返回格式异常"},
+            ) from exc
 
     @staticmethod
     def _build_embed_url(base_url: str, embed_path: str) -> str:

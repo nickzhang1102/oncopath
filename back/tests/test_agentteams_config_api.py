@@ -1,11 +1,16 @@
+import asyncio
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.api.auth import get_current_user
 from app.main import app
 from app.models.admin import AgentTeamsIntegrationConfig
 from app.models.user import LoginAccount
+from app.schemas.agentteams import AgentTeamsConfigUpdate
+from app.services.agentteams_config_service import AgentTeamsConfigService
 
 
 class FakeEncryptionService:
@@ -279,3 +284,36 @@ async def test_availability_returns_configured_enabled(client, db_session, monke
     assert data["upsell"]["cta_url"] == "https://github.com/nickzhang1102/agentTeams"
     assert data["upsell"]["title"]
     assert "integration_secret" not in data
+
+
+@pytest.mark.asyncio
+async def test_concurrent_first_save_converges_to_single_config_row(db_session):
+    """单例唯一约束下，并发首次保存必须收敛为一行，运行时不会读到旧配置。"""
+    session_maker = async_sessionmaker(db_session.bind, expire_on_commit=False)
+
+    async def first_save(base_url):
+        async with session_maker() as session:
+            service = AgentTeamsConfigService(session)
+            return await service.update_config(
+                AgentTeamsConfigUpdate(
+                    enabled=True,
+                    base_url=base_url,
+                    integration_secret="secret-1234",
+                )
+            )
+
+    responses = await asyncio.gather(
+        first_save("https://agentteams-a.example.com"),
+        first_save("https://agentteams-b.example.com"),
+    )
+    assert all(response.base_url in {
+        "https://agentteams-a.example.com",
+        "https://agentteams-b.example.com",
+    } for response in responses)
+
+    # 并发首次保存后仍只有一行配置，且运行时读取的就是这一行
+    rows = (await db_session.execute(select(AgentTeamsIntegrationConfig))).scalars().all()
+    assert len(rows) == 1
+    runtime = await AgentTeamsConfigService(db_session).get_runtime_config()
+    assert runtime.configured is True
+    assert runtime.base_url == rows[0].base_url

@@ -102,6 +102,18 @@ def integration_launch_status_url(base_url: str, client_key: str, request_id: st
     )
 
 
+def integration_embed_reissue_url(base_url: str, client_key: str, request_id: str) -> str:
+    """远端重签端点：为既有启动铸造一个新嵌入令牌（不创建/不重启工作流）。
+
+    远端实现 ``agentTeams services/agentteams_integration_launch.py::reissue_agentteams_embed_token``，
+    由 ``POST /api/integrations/v1/{client_key}/consultation-launches/{request_id}/embed-token`` 暴露。
+    """
+    return (
+        f"{build_agentteams_api_base(base_url)}/api/integrations/{INTEGRATION_API_VERSION}/"
+        f"{client_key}/consultation-launches/{request_id}/embed-token"
+    )
+
+
 def integration_capabilities_url(base_url: str, client_key: str) -> str:
     return (
         f"{build_agentteams_api_base(base_url)}/api/integrations/{INTEGRATION_API_VERSION}/"
@@ -286,6 +298,15 @@ def map_remote_error(status_code: int, error_code: str, message: str) -> tuple[i
         ),
         "integration_adapter_unavailable": (
             502, "agentteams_unavailable", "AgentTeams 服务暂时不可用",
+        ),
+        "agentteams_launch_not_found": (
+            404, "agentteams_launch_not_found", "该会诊在 AgentTeams 侧无启动记录，请从会诊历史重新发起或联系管理员",
+        ),
+        "agentteams_launch_failed": (
+            409, "agentteams_launch_failed", "该会诊已在 AgentTeams 侧执行失败，无法打开",
+        ),
+        "agentteams_launch_stopped": (
+            409, "agentteams_launch_stopped", "该会诊已在 AgentTeams 侧停止运行，无法打开",
         ),
     }
     if error_code in table:

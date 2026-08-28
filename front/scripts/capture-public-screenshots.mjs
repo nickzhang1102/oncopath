@@ -244,6 +244,12 @@ async function mockApi(route) {
     status: 'completed',
     embed_url: `${baseURL}/agentteams-demo`,
   })
+  if (apiPath === '/consultation/agentteams/sessions/401/embed/refresh') return fulfillJson(route, {
+    conversation_id: 401,
+    patient_id: 1,
+    status: 'completed',
+    embed_url: `${baseURL}/agentteams-demo`,
+  })
   if (apiPath === '/knowledge/categories') return fulfillJson(route, knowledgeCategories)
   if (apiPath === '/knowledge/documents') return fulfillJson(route, { documents: knowledgeDocuments, pagination: { page: 1, total: knowledgeDocuments.length, has_next: false } })
 

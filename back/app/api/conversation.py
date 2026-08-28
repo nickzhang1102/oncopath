@@ -30,7 +30,7 @@ from app.schemas.agentteams import (
     AgentTeamsLaunchIntentResponse,
     AgentTeamsStatusUpdate,
 )
-from app.schemas.agentteams import AgentTeamsStartRequest, AgentTeamsStartResponse
+from app.schemas.agentteams import AgentTeamsStartRequest
 from app.services.agentteams_config_service import AgentTeamsConfigService
 from app.services.agentteams_start_service import AgentTeamsStartService
 from app.services.agentteams_launch_intent_service import AgentTeamsLaunchIntentService
@@ -124,6 +124,31 @@ async def update_agentteams_external_session_status(
         current_user.account_id,
         patient_id,
         data.status,
+    )
+
+
+@router.post(
+    "/agentteams/sessions/{conversation_id}/embed/refresh",
+    response_model=AgentTeamsExternalSessionResponse,
+)
+@limiter.limit("10/minute")
+async def refresh_agentteams_embed(
+    conversation_id: int,
+    request: Request,
+    patient_id: int = Query(ge=1),
+    db: AsyncSession = Depends(get_db),
+    current_user: LoginAccount = Depends(get_current_user),
+):
+    """重新获取既有会诊的嵌入令牌，用于打开历史会诊。
+
+    存量 embed URL 中的令牌可能过期/吊销；本端点调用 AgentTeams 重签端点
+    铸造新令牌并回写外部映射后返回，前端据此重新加载 iframe。
+    """
+    await PatientService.get_with_ownership(db, patient_id, current_user.account_id)
+    return await AgentTeamsStartService(db).refresh_embed(
+        conversation_id,
+        current_user.account_id,
+        patient_id,
     )
 
 

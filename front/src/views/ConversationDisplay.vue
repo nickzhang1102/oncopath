@@ -138,6 +138,20 @@ async function loadExternalSession() {
       token,
       patientId,
     )
+    // 历史会诊存量的嵌入令牌可能已过期/被吊销；先向 AgentTeams 重签一个有效
+    // 的嵌入地址再渲染 iframe，避免直接落入 Invalid embed token。
+    try {
+      externalSession.value = await consultationApi.refreshAgentTeamsEmbed(
+        token,
+        patientId,
+      )
+    } catch (refreshError) {
+      if (isAgentTeamsError(refreshError)) {
+        setAgentTeamsError(refreshError)
+        return
+      }
+      setPlainError('会诊加载失败，请稍后重试')
+    }
   } catch (error) {
     if (error?.response?.status === 404) {
       setPlainError('此会诊记录不可用或已下线')

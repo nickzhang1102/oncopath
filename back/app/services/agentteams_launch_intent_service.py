@@ -48,6 +48,9 @@ class AgentTeamsLaunchIntentService:
         "manual_review",
     }
     REMOTE_TERMINAL_STATUSES = {"completed", "failed", "stopped"}
+    # 最近被拒绝的 intent 仍通过 get_active() 返回一小段时间，让轮询中的
+    # 前端能拿到最终失败原因，而不是把 rejected 误显示成“仍在确认”。
+    REJECTED_VISIBILITY_SECONDS = 300
     REMOTE_FAILURE_STATUSES = {"failed", "stopped"}
     DEFINITE_REJECTION_STATUSES = {400, 401, 402, 403, 409, 422, 426}
     STALE_DISPATCH_SECONDS = 45
@@ -65,20 +68,9 @@ class AgentTeamsLaunchIntentService:
         data: AgentTeamsStartRequest,
         account_id: int,
     ) -> AgentTeamsLaunchIntentResponse:
-        if data.conversation_id is not None:
-            response = await self.agentteams.start(data, account_id)
-            return AgentTeamsLaunchIntentResponse(
-                request_id=data.request_id,
-                conversation_id=response.conversation_id,
-                patient_id=data.patient_id,
-                launch_status="accepted",
-                external_conversation_id=response.external_conversation_id,
-                external_session_id=response.external_session_id,
-                external_share_token=response.external_share_token,
-                embed_url=response.embed_url,
-                status=response.status,
-            )
-
+        # 历史旁路说明：带 conversation_id 的直接启动已被移除。该路径绕过
+        # prepared/dispatching/confirming/manual_review 持久化状态机，网络超时
+        # 时没有可靠的恢复记录。恢复历史会诊请使用 embed 刷新接口。
         if data.request_id is None:
             raise HTTPException(status_code=422, detail="request_id is required")
 
@@ -117,6 +109,8 @@ class AgentTeamsLaunchIntentService:
     ) -> AgentTeamsLaunchIntentResponse | None:
         await PatientService.verify_ownership(self.db, patient_id, account_id)
         intent = await self._get_active_patient_intent(account_id, patient_id)
+        if intent is None:
+            intent = await self._get_recent_rejected_intent(account_id, patient_id)
         if intent is None:
             return None
         if intent.status in {"dispatching", "confirming"}:
@@ -812,6 +806,32 @@ class AgentTeamsLaunchIntentService:
                 AgentTeamsLaunchIntent.status.in_(self.ACTIVE_INTENT_STATUSES),
             )
             .order_by(AgentTeamsLaunchIntent.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def _get_recent_rejected_intent(
+        self,
+        account_id: int,
+        patient_id: int,
+    ) -> AgentTeamsLaunchIntent | None:
+        """Return the latest rejected intent inside the visibility window.
+
+        ``rejected`` is terminal, so an old rejection must not resurface as an
+        "active" launch on page load; the window only covers the frontend's
+        polling session right after a launch attempt.
+        """
+        cutoff = get_utc_now() - timedelta(seconds=self.REJECTED_VISIBILITY_SECONDS)
+        result = await self.db.execute(
+            select(AgentTeamsLaunchIntent)
+            .where(
+                AgentTeamsLaunchIntent.provider == self.PROVIDER,
+                AgentTeamsLaunchIntent.account_id == account_id,
+                AgentTeamsLaunchIntent.patient_id == patient_id,
+                AgentTeamsLaunchIntent.status == "rejected",
+                AgentTeamsLaunchIntent.updated_at >= cutoff,
+            )
+            .order_by(AgentTeamsLaunchIntent.updated_at.desc())
             .limit(1)
         )
         return result.scalar_one_or_none()

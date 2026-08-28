@@ -2,8 +2,8 @@
   <footer class="at-status-bar">
     <div class="status-left">
       <span :class="['status-dot', online ? 'online' : 'offline']" />
-      <span class="status-text">
-        虚拟会诊引擎 AgentTeams {{ online ? '已连接' : '未部署' }}
+      <span class="status-text" :title="statusTitle">
+        虚拟会诊引擎 AgentTeams {{ statusText }}
       </span>
     </div>
     <!-- 项目一句话简介（仅桌面端显示，移动端只保留状态） -->
@@ -37,9 +37,33 @@ const props = defineProps({
 // agentTeams 开源仓库地址（与后端 DEFAULT_UPSELL.cta_url 保持一致）
 const repoUrl = AGENTTEAMS_REPO_URL
 
+// 已连接 = 已配置 + 已启用 + 后端探测可达；协议版本不兼容时同样视为不可用。
 const online = computed(() => Boolean(
-  props.availability?.configured && props.availability?.enabled,
+  props.availability?.configured
+  && props.availability?.enabled
+  && props.availability?.reachable
+  && props.availability?.protocol_version,
 ))
+
+const statusText = computed(() => {
+  const availability = props.availability
+  if (!availability?.configured || !availability?.enabled) return '未部署'
+  if (!availability?.reachable) return '暂不可达'
+  if (!availability?.protocol_version) return '版本不兼容'
+  return '已连接'
+})
+
+const statusTitle = computed(() => {
+  const availability = props.availability
+  if (!availability?.configured || !availability?.enabled) {
+    return 'AgentTeams 未配置或未启用'
+  }
+  if (!availability?.reachable) return 'AgentTeams 服务当前不可达，请检查部署或稍后重试'
+  if (!availability?.protocol_version) {
+    return 'AgentTeams 协议版本与 OncoPath 不兼容，请升级 AgentTeams'
+  }
+  return `AgentTeams 协议版本 v${availability.protocol_version}`
+})
 </script>
 
 <style scoped>

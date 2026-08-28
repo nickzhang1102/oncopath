@@ -44,7 +44,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { mergeAgentTeamsStatus } from '@/utils/agentteamsStatus'
 
-const EMBED_STATUS_MESSAGE = 'oncopath:embed-status'
+const EMBED_STATUS_MESSAGES = new Set(['agentteams:embed-status', 'oncopath:embed-status'])
 const EMBED_LOAD_TIMEOUT_MS = 15000
 const EMBED_STATES = new Set([
   'created',
@@ -136,7 +136,7 @@ function getEmbedOrigin() {
 function handleEmbedStatus(event) {
   if (event.source !== embedFrame.value?.contentWindow) return
   if (event.origin !== getEmbedOrigin()) return
-  if (event.data?.type !== EMBED_STATUS_MESSAGE) return
+  if (!EMBED_STATUS_MESSAGES.has(event.data?.type)) return
   if (!EMBED_STATES.has(event.data.status)) return
 
   const nextStatus = mergeAgentTeamsStatus(currentStatus.value, event.data.status)
