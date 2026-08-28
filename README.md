@@ -128,13 +128,14 @@ cd oncopath
 cp .env.example .env
 ```
 
-编辑 `.env`，**必须填写**以下 4 项（其余按需调整）：
+编辑 `.env`，**必须填写**以下 5 项（其余按需调整）：
 
 | 变量 | 说明 | 生成方式 |
 |------|------|----------|
 | `SECRET_KEY` | JWT 签名密钥，至少 32 字符，启动时校验拒绝默认值 | `openssl rand -hex 32` |
 | `DB_PASSWORD` | PostgreSQL 密码 | 自定义强密码 |
 | `REDIS_PASSWORD` | Redis 密码 | 自定义强密码 |
+| `ADMIN_INITIAL_PASSWORD` | 默认管理员 `admin` 的初始密码，至少 12 位；不设置或过短时后端启动直接失败（fail-closed） | 自定义强密码 |
 | `ENCRYPTION_KEY` | PHI 字段 Fernet 加密密钥（生产必填） | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 
 > **LLM 配置无需预填**：AI 解读、OCR 解析等 AI 功能使用的 OpenAI 兼容 LLM 配置，部署完成后登录系统，按首启引导进入「个人中心 → AI 模型配置」菜单填写并测试即可（配置加密存库、保存后热生效）。`.env` 中的 `LLM_*` 变量仅作为可选回退。AgentTeams 使用独立的后台集成配置，详见 [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md)。

@@ -128,13 +128,14 @@ cd oncopath
 cp .env.example .env
 ```
 
-Edit `.env` and **fill in these 4 required variables** (adjust the rest as needed):
+Edit `.env` and **fill in these 5 required variables** (adjust the rest as needed):
 
 | Variable | Description | How to generate |
 |----------|-------------|-----------------|
 | `SECRET_KEY` | JWT signing key, ≥32 chars; startup refuses default values | `openssl rand -hex 32` |
 | `DB_PASSWORD` | PostgreSQL password | Choose a strong password |
 | `REDIS_PASSWORD` | Redis password | Choose a strong password |
+| `ADMIN_INITIAL_PASSWORD` | Initial password for the default `admin` account, ≥12 chars; startup fails (fail-closed) when missing or too short | Choose a strong password |
 | `ENCRYPTION_KEY` | Fernet key for PHI field encryption (required in production) | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 
 > **No LLM pre-configuration needed**: the OpenAI-compatible LLM settings used by AI features (lab interpretation, OCR parsing, etc.) are configured **after deployment** — sign in and follow the first-run guide to **Profile → AI Model Config**, where you can fill in and test the config (stored encrypted in the database, effective immediately after saving). The `LLM_*` variables in `.env` serve as an optional fallback. AgentTeams uses its own backend integration config — see [`docs/deployment/agentteams-integration.md`](./docs/deployment/agentteams-integration.md) (Chinese).
