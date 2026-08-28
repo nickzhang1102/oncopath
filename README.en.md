@@ -32,7 +32,7 @@ Cancer treatment is a marathon measured in years. As a patient's family member, 
 | 📉 Trends of key indicators tracked by hand in notebooks | Automatic abnormal-indicator tracking, per-indicator **trend charts + side-by-side comparison** |
 | 🏥 Not sure what to ask the doctor before the visit | One-click aggregation of the full record into a consultation prompt, launching a **multi-agent virtual consultation via AgentTeams** |
 
-OncoPath targets tech-savvy patient families and self-hosted deployments: your data stays on your own server, sensitive fields are encrypted at rest, and AI only organizes and explains information — final judgment always belongs to you and your doctors.
+OncoPath targets patient families and self-hosted deployments: your data stays on your own server, sensitive fields are encrypted at rest, and AI only organizes and explains information — final judgment always belongs to you and your doctors.
 
 ---
 
