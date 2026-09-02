@@ -39,10 +39,40 @@
           label="医院"
           placeholder="请输入医院名称"
           required
-        />
+        >
+          <template v-if="hospitalActions.length" #button>
+            <van-button
+              size="small"
+              type="primary"
+              plain
+              class="hospital-history-button"
+              @click.stop="showHospitalHistory = true"
+            >
+              历史医院
+            </van-button>
+          </template>
+        </van-field>
 
         <!-- 检查日期 -->
         <van-field
+          v-if="isDesktop"
+          label="检查日期"
+          required
+        >
+          <template #input>
+            <input
+              v-model="form.captureDate"
+              type="date"
+              :min="minDateValue"
+              :max="maxDateValue"
+              class="desktop-date-input"
+              aria-label="检查日期"
+              @change="generateTitle"
+            />
+          </template>
+        </van-field>
+        <van-field
+          v-else
           v-model="form.captureDate"
           label="检查日期"
           placeholder="请选择检查日期"
@@ -125,6 +155,16 @@
       />
     </van-popup>
 
+    <!-- 历史医院选择 -->
+    <van-action-sheet
+      v-model:show="showHospitalHistory"
+      title="选择历史医院"
+      :actions="hospitalActions"
+      cancel-text="取消"
+      close-on-click-action
+      @select="onHospitalSelect"
+    />
+
     <!-- 日期选择器 -->
     <van-popup
       v-model:show="showDatePicker"
@@ -176,8 +216,13 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePatientStore } from '@/stores/patient'
 import { useResponsive } from '@/composables/useResponsive'
 import { showToast, showConfirmDialog, showNotify } from 'vant'
-import { uploadImageReport, uploadImageReportStream, checkDuplicate } from '@/api/imageReport'
-import { getImageCategories } from '@/api/imageReport'
+import {
+  uploadImageReport,
+  uploadImageReportStream,
+  checkDuplicate,
+  getImageCategories,
+  getImageReportStats,
+} from '@/api/imageReport'
 import ImageCategorySelector from './ImageCategorySelector.vue'
 
 /**
@@ -298,10 +343,13 @@ const submitting = ref(false)
 const progressMessage = ref('')
 const showPatientSelector = ref(false)
 const showCategorySelector = ref(false)
+const showHospitalHistory = ref(false)
 const showDatePicker = ref(false)
 const currentDate = ref([new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()])
+const hospitalHistory = ref([])
 const fileInput = ref(null)
 const cancelUpload = ref(null)
+let hospitalHistoryRequestId = 0
 
 // 进度对话框状态
 const showLogDialog = ref(false)
@@ -312,6 +360,12 @@ const completedReportId = ref(null)
 // 日期选择器限制
 const minDate = new Date(1900, 0, 1)
 const maxDate = new Date()
+const minDateValue = '1900-01-01'
+const maxDateValue = [
+  maxDate.getFullYear(),
+  String(maxDate.getMonth() + 1).padStart(2, '0'),
+  String(maxDate.getDate()).padStart(2, '0'),
+].join('-')
 
 // 计算属性 - 直接使用 patientStore.patientList，避免冗余 API 请求
 const patientColumns = computed(() => {
@@ -321,6 +375,37 @@ const patientColumns = computed(() => {
   }))
 })
 
+const hospitalActions = computed(() => hospitalHistory.value.map(item => ({
+  name: item.hospital,
+  subname: `${item.count} 份报告`,
+})))
+
+async function loadHospitalHistory(patientId) {
+  const requestId = ++hospitalHistoryRequestId
+  hospitalHistory.value = []
+  if (!patientId) return
+
+  try {
+    const res = await getImageReportStats({ patient_id: patientId })
+    const data = res?.data !== undefined ? res.data : res
+    const hospitalCounts = new Map()
+    for (const item of data?.hospital_stats || []) {
+      const hospital = typeof item.hospital === 'string' ? item.hospital.trim() : ''
+      if (hospital) {
+        hospitalCounts.set(hospital, (hospitalCounts.get(hospital) || 0) + (Number(item.count) || 0))
+      }
+    }
+    const history = Array.from(hospitalCounts, ([hospital, count]) => ({ hospital, count }))
+      .sort((a, b) => b.count - a.count || a.hospital.localeCompare(b.hospital, 'zh-CN'))
+
+    if (requestId === hospitalHistoryRequestId && form.patientId === patientId) {
+      hospitalHistory.value = history
+    }
+  } catch (error) {
+    console.error('加载历史医院失败:', error)
+  }
+}
+
 // 初始化
 onMounted(async () => {
   // 自动填充当前病人
@@ -329,7 +414,10 @@ onMounted(async () => {
     form.patientId = currentPatient.patient_id
     form.patientName = currentPatient.patient_name
   }
-  await loadCategoryColors()
+  await Promise.all([
+    loadCategoryColors(),
+    loadHospitalHistory(form.patientId),
+  ])
 })
 
 // 组件卸载时取消进行中的上传
@@ -399,10 +487,19 @@ const removeImage = async () => {
 const onPatientConfirm = ({ selectedOptions }) => {
   if (selectedOptions && selectedOptions.length > 0) {
     const selected = selectedOptions[0]
+    if (form.patientId !== selected.value) {
+      form.hospital = ''
+    }
     form.patientId = selected.value
     form.patientName = selected.text
+    loadHospitalHistory(form.patientId)
   }
   showPatientSelector.value = false
+}
+
+const onHospitalSelect = (action) => {
+  form.hospital = action.name
+  showHospitalHistory.value = false
 }
 
 // 分类选择确认
@@ -448,6 +545,8 @@ const onDateConfirm = (value) => {
 const generateTitle = () => {
   if (form.hospital && form.categoryDisplay && form.captureDate) {
     form.title = `${form.hospital}_${form.categoryDisplay}_${form.captureDate}`
+  } else {
+    form.title = ''
   }
 }
 
@@ -772,6 +871,33 @@ const finishUpload = () => {
   flex: 1;
   height: 44px;
   border-radius: 8px;
+}
+
+.hospital-history-button {
+  margin-left: 8px;
+  color: var(--color-white) !important;
+}
+
+.desktop-date-input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: inherit;
+  text-align: right;
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.desktop-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+:global([data-theme="dark"]) .desktop-date-input {
+  color-scheme: dark;
 }
 
 /* 分类显示样式 */
